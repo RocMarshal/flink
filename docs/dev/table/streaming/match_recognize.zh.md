@@ -1,7 +1,7 @@
 ---
-title: 'Detecting Patterns in Tables'
+title: '表中的模式检测'
 nav-parent_id: streaming_tableapi
-nav-title: 'Detecting Patterns'
+nav-title: '模式检测'
 nav-pos: 5
 is_beta: true
 ---
@@ -24,28 +24,17 @@ specific language governing permissions and limitations
 under the License.
 -->
 
-It is a common use case to search for a set of event patterns, especially in case of data streams.
-Flink comes with a [complex event processing (CEP) library]({{ site.baseurl }}/dev/libs/cep.html)
-which allows for pattern detection in event streams. Furthermore, Flink's SQL API provides a
-relational way of expressing queries with a large set of built-in functions and rule-based
-optimizations that can be used out of the box.
+搜索一组事件模式（event pattern）是一种常见的用例，尤其是在数据流的情况下。Flink 提供 [复杂事件处理（CEP）库]({{ site.baseurl }}/dev/libs/cep.html)，该库允许在事件流中进行模式检测。此外，Flink 的 SQL API 提供了一种关系式的查询表达方式，其中包含一大组内置函数和基于规则的优化，可以开箱即用。
 
-In December 2016, the International Organization for Standardization (ISO) released a new version
-of the SQL standard which includes _Row Pattern Recognition in SQL_
-([ISO/IEC TR 19075-5:2016](https://standards.iso.org/ittf/PubliclyAvailableStandards/c065143_ISO_IEC_TR_19075-5_2016.zip)).
-It allows Flink to consolidate CEP and SQL API using the `MATCH_RECOGNIZE` clause for complex event
-processing in SQL.
+2016年12月，国际标准化组织（ISO）发布了新版本的 SQL 标准，其中包括在 _SQL 中的行模式识别（Row Pattern Recognition in SQL）_([ISO/IEC TR 19075-5:2016](https://standards.iso.org/ittf/PubliclyAvailableStandards/c065143_ISO_IEC_TR_19075-5_2016.zip))。它允许 Flink 使用 `MATCH_RECOGNIZE` 子句融合 CEP 和 SQL API ，以便在 SQL 中进行复杂事件处理。
 
-A `MATCH_RECOGNIZE` clause enables the following tasks:
-* Logically partition and order the data that is used with the `PARTITION BY` and `ORDER BY`
-  clauses.
-* Define patterns of rows to seek using the `PATTERN` clause. These patterns use a syntax similar to
-  that of regular expressions.
-* The logical components of the row pattern variables are specified in the `DEFINE` clause.
-* Define measures, which are expressions usable in other parts of the SQL query, in the `MEASURES`
-  clause.
+一个 `MATCH_RECOGNIZE` 子句启用以下任务：
+* 对与 `PARTITION BY` 和 `ORDER BY` 子句一起使用的数据进行逻辑分区和排序。
+* 使用 `PATTERN` 子句定义要查找的行的模式。这些模式使用类似于正则表达式的语法。
+* 行模式变量的逻辑组件在 `DEFINE` 子句中指定。
+* 在 `MEASURES` 子句中定义可用于 SQL 查询其他部分的表达式 measures。
 
-The following example illustrates the syntax for basic pattern recognition:
+下面的示例演示了基本模式识别的语法：
 
 {% highlight sql %}
 SELECT T.aid, T.bid, T.cid
@@ -65,24 +54,19 @@ FROM MyTable
     ) AS T
 {% endhighlight %}
 
-This page will explain each keyword in more detail and will illustrate more complex examples.
+本页将更详细地解释每个关键字，并举例说明更复杂的示例。
 
-<span class="label label-danger">Attention</span> Flink's implementation of the `MATCH_RECOGNIZE`
-clause is a subset of the full standard. Only those features documented in the following sections
-are supported. Since the development is still in an early phase, please also take a look at the
-[known limitations](#known-limitations).
+<span class="label label-danger">注意</span> Flink 的 `MATCH_RECOGNIZE` 子句实现是完整标准的一个子集。仅支持以下部分中记录的功能。由于开发仍处于初期阶段，请查看[已知限制](#known-limitations)。
 
 * This will be replaced by the TOC
 {:toc}
 
-Introduction and Examples
+简介与示例
 -------------------------
 
-### Installation Guide
+### 安装指南
 
-The pattern recognition feature uses the Apache Flink's CEP library internally. In order to be able
-to use the `MATCH_RECOGNIZE` clause, the library needs to be added as a dependency to your Maven
-project.
+模式识别特性在使用 Apache Flink 内部的 CEP 库。为了能够使用 `MATCH_RECOGNIZE` 子句，需要将库作为依赖项添加到 Maven 项目中。
 
 {% highlight xml %}
 <dependency>
@@ -92,52 +76,40 @@ project.
 </dependency>
 {% endhighlight %}
 
-Alternatively, you can also add the dependency to the cluster classpath (see the
-[dependency section]({{ site.baseurl}}/dev/project-configuration.html) for more information).
+或者，也可以将依赖项添加到集群类路径（查看
+[依赖部分]({{ site.baseurl}}/dev/project-configuration.html)获取更多信息）。
 
-If you want to use the `MATCH_RECOGNIZE` clause in the
-[SQL Client]({{ site.baseurl}}/dev/table/sqlClient.html), you don't have to do anything as all the
-dependencies are included by default.
+如果你想在 [SQL Client]({{ site.baseurl}}/dev/table/sqlClient.html) 中使用 `MATCH_RECOGNIZE` 子句，你无需执行任何操作，因为默认情况下包含所有依赖项。
 
-### SQL Semantics
+### SQL语义
 
-Every `MATCH_RECOGNIZE` query consists of the following clauses:
+每个 `MATCH_RECOGNIZE` 查询都包含以下子句：
 
-* [PARTITION BY](#partitioning) - defines the logical partitioning of the table; similar to a
-  `GROUP BY` operation.
-* [ORDER BY](#order-of-events) - specifies how the incoming rows should be ordered; this is
-  essential as patterns depend on an order.
-* [MEASURES](#define--measures) - defines output of the clause; similar to a `SELECT` clause.
-* [ONE ROW PER MATCH](#output-mode) - output mode which defines how many rows per match should be
-  produced.
-* [AFTER MATCH SKIP](#after-match-strategy) - specifies where the next match should start; this is
-  also a way to control how many distinct matches a single event can belong to.
-* [PATTERN](#defining-a-pattern) - allows constructing patterns that will be searched for using a
-  _regular expression_-like syntax.
-* [DEFINE](#define--measures) - this section defines the conditions that the pattern variables must
-  satisfy.
+* [PARTITION BY](#partitioning) - 定义表的逻辑分区；类似于 `GROUP BY` 操作。
+* [ORDER BY](#order-of-events) - 指定传入行的排序方式；这是必须的，因为模式依赖于顺序。
+* [MEASURES](#define--measures) - 定义子句的输出；类似于 `SELECT` 子句。
+* [ONE ROW PER MATCH](#output-mode) - 定义每次匹配应生成多少行的输出模式。
+* [AFTER MATCH SKIP](#after-match-strategy) - 指定下一个匹配的开始位置；这也是一种控制单个事件可以属于多少个不同匹配的方法。
+* [PATTERN](#defining-a-pattern) - 允许使用类似于 _正则表达式_ 的语法构造将要搜索的模式。
+* [DEFINE](#define--measures) - 本节定义模式变量必须满足的条件。
 
-<span class="label label-danger">Attention</span> Currently, the `MATCH_RECOGNIZE` clause can only
-be applied to an [append table](dynamic_tables.html#update-and-append-queries). Furthermore, it
-always produces an append table as well.
+<span class="label label-danger">注意</span> 目前，`MATCH_RECOGNIZE` 子句只能应用于追加表（[append table](dynamic_tables.html#update-and-append-queries)）。此外，它还总是生成一个追加表。
 
-### Examples
+### 示例
 
-For our examples, we assume that a table `Ticker` has been registered. The table contains prices of
-stocks at a particular point in time.
+对于我们的示例，我们假设已经注册了一个表 `Ticker`。该表包含特定时间点的股票价格。
 
-The table has a following schema:
+这张表的 schema 如下：
 
 {% highlight text %}
 Ticker
-     |-- symbol: String                           # symbol of the stock
-     |-- price: Long                              # price of the stock
-     |-- tax: Long                                # tax liability of the stock
-     |-- rowtime: TimeIndicatorTypeInfo(rowtime)  # point in time when the change to those values happened
+     |-- symbol: String                           # 股票的代号
+     |-- price: Long                              # 股票的价格
+     |-- tax: Long                                # 股票应纳税额
+     |-- rowtime: TimeIndicatorTypeInfo(rowtime)  # 更改这些值的时间点
 {% endhighlight %}
 
-For simplification, we only consider the incoming data for a single stock `ACME`. A ticker could
-look similar to the following table where rows are continuously appended.
+为了简化，我们只考虑单个股票 `ACME` 的传入数据。Ticker 可以类似于下表，其中的行是连续追加的。
 
 {% highlight text %}
 symbol         rowtime         price    tax
@@ -155,8 +127,7 @@ symbol         rowtime         price    tax
 'ACME'  '01-Apr-11 10:00:10'   19      1
 {% endhighlight %}
 
-The task is now to find periods of a constantly decreasing price of a single ticker. For this, one
-could write a query like:
+现在的任务是找出一个单一股票价格不断下降的时期。为此，可以编写如下查询：
 
 {% highlight sql %}
 SELECT *
@@ -180,10 +151,11 @@ FROM Ticker
     ) MR;
 {% endhighlight %}
 
-The query partitions the `Ticker` table by the `symbol` column and orders it by the `rowtime`
-time attribute.
+此查询将 `Ticker` 表按照 `symbol` 列进行分区并按照 `rowtime` 属性进行排序。
 
-The `PATTERN` clause specifies that we are interested in a pattern with a starting event `START_ROW`
+ `PATTERN` 子句指定我们对以下模式感兴趣：该模式具有开始事件 `START_ROW`，然后是一个或多个“ PRICE_DOWN”事件，并以“ PRICE_UP”事件结束。
+如果可以找到这样的模式，则在最后一个PRICE_UP事件中寻找下一个模式匹配，如AFTER MATCH SKIP TO LAST子句所示。
+ with a starting event `START_ROW`
 that is followed by one or more `PRICE_DOWN` events and concluded with a `PRICE_UP` event. If such
 a pattern can be found, the next pattern match will be seeked at the last `PRICE_UP` event as
 indicated by the `AFTER MATCH SKIP TO LAST` clause.
@@ -215,7 +187,7 @@ ACME       01-APR-11 10:00:04  01-APR-11 10:00:07  01-APR-11 10:00:08
 The resulting row describes a period of falling prices that started at `01-APR-11 10:00:04` and
 achieved the lowest price at `01-APR-11 10:00:07` that increased again at `01-APR-11 10:00:08`.
 
-Partitioning
+分区
 ------------
 
 It is possible to look for patterns in partitioned data, e.g., trends for a single ticker or a
@@ -226,7 +198,7 @@ using `GROUP BY` for aggregations.
 data because otherwise the `MATCH_RECOGNIZE` clause will be translated into a non-parallel operator
 to ensure global ordering.
 
-Order of Events
+事件的顺序
 ---------------
 
 Apache Flink allows for searching for patterns based on time; either
@@ -243,7 +215,7 @@ ordering as the first argument to `ORDER BY` clause.
 For the example `Ticker` table, a definition like `ORDER BY rowtime ASC, price DESC` is valid but
 `ORDER BY price, rowtime` or `ORDER BY rowtime DESC, price ASC` is not.
 
-Define & Measures
+定义和措施（Define & Measures）
 -----------------
 
 The `DEFINE` and `MEASURES` keywords have similar meanings to the `WHERE` and `SELECT` clauses in a
@@ -260,7 +232,7 @@ variable, a default condition will be used which evaluates to `true` for every r
 For a more detailed explanation about expressions that can be used in those clauses, please have a
 look at the [event stream navigation](#pattern-navigation) section.
 
-### Aggregations
+### 聚合（Aggregations）
 
 Aggregations can be used in `DEFINE` and `MEASURES` clauses. Both
 [built-in]({{ site.baseurl }}/dev/table/functions/systemFunctions.html) and custom
@@ -329,7 +301,7 @@ they reference a single pattern variable. Thus `SUM(A.price * A.tax)` is a valid
 
 <span class="label label-danger">Attention</span> `DISTINCT` aggregations are not supported.
 
-Defining a Pattern
+模式定义（Defining a Pattern）
 ------------------
 
 The `MATCH_RECOGNIZE` clause allows users to search for patterns in event streams using a powerful
@@ -362,7 +334,7 @@ One may use the following operators:
 match are not supported. Examples of such patterns are `PATTERN (A*)`, `PATTERN  (A? B*)`,
 `PATTERN (A{0,} B{0,} C*)`, etc.
 
-### Greedy & Reluctant Quantifiers
+### 贪婪和勉强量词（Greedy & Reluctant Quantifiers）
 
 Each quantifier can be either _greedy_ (default behavior) or _reluctant_. Greedy quantifiers try to
 match as many rows as possible while reluctant quantifiers try to match as few as possible.
@@ -438,7 +410,7 @@ DEFINE
 <span class="label label-danger">Attention</span> The optional reluctant quantifier (`A??` or
 `A{0,1}?`) is not supported right now.
 
-### Time constraint
+### 时间约束（Time constraint）
 
 Especially for streaming use cases, it is often required that a pattern finishes within a given
 period of time. This allows for limiting the overall state size that Flink has to maintain
@@ -513,7 +485,7 @@ Notice that even though prices also drop by higher values, for example, by `11` 
 `01-Apr-11 10:00:00` and `01-Apr-11 11:40:00`), the time difference between those two events is
 larger than 1 hour. Thus, they don't produce a match.
 
-Output Mode
+输出模式（Output Mode）
 -----------
 
 The _output mode_ describes how many rows should be emitted for every found match. The SQL standard
@@ -569,7 +541,7 @@ The query will produce the following output:
 The pattern recognition is partitioned by the `symbol` column. Even though not explicitly mentioned
 in the `MEASURES` clause, the partitioned column is added at the beginning of the result.
 
-Pattern Navigation
+模式导航（Pattern Navigation）
 ------------------
 
 The `DEFINE` and `MEASURES` clauses allow for navigating within the list of rows that (potentially)
@@ -577,7 +549,7 @@ match a pattern.
 
 This section discusses this navigation for declaring conditions or producing output results.
 
-### Pattern Variable Referencing
+### 模式变量引用（Pattern Variable Referencing）
 
 A _pattern variable reference_ allows a set of rows mapped to a particular pattern variable in the
 `DEFINE` or `MEASURES` clauses to be referenced.
@@ -591,7 +563,7 @@ If no pattern variable is specified (e.g. `SUM(price)`), an expression reference
 pattern variable `*` which references all variables in the pattern. In other words, it creates a
 list of all the rows mapped so far to any variable plus the current row.
 
-#### Example
+#### 示例
 
 For a more thorough example, one can take a look at the following pattern and corresponding
 conditions:
@@ -700,7 +672,7 @@ are mapped to pattern variable `B`. However, the last row does not fulfill the `
 because the sum over all mapped rows `SUM(price)` and the sum over all rows in `B` exceed the
 specified thresholds.
 
-### Logical Offsets
+### 逻辑补偿/逻辑偏移量（Logical Offsets）
 
 _Logical offsets_ enable navigation within the events that were mapped to a particular pattern
 variable. This can be expressed with two corresponding functions:
@@ -738,7 +710,7 @@ FIRST(variable.field, n)
   </tbody>
 </table>
 
-#### Examples
+#### 示例
 
 For a more thorough example, one can take a look at the following pattern and corresponding
 conditions:
@@ -889,7 +861,7 @@ However, all of them must use the same pattern variable. In other words, the val
 Thus, it is possible to use `LAST(A.price * A.tax)`, but an expression like `LAST(A.price * B.tax)`
 is not allowed.
 
-After Match Strategy
+匹配之后的策略（After Match Strategy）
 --------------------
 
 The `AFTER MATCH SKIP` clause specifies where to start a new matching procedure after a complete
@@ -908,7 +880,7 @@ There are four different strategies:
 This is also a way to specify how many matches a single event can belong to. For example, with the
 `SKIP PAST LAST ROW` strategy every event can belong to at most one match.
 
-#### Examples
+#### 示例
 
 In order to better understand the differences between those strategies one can take a look at the
 following example.
@@ -1016,7 +988,7 @@ One has to keep in mind that in case of the `SKIP TO FIRST/LAST variable` strate
 possible that there are no rows mapped to that variable (e.g. for pattern `A*`). In such cases, a
 runtime exception will be thrown as the standard requires a valid row to continue the matching.
 
-Time attributes
+Time 属性（Time attributes）
 ---------------
 
 In order to apply some subsequent queries on top of the `MATCH_RECOGNIZE` it might be required to
@@ -1053,7 +1025,7 @@ use [time attributes](time_attributes.html). To select those there are available
   </tbody>
 </table>
 
-Controlling Memory Consumption
+控制内存消耗（Controlling Memory Consumption）
 ------------------------------
 
 Memory consumption is an important consideration when writing `MATCH_RECOGNIZE` queries, as the
@@ -1095,7 +1067,7 @@ DEFINE
 does not use a configured [state retention time](query_configuration.html#idle-state-retention-time).
 One may want to use the `WITHIN` [clause](#time-constraint) for this purpose.
 
-Known Limitations
+已知的局限（Known Limitations）
 -----------------
 
 Flink's implementation of the `MATCH_RECOGNIZE` clause is an ongoing effort, and some features of
