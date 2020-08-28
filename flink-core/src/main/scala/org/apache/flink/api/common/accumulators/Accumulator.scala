@@ -16,11 +16,9 @@
  * limitations under the License.
  */
 
-package org.apache.flink.api.common.accumulators;
+package org.apache.flink.api.common.accumulators
 
-import org.apache.flink.annotation.Public;
-
-import java.io.Serializable;
+import org.apache.flink.annotation.Public
 
 /**
  * Accumulators collect distributed statistics or aggregates in a from user functions
@@ -30,48 +28,54 @@ import java.io.Serializable;
  * result of a job execution, or from the web runtime monitor.
  *
  * The accumulators are inspired by the Hadoop/MapReduce counters.
- * 
+ *
  * The type added to the accumulator might differ from the type returned. This
  * is the case e.g. for a set-accumulator: We add single objects, but the result
  * is a set of objects.
- * 
- * @param <V>
- *            Type of values that are added to the accumulator
- * @param <R>
- *            Type of the accumulator result as it will be reported to the
- *            client
+ *
+ * @tparam V
+ *           Type of values that are added to the accumulator
+ * @tparam R
+ *           Type of the accumulator result as it will be reported to the client
  */
 @Public
-public interface Accumulator<V, R extends Serializable> extends Serializable, Cloneable {
-	/**
-	 * @param value
-	 *            The value to add to the accumulator object
-	 */
-	void add(V value);
+trait Accumulator[V, R <: java.io.Serializable] extends java.io.Serializable with java.lang.Cloneable {
 
-	/**
-	 * @return local The local value from the current UDF context
-	 */
-	R getLocalValue();
+  /**
+   *
+   * @param value
+   *              The value to add to the accumulator object
+   * @return
+   */
+  def add(value: V)
 
-	/**
-	 * Reset the local value. This only affects the current UDF context.
-	 */
-	void resetLocal();
+  /**
+   *
+   * @return local The local value from the current UDF context
+   */
+  def getLocalValue: R
 
-	/**
-	 * Used by system internally to merge the collected parts of an accumulator
-	 * at the end of the job.
-	 * 
-	 * @param other Reference to accumulator to merge in.
-	 */
-	void merge(Accumulator<V, R> other);
+  /**
+   *
+   * Reset the local value. This only affects the current UDF context.
+   */
+  def resetLocal: Unit
 
-	/**
-	 * Duplicates the accumulator. All subclasses need to properly implement
-	 * cloning and cannot throw a {@link java.lang.CloneNotSupportedException}
-	 *
-	 * @return The duplicated accumulator.
-	 */
-	Accumulator<V, R> clone();
+  /**
+   * Used by system internally to merge the collected parts of an accumulator
+   * at the end of the job.
+   * @param other Reference to accumulator to merge in.
+   */
+  def merge(other: Accumulator[V, R]): Unit
+
+  /**
+   * Duplicates the accumulator. All subclasses need to properly implement
+   * cloning and cannot throw a [[java.lang.CloneNotSupportedException]]
+   *
+   * @return The duplicated accumulator.
+   */
+  override def clone(): Accumulator[V, R] = {
+    super.clone().asInstanceOf[Accumulator[V, R]]
+  }
+
 }
