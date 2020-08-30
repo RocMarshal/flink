@@ -22,7 +22,38 @@ import org.apache.flink.util.OptionalFailure
 import org.slf4j.{Logger, LoggerFactory}
 
 object AccumulatorHelper {
-  private final val LOG: Logger = LoggerFactory.getLogger(AccumulatorHelper.getClass)
 
-  def mergeInto(target: Map[String, OptionalFailure[Accumulator[?,?]]], toMerge: Map[String, Accumulator[?,?]]):Unit
+  @transient
+  lazy val LOG2 = LoggerFactory.getLogger(this.getClass)
+
+  private final val LOG1: Logger = LoggerFactory.getLogger(AccumulatorHelper.getClass)
+
+  /**
+   * Merge two collections of accumulators. The second will be merged into the
+   * first.
+   * @param target
+   *               The collection of accumulators that will be updated
+   * @param toMerge
+   *                The collection of accumulators that will be merged into the
+   *                other
+   */
+  def mergeInto(target: Map[String, OptionalFailure[Accumulator[_,_]]], toMerge: Map[String, Accumulator[_,_]]):Unit={
+    for (otherEntry <- toMerge){
+      // get the OptionalFailure[Accumulator[_,_]] from target
+      var ownAccumulator = target.get(otherEntry._1)
+      if (ownAccumulator == null){
+        // Create initial counter (copy!)
+        target += (otherEntry._1, wrapUnchecked(otherEntry._1, ()-> otherEntry._2.clone()))
+      }
+    }
+  }
+}
+
+
+trait LogHelper {
+  lazy val LOG3 = LoggerFactory.getLogger(this.getClass.getName)
+}
+
+class AccumulatorHelper {
+  val LOG4 = LoggerFactory.getLogger(AccumulatorHelper.getClass)
 }
