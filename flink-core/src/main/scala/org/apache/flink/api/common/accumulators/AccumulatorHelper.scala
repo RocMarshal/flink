@@ -21,6 +21,16 @@ package org.apache.flink.api.common.accumulators
 import org.apache.flink.util.OptionalFailure
 import org.slf4j.{Logger, LoggerFactory}
 
+
+trait LogHelper {
+  lazy val LOG3 = LoggerFactory.getLogger(this.getClass.getName)
+}
+
+class AccumulatorHelper {
+  val LOG4 = LoggerFactory.getLogger(AccumulatorHelper.getClass)
+}
+
+
 object AccumulatorHelper {
 
   @transient
@@ -47,13 +57,4 @@ object AccumulatorHelper {
       }
     }
   }
-}
-
-
-trait LogHelper {
-  lazy val LOG3 = LoggerFactory.getLogger(this.getClass.getName)
-}
-
-class AccumulatorHelper {
-  val LOG4 = LoggerFactory.getLogger(AccumulatorHelper.getClass)
 }
