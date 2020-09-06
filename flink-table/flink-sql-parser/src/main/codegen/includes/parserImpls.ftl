@@ -17,6 +17,7 @@
 
 /**
  * Parses a "IF EXISTS" option, default is false.
+ * 解析 "IF EXISTS" 项， 默认为 false
  */
 boolean IfExistsOpt() :
 {
