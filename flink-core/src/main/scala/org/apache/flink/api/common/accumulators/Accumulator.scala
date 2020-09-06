@@ -74,7 +74,7 @@ trait Accumulator[V, R <: java.io.Serializable] extends java.io.Serializable wit
    *
    * @return The duplicated accumulator.
    */
-  override def clone(): Accumulator[V, R] = {
+  override def clone() = {
     super.clone().asInstanceOf[Accumulator[V, R]]
   }
 
