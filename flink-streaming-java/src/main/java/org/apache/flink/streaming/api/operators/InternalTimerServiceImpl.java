@@ -212,6 +212,11 @@ public class InternalTimerServiceImpl<K, N> implements InternalTimerService<N> {
 		}
 	}
 
+	/**
+	 * 注册 事件时间 计时器
+	 * @param namespace Namespace
+	 * @param time long-time
+	 */
 	@Override
 	public void registerEventTimeTimer(N namespace, long time) {
 		eventTimeTimersQueue.add(new TimerHeapInternalTimer<>(time, (K) keyContext.getCurrentKey(), namespace));
@@ -265,6 +270,11 @@ public class InternalTimerServiceImpl<K, N> implements InternalTimerService<N> {
 		}
 	}
 
+	/**
+	 * 窗口的 Timer 示例
+	 * @param time
+	 * @throws Exception
+	 */
 	public void advanceWatermark(long time) throws Exception {
 		currentWatermark = time;
 
