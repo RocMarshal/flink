@@ -32,6 +32,7 @@ public interface KeyGroupedInternalPriorityQueue<T> extends InternalPriorityQueu
 	/**
 	 * Returns the subset of elements in the priority queue that belongs to the given key-group, within the operator's
 	 * key-group range.
+	 * 返回优先级队列中属于给定键组的元素的子集，在操作员的键组范围内。
 	 */
 	@Nonnull
 	Set<T> getSubsetForKeyGroup(int keyGroupId);

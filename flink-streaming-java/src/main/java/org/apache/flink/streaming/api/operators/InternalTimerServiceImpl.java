@@ -214,8 +214,8 @@ public class InternalTimerServiceImpl<K, N> implements InternalTimerService<N> {
 
 	/**
 	 * 注册 事件时间 计时器
-	 * @param namespace Namespace
-	 * @param time long-time
+	 * @param namespace Namespace , 窗口
+	 * @param time long-time, time
 	 */
 	@Override
 	public void registerEventTimeTimer(N namespace, long time) {

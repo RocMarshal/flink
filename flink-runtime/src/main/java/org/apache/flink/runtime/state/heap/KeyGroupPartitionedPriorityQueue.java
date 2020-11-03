@@ -105,6 +105,11 @@ public class KeyGroupPartitionedPriorityQueue<T, PQ extends InternalPriorityQueu
 		return heapOfKeyGroupedHeaps.peek().peek();
 	}
 
+	/**
+	 * TODO....
+	 * @param toAdd the element to add to the set.
+	 * @return
+	 */
 	@Override
 	public boolean add(@Nonnull T toAdd) {
 		final PQ list = getKeyGroupSubHeapForElement(toAdd);

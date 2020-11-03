@@ -66,6 +66,10 @@ public class HeapPriorityQueue<T extends HeapPriorityQueueElement>
 		this.elementPriorityComparator = elementPriorityComparator;
 	}
 
+	/**
+	 * 调整修改的元素
+	 * @param element 元素
+	 */
 	public void adjustModifiedElement(@Nonnull T element) {
 		final int elementIndex = element.getInternalIndex();
 		if (element == queue[elementIndex]) {
@@ -113,10 +117,11 @@ public class HeapPriorityQueue<T extends HeapPriorityQueueElement>
 		}
 	}
 
+
 	private void siftUp(int idx) {
 		final T[] heap = this.queue;
 		final T currentElement = heap[idx];
-		int parentIdx = idx >>> 1;
+		int parentIdx = idx >>> 1;//无符号右移，即 idx/2
 
 		while (parentIdx > 0 && isElementPriorityLessThen(currentElement, heap[parentIdx])) {
 			moveElementToIdx(heap[parentIdx], idx);
@@ -127,26 +132,41 @@ public class HeapPriorityQueue<T extends HeapPriorityQueueElement>
 		moveElementToIdx(currentElement, idx);
 	}
 
+	/**
+	 * 下筛，即 将 idx 为索引的子树调整为符合规则的堆
+	 * @param idx
+	 */
 	private void siftDown(int idx) {
 		final T[] heap = this.queue;
 		final int heapSize = this.size;
 
 		final T currentElement = heap[idx];
-		int firstChildIdx = idx << 1;
-		int secondChildIdx = firstChildIdx + 1;
+		// 经典的数组二叉树存储方式，数组首元素即 index 为 0 的位置不做存储数据使用，或者临时缓冲变量，或作其他使用，
+		int firstChildIdx = idx << 1;// left child index
+		int secondChildIdx = firstChildIdx + 1; //right child index
 
+		/**
+		 * 如果此节点有右子树，并且右子树优先级小于左子树（选定两个子节点中优先级最小的一个节点进行与父节点交换）
+		 */
 		if (isElementIndexValid(secondChildIdx, heapSize) &&
 			isElementPriorityLessThen(heap[secondChildIdx], heap[firstChildIdx])) {
-			firstChildIdx = secondChildIdx;
+			firstChildIdx = secondChildIdx;//令左子索引树赋值成右子树索引，并不交换
 		}
 
+		/**
+		 * 当 左子树索引合法
+		 *    且 左子树节点优先级小于 父节点（目标根节点）
+		 */
 		while (isElementIndexValid(firstChildIdx, heapSize) &&
 			isElementPriorityLessThen(heap[firstChildIdx], currentElement)) {
+			// 父节点与左子树互换索引
 			moveElementToIdx(heap[firstChildIdx], idx);
-			idx = firstChildIdx;
-			firstChildIdx = idx << 1;
-			secondChildIdx = firstChildIdx + 1;
-
+			idx = firstChildIdx;//将子树的根节点索引下移到左子树节点索引
+			firstChildIdx = idx << 1;//更新当前操作子树根节点的左子树索引
+			secondChildIdx = firstChildIdx + 1;////更新当前操作子树根节点的右子树索引
+			/**
+			 * 如果此节点有右子树，并且右子树优先级小于左子树（选定两个子节点中优先级最小的一个节点进行与父节点交换）
+			 */
 			if (isElementIndexValid(secondChildIdx, heapSize) &&
 				isElementPriorityLessThen(heap[secondChildIdx], heap[firstChildIdx])) {
 				firstChildIdx = secondChildIdx;
@@ -160,6 +180,7 @@ public class HeapPriorityQueue<T extends HeapPriorityQueueElement>
 		return elementIndex <= heapSize;
 	}
 
+	// a 是否比 b 优先级低？
 	private boolean isElementPriorityLessThen(T a, T b) {
 		return elementPriorityComparator.comparePriority(a, b) < 0;
 	}

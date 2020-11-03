@@ -70,14 +70,29 @@ public abstract class AbstractHeapPriorityQueue<T extends HeapPriorityQueueEleme
 
 	@Override
 	public boolean add(@Nonnull T toAdd) {
+		/**
+		 * 按照优先级规则添加元素到堆，并且设置元素在堆中的索引
+		 */
 		addInternal(toAdd);
+		/**
+		 * 判断此元素是否为堆的根元素
+		 */
 		return toAdd.getInternalIndex() == getHeadElementIndex();
 	}
 
 	@Override
 	public boolean remove(@Nonnull T toRemove) {
+		/**
+		 * 获取元素在堆中的索引
+		 */
 		final int elementIndex = toRemove.getInternalIndex();
+		/**
+		 * 移除元素
+		 */
 		removeInternal(elementIndex);
+		/**
+		 * 返回结果为：移除的是否为堆根元素
+		 */
 		return elementIndex == getHeadElementIndex();
 	}
 
@@ -141,6 +156,10 @@ public abstract class AbstractHeapPriorityQueue<T extends HeapPriorityQueueEleme
 		size = 0;
 	}
 
+	/**
+	 * 对指定参数的值进行 expectedSize = totalSize + (totalSize/8), 最低要求容量为 totalSize 的扩容
+	 * @param totalSize
+	 */
 	protected void resizeForBulkLoad(int totalSize) {
 		if (totalSize > queue.length) {
 			int desiredSize = totalSize + (totalSize >>> 3);
@@ -148,6 +167,11 @@ public abstract class AbstractHeapPriorityQueue<T extends HeapPriorityQueueEleme
 		}
 	}
 
+	/**
+	 * 重新调整 数组（堆容量）大小
+	 * @param desiredSize 期望大小
+	 * @param minRequiredSize 最低必须满足的大小
+	 */
 	protected void resizeQueueArray(int desiredSize, int minRequiredSize) {
 		if (isValidArraySize(desiredSize)) {
 			queue = Arrays.copyOf(queue, desiredSize);
@@ -159,6 +183,11 @@ public abstract class AbstractHeapPriorityQueue<T extends HeapPriorityQueueEleme
 		}
 	}
 
+	/**
+	 * 将 element 移动到指定位置
+	 * @param element ele
+	 * @param idx index
+	 */
 	protected void moveElementToIdx(T element, int idx) {
 		queue[idx] = element;
 		element.setInternalIndex(idx);

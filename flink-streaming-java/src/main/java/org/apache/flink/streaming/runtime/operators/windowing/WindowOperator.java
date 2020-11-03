@@ -298,8 +298,12 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
 		//if element is handled by none of assigned elementWindows
 		boolean isSkippedElement = true;
 
+		/**
+		 * 获取 state 对应的 K
+		 */
 		final K key = this.<K>getKeyedStateBackend().getCurrentKey();
 
+		// 如果是可合并的窗口委派
 		if (windowAssigner instanceof MergingWindowAssigner) {
 			MergingWindowSet<W> mergingWindows = getMergingWindowSet();
 
@@ -381,7 +385,7 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
 
 			// need to make sure to update the merging state in state
 			mergingWindows.persist();
-		} else {
+		} else { //TODO 对非合并窗口的操作
 			for (W window: elementWindows) {
 
 				// drop if the window is already late
@@ -879,6 +883,10 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
 			internalTimerService.registerProcessingTimeTimer(window, time);
 		}
 
+		/**
+		 * TODO 注册窗口计时器
+		 * @param time long-time mills
+		 */
 		@Override
 		public void registerEventTimeTimer(long time) {
 			internalTimerService.registerEventTimeTimer(window, time);
