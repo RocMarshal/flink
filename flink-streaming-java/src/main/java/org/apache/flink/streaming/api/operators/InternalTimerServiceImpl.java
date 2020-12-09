@@ -200,10 +200,14 @@ public class InternalTimerServiceImpl<K, N> implements InternalTimerService<N> {
 	@Override
 	public void registerProcessingTimeTimer(N namespace, long time) {
 		InternalTimer<K, N> oldHead = processingTimeTimersQueue.peek();
+		// roc study 如果添加成功
 		if (processingTimeTimersQueue.add(new TimerHeapInternalTimer<>(time, (K) keyContext.getCurrentKey(), namespace))) {
+			// 如果原先队列的头部不为空，则下次触发时间为原先队首的时间戳,否则为 MAX 时间戳
 			long nextTriggerTime = oldHead != null ? oldHead.getTimestamp() : Long.MAX_VALUE;
 			// check if we need to re-schedule our timer to earlier
+			// 如果 要注册的时间戳 小于 下次触发的时间戳则进入分支，否则，不做任何操作
 			if (time < nextTriggerTime) {
+				// 如果时间戳小于下次触发的时间戳，则需要变更最新的timer
 				if (nextTimer != null) {
 					nextTimer.cancel(false);
 				}
