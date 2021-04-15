@@ -35,6 +35,7 @@ from pyflink.common.restart_strategy import RestartStrategies, RestartStrategyCo
 from pyflink.common.types import Row, RowKind
 from pyflink.common.time import Duration
 from pyflink.common.watermark_strategy import WatermarkStrategy
+from pyflink.common.preconditions import Preconditions
 
 __all__ = [
     'CompletableFuture',
@@ -51,5 +52,6 @@ __all__ = [
     "Row",
     "RowKind",
     "Duration",
-    "WatermarkStrategy"
+    "WatermarkStrategy",
+    "Preconditions"
 ]
