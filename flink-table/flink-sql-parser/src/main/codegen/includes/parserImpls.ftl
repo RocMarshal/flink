@@ -414,11 +414,22 @@ SqlShowViews SqlShowViews() :
 */
 SqlShowTables SqlShowTables() :
 {
+    boolean useFrom = false;
+    SqlIdentifier targetCatalogDatabase = null;
+    SqlParserPos pos = null;
 }
 {
     <SHOW> <TABLES>
+    [
+        <FROM>
+        {
+            pos = getPos();
+            useFrom = true;
+        }
+        targetCatalogDatabase = CompoundIdentifier()
+    ]
     {
-        return new SqlShowTables(getPos());
+        return new SqlShowTables(pos, pos, targetCatalogDatabase);
     }
 }
 
