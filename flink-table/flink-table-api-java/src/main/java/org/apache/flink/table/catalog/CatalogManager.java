@@ -459,6 +459,13 @@ public final class CatalogManager {
         return listTables(getCurrentCatalog(), getCurrentDatabase());
     }
 
+    public Set<String> listTables(String catalogName) {
+        if (StringUtils.isNullOrWhitespaceOnly(catalogName)) {
+            return listTables();
+        }
+        return listTables(catalogName, getCurrentDatabase());
+    }
+
     /**
      * Returns an array of names of all tables (tables and views, both temporary and permanent)
      * registered in the namespace of the current catalog and database.
@@ -466,12 +473,16 @@ public final class CatalogManager {
      * @return names of all registered tables
      */
     public Set<String> listTables(String catalogName, String databaseName) {
-        Catalog currentCatalog = catalogs.get(getCurrentCatalog());
+        String targetCatalogName = StringUtils.isNullOrWhitespaceOnly(catalogName)
+                ? getCurrentCatalog() : catalogName;
+        String targetDatabaseName = StringUtils.isNullOrWhitespaceOnly(databaseName)
+                ? getCurrentDatabase() : databaseName;
+        Catalog currentCatalog = catalogs.get(targetCatalogName);
 
         try {
             return Stream.concat(
-                            currentCatalog.listTables(getCurrentDatabase()).stream(),
-                            listTemporaryTablesInternal(catalogName, databaseName)
+                            currentCatalog.listTables(targetDatabaseName).stream(),
+                            listTemporaryTablesInternal(targetCatalogName, targetDatabaseName)
                                     .map(e -> e.getKey().getObjectName()))
                     .collect(Collectors.toSet());
         } catch (DatabaseNotExistException e) {
