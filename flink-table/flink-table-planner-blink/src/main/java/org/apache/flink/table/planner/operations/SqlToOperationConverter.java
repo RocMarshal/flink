@@ -59,6 +59,7 @@ import org.apache.flink.sql.parser.dql.SqlLoadModule;
 import org.apache.flink.sql.parser.dql.SqlRichDescribeTable;
 import org.apache.flink.sql.parser.dql.SqlRichExplain;
 import org.apache.flink.sql.parser.dql.SqlShowCatalogs;
+import org.apache.flink.sql.parser.dql.SqlShowColumns;
 import org.apache.flink.sql.parser.dql.SqlShowCreateTable;
 import org.apache.flink.sql.parser.dql.SqlShowCurrentCatalog;
 import org.apache.flink.sql.parser.dql.SqlShowCurrentDatabase;
@@ -100,6 +101,7 @@ import org.apache.flink.table.operations.ExplainOperation;
 import org.apache.flink.table.operations.LoadModuleOperation;
 import org.apache.flink.table.operations.Operation;
 import org.apache.flink.table.operations.ShowCatalogsOperation;
+import org.apache.flink.table.operations.ShowColumnsOperation;
 import org.apache.flink.table.operations.ShowCreateTableOperation;
 import org.apache.flink.table.operations.ShowCurrentCatalogOperation;
 import org.apache.flink.table.operations.ShowCurrentDatabaseOperation;
@@ -255,6 +257,8 @@ public class SqlToOperationConverter {
             return Optional.of(converter.convertAlterTable((SqlAlterTable) validated));
         } else if (validated instanceof SqlShowTables) {
             return Optional.of(converter.convertShowTables((SqlShowTables) validated));
+        } else if (validated instanceof SqlShowColumns) {
+            return Optional.of(converter.convertShowColumns((SqlShowColumns) validated));
         } else if (validated instanceof SqlCreateView) {
             return Optional.of(converter.convertCreateView((SqlCreateView) validated));
         } else if (validated instanceof SqlDropView) {
@@ -820,6 +824,18 @@ public class SqlToOperationConverter {
     /** Convert SHOW TABLES statement. */
     private Operation convertShowTables(SqlShowTables sqlShowTables) {
         return new ShowTablesOperation();
+    }
+
+    /** Convert SHOW COLUMNS FROM [[catalogName.] dataBasesName].sqlIdentifier. */
+    private Operation convertShowColumns(SqlShowColumns sqlShowColumns) {
+        UnresolvedIdentifier unresolvedIdentifier =
+                UnresolvedIdentifier.of(sqlShowColumns.fullTableName());
+        ObjectIdentifier identifier = catalogManager.qualifyIdentifier(unresolvedIdentifier);
+        return new ShowColumnsOperation(
+                identifier,
+                sqlShowColumns.likeSqlPattern(),
+                sqlShowColumns.useLike(),
+                sqlShowColumns.getPreposition());
     }
 
     /** Convert SHOW CREATE TABLE statement. */

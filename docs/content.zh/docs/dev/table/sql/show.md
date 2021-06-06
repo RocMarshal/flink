@@ -28,7 +28,7 @@ under the License.
 
 
 
-SHOW 语句用于列出所有的 catalog，或者列出当前 catalog 中所有的 database，或者列出当前 catalog 和当前 database 的所有表或视图，或者列出当前正在使用的 catalog 和 database, 或者列出创建指定表的语句，或者列出当前 catalog 和当前 database 中所有的 function，包括：系统 function 和用户定义的 function，或者仅仅列出当前 catalog 和当前 database 中用户定义的 function，或者列出当前环境所有激活的 module，或者列出当前环境所有加载的 module 及激活状态。
+SHOW 语句用于列出所有的 catalog，或者列出当前 catalog 中所有的 database，或者列出当前 catalog 和当前 database 的所有表或视图，或者列出当前正在使用的 catalog 和 database, 或者列出创建指定表的语句，或者列出当前 catalog 和当前 database 中所有的 function，包括：系统 function 和用户定义的 function，或者仅仅列出当前 catalog 和当前 database 中用户定义的 function，或者列出当前环境所有激活的 module，或者列出当前环境所有加载的 module 及激活状态，或者根据可选的模糊查询语句列出给定表的相应列。
 
 目前 Flink SQL 支持下列 SHOW 语句：
 - SHOW CATALOGS
@@ -41,6 +41,7 @@ SHOW 语句用于列出所有的 catalog，或者列出当前 catalog 中所有�
 - SHOW FUNCTIONS
 - SHOW MODULES
 - SHOW FULL MODULES
+- SHOW COLUMNS
 
 
 ## 执行 SHOW 语句
@@ -498,5 +499,16 @@ SHOW [FULL] MODULES
 
 **FULL**
 展示当前环境加载的所有 module 及激活状态。
+
+## SHOW COLUMNS
+
+```sql
+SHOW COLUMNS ( FROM | IN ) <table_name> [LIKE <sql_like_pattern>]
+```
+
+展示给定表的所有列。
+
+**LIKE**
+根据可选的 `LIKE` 语句展示给定表与 `<sql_like_pattern>` 模糊相似的所有列。
 
 {{< top >}}

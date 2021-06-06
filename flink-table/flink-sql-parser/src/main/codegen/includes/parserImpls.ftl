@@ -423,6 +423,32 @@ SqlShowTables SqlShowTables() :
 }
 
 /**
+* SHOW COLUMNS FROM [[catalog.] database.]sqlIdentifier sql call.
+*/
+SqlShowColumns SqlShowColumns() :
+{
+    SqlIdentifier tableName;
+    SqlCharStringLiteral likeLiteral = null;
+    String prep = "FROM";
+    SqlParserPos pos;
+}
+{
+    <SHOW> <COLUMNS> ( <FROM> | <IN> { prep = "IN"; } )
+    { pos = getPos();}
+    tableName = CompoundIdentifier()
+    [
+        <LIKE>  <QUOTED_STRING>
+        {
+            String likeCondition = SqlParserUtil.parseString(token.image);
+            likeLiteral = SqlLiteral.createCharString(likeCondition, getPos());
+        }
+    ]
+    {
+        return new SqlShowColumns(pos, prep, tableName, likeLiteral);
+    }
+}
+
+/**
 * Parse a "Show Create Table" query command.
 */
 SqlShowCreateTable SqlShowCreateTable() :

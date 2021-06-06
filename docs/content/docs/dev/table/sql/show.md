@@ -26,7 +26,7 @@ under the License.
 
 # SHOW Statements
 
-SHOW statements are used to list all catalogs, or list all databases in the current catalog, or list all tables/views in the current catalog and the current database, or show current catalog and database, or show create statement for specified table, or list all functions including system functions and user-defined functions in the current catalog and current database, or list only user-defined functions in the current catalog and current database, or list enabled module names, or list all loaded modules with enabled status in the current session.
+SHOW statements are used to list all catalogs, or list all databases in the current catalog, or list all tables/views in the current catalog and the current database, or show current catalog and database, or show create statement for specified table, or list all functions including system functions and user-defined functions in the current catalog and current database, or list only user-defined functions in the current catalog and current database, or list enabled module names, or list all loaded modules with enabled status in the current session, or list the columns of the table with given table name and optional like clause.
 
 Flink SQL supports the following SHOW statements for now:
 - SHOW CATALOGS
@@ -38,6 +38,8 @@ Flink SQL supports the following SHOW statements for now:
 - SHOW VIEWS
 - SHOW FUNCTIONS
 - SHOW MODULES
+- SHOW COLUMNS
+
 
 ## Run a SHOW statement
 
@@ -498,5 +500,16 @@ Show all enabled module names with resolution order.
 
 **FULL**
 Show all loaded modules and enabled status with resolution order.
+
+## SHOW COLUMNS
+
+```sql
+SHOW COLUMNS ( FROM | IN ) <table_name> [LIKE <sql_like_pattern>]
+```
+
+Show all columns of the table with given table name and optional like clause.
+
+**LIKE**
+Show all columns of the table with given table name and optional `LIKE` clause, whose name is similar to the `<sql_like_pattern>`.
 
 {{< top >}}
