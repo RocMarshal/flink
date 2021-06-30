@@ -278,6 +278,7 @@ public final class LogicalTypeCasts {
 
     // --------------------------------------------------------------------------------------------
 
+    // todo double double not null, scala.version
     private static boolean supportsCasting(
             LogicalType sourceType, LogicalType targetType, boolean allowExplicit) {
         // a NOT NULL type cannot store a NULL type
