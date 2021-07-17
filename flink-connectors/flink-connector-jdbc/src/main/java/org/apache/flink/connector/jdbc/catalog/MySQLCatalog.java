@@ -33,7 +33,6 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.util.Preconditions;
 
 import org.apache.commons.compress.utils.Lists;
-import org.apache.commons.compress.utils.Sets;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,47 +46,40 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.USERNAME;
+import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.PASSWORD;
+import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.TABLE_NAME;
+import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.URL;
 import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.IDENTIFIER;
-import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.PASSWORD;
-import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.TABLE_NAME;
-import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.URL;
-import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.USERNAME;
 import static org.apache.flink.table.factories.FactoryUtil.CONNECTOR;
 
+/** Catalog for MySQL. */
 public class MySQLCatalog extends AbstractJdbcCatalog {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySQLCatalog.class);
 
-    private static final Set<String> builtinDatabases =
-            Sets.newHashSet("information_schema", "mysql", "performance_schema", "sys");
+    /**SELECT @@VERSION.5.6.19**/
+    private static final String QUERY_MYSQL_VERSION = "SELECT VERSION();";
 
-    public static final String MYSQL_TINYINT = "TINYINT";
-    public static final String MYSQL_SMALLINT = "SMALLINT";
-    public static final String MYSQL_TINYINT_UNSIGNED = "TINYINT UNSIGNED";
-    public static final String MYSQL_INT = "INT";
-    public static final String MYSQL_MEDIUMINT = "MEDIUMINT";
-    public static final String MYSQL_SMALLINT_UNSIGNED = "SMALLINT UNSIGNED";
-    public static final String MYSQL_BIGINT = "BIGINT";
-    public static final String MYSQL_INT_UNSIGNED = "INT UNSIGNED";
-    public static final String MYSQL_BIGINT_UNSIGNED = "BIGINT UNSIGNED";
-    public static final String MYSQL_FLOAT = "FLOAT";
-    public static final String MYSQL_DOUBLE = "DOUBLE";
-    public static final String MYSQL_NUMERIC = "NUMERIC";
-    public static final String MYSQL_DECIMAL = "DECIMAL";
-    public static final String MYSQL_BOOLEAN = "BOOLEAN";
-    public static final String MYSQL_DATE = "DATE";
-    public static final String MYSQL_TIME = "TIME";
-    public static final String MYSQL_DATETIME = "DATETIME";
-    public static final String MYSQL_CHAR = "CHAR";
-    public static final String MYSQL_VARCHAR = "VARCHAR";
-    // mysql text 类型实质是 varchar(13618)
-    public static final String MYSQL_TEXT = "TEXT";
+
+    private static final String MYSQL_VERSION_5_7_PREFIX = "5.7";
+    private static final String MYSQL_VERSION_8_PREFIX = "8.";
+
+    private static final Set<String> builtinDatabases = new HashSet<String>() {
+        {
+            add("information_schema");
+            add("mysql");
+            add("performance_schema");
+            add("sys");
+        }
+    };
 
     public MySQLCatalog(
             String catalogName,
@@ -118,8 +110,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             throw new CatalogException(
                     String.format("Failed in listing database in catalog %s", getName()), e);
         } finally {
-            release(rs);
-            release(ps);
+            release(rs, ps);
         }
         return mysqlDatabases;
     }
@@ -161,8 +152,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             throw new CatalogException(
                     String.format("Failed in listing database in catalog %s", getName()), e);
         } finally {
-            release(rs);
-            release(ps);
+            release(rs, ps);
         }
         return tables;
     }
@@ -234,7 +224,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         return tables.contains(tablePath.getObjectName());
     }
 
-    // Converts MySQL type to Flink {@link DataType}
+    /** Converts MySQL type to Flink {@link DataType} **/
     private DataType fromJDBCType(ResultSetMetaData metadata, int colIndex) throws SQLException {
         String mysqlType = metadata.getColumnTypeName(colIndex);
 
@@ -271,7 +261,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
                 return DataTypes.DECIMAL(precision, scale);
             case MYSQL_DECIMAL:
                 return DataTypes.DECIMAL(precision, scale);
-            case MYSQL_BOOLEAN:
+            case MYSQL_BIT:
                 return DataTypes.BOOLEAN();
             case MYSQL_DATE:
                 return DataTypes.DATE();
@@ -291,13 +281,76 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         }
     }
 
-    private void release(AutoCloseable autoCloseable) {
-        if (Objects.nonNull(autoCloseable)) {
-            try {
-                autoCloseable.close();
-            } catch (Exception e) {
-                throw new CatalogException("Failed in releasing sql connection resource.", e);
+    private void release(AutoCloseable... autoCloseables) {
+        if (Objects.nonNull(autoCloseables)) {
+            for (AutoCloseable autoCloseable : autoCloseables) {
+                if (Objects.nonNull(autoCloseable)) {
+                    try {
+                        autoCloseable.close();
+                    } catch (Exception e) {
+                        throw new CatalogException("Failed in releasing sql resource.", e);
+                    }
+                }
             }
         }
     }
+
+    public static final String MYSQL_BIGINT_UNSIGNED = "BIGINT UNSIGNED";//t1 java.math.BigInteger
+    public static final String MYSQL_BIGINT = "BIGINT";//t1_1 java.lang.Long
+    public static final String MYSQL_BINARY = "BINARY";//t2 [B
+    public static final String MYSQL_BIT = "BIT";//t3 java.lang.Boolean
+    public static final String MYSQL_BLOB = "BLOB";//t4 [B
+    public static final String MYSQL_CHAR = "CHAR";//t5 java.lang.String
+    public static final String MYSQL_DATE = "DATE";//t6 java.sql.Date
+    public static final String MYSQL_DATETIME = "DATETIME";//t7 java.sql.Timestamp
+    public static final String MYSQL_DECIMAL = "DECIMAL";//t8 java.math.BigDecimal
+    //t8_1 java.math.BigDecimal
+    public static final String MYSQL_DECIMAL_UNSIGNED = "DECIMAL UNSIGNED";
+    public static final String MYSQL_DOUBLE = "DOUBLE";//t9 java.lang.Double
+    public static final String MYSQL_DOUBLE_UNSIGNED = "DOUBLE UNSIGNED";//t9_1 java.lang.Double
+    public static final String MYSQL_ENUM = "CHAR";//t10 java.lang.String
+    public static final String MYSQL_FLOAT = "FLOAT";//t11 java.lang.Float
+    public static final String MYSQL_FLOAT_UNSIGNED = "FLOAT UNSIGNED";//t11_1 java.lang.Float
+    public static final String MYSQL_GEOMETRY = "GEOMETRY";//t12 [B
+    // in mysql5.7X
+    public static final String MYSQL_GEOMETRY_COLLECTION = "GEOMETRY";//t13 [B
+    // in mysql8
+    public static final String MYSQL_GEOM_COLLECTION = "GEOMETRY";//t13 [B
+    public static final String MYSQL_INT = "INT";//t14 java.lang.Integer
+    public static final String MYSQL_INT_UNSIGNED = "INT UNSIGNED";//t14_1 java.lang.Long
+    public static final String MYSQL_INTEGER = "INT";//t15 java.lang.Integer
+    public static final String MYSQL_INTEGER_UNSIGNED = "INT UNSIGNED";//t15_1 java.lang.Long
+    public static final String MYSQL_JSON = "JSON";//t16 java.lang.String
+    public static final String MYSQL_LINE_STRING = "GEOMETRY";//t17 [B
+    public static final String MYSQL_LONGBLOB = "LONGBLOB";//t18 [B
+    public static final String MYSQL_LONGTEXT = "LONGTEXT";//t19 java.lang.String
+    public static final String MYSQL_MEDIUMBLOB = "MEDIUMBLOB";//t20 [B
+    public static final String MYSQL_MEDIUMINT = "MEDIUMINT";//t21 java.lang.Integer
+    //t21_1 java.lang.Integer
+    public static final String MYSQL_MEDIUMINT_UNSIGNED = "MEDIUMINT UNSIGNED";
+    public static final String MYSQL_MEDIUMTEXT = "MEDIUMTEXT";//t22 java.lang.String
+    public static final String MYSQL_MULTI_LINE_STRING = "GEOMETRY";//t23 [B
+    public static final String MYSQL_MULTI_POINT = "GEOMETRY";//t24 [B
+    public static final String MYSQL_MULTI_POLYGON = "GEOMETRY";//t25 [B
+    public static final String MYSQL_NUMERIC = "DECIMAL";//t26 java.math.BigDecimal
+    //t26_1 java.math.BigDecimal
+    public static final String MYSQL_NUMERIC_UNSIGNED = "DECIMAL UNSIGNED";
+    public static final String MYSQL_POINT = "GEOMETRY";//t27 [B
+    public static final String MYSQL_POLYGON = "GEOMETRY";//t28 [B
+    public static final String MYSQL_REAL = "DOUBLE";//t29 java.lang.Double
+    public static final String MYSQL_REAL_UNSIGNED = "DOUBLE UNSIGNED";//t29_1 java.lang.Double
+    public static final String MYSQL_SET = "CHAR";//t30 java.lang.String
+    public static final String MYSQL_SMALLINT = "SMALLINT";//t31 java.lang.Integer
+    //t31_1 java.lang.Integer
+    public static final String MYSQL_SMALLINT_UNSIGNED = "SMALLINT UNSIGNED";
+    public static final String MYSQL_TEXT = "TEXT";//t32 java.lang.String
+    public static final String MYSQL_TIME = "TIME";//t33 java.sql.Time
+    public static final String MYSQL_TIMESTAMP = "TIMESTAMP";//t34 java.sql.Timestamp
+    public static final String MYSQL_TINYBLOB = "TINYBLOB";//t35 [B
+    public static final String MYSQL_TINYINT = "TINYINT";//t36 java.lang.Integer
+    public static final String MYSQL_TINYINT_UNSIGNED = "TINYINT UNSIGNED";//t36_1 java.lang.Integer
+    public static final String MYSQL_TINYTEXT = "TINYTEXT";//t37 java.lang.String
+    public static final String MYSQL_VARBINARY = "VARBINARY";//t38 [B
+    public static final String MYSQL_VARCHAR = "VARCHAR";//t39 java.lang.String
+    public static final String MYSQL_YEAR = "YEAR";//t40 java.sql.Date
 }
