@@ -309,9 +309,9 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
 
     //----------------------------driver 5.X.X---------------------------------------------------
 
-    public static final String MYSQL_BIT =  "BIT";//t3 [B  driver-8
+    public static final String MYSQL_BIT_50X =  "BIT";//t3 [B  driver-8
 
-    final String MYSQL_UNKNOWN =  "UNKNOWN";//t12 [B  driver-8  GEOMETRY
+    public static final String MYSQL_UNKNOWN_ =  "UNKNOWN";//t12 [B  driver-8  GEOMETRY
     public static final String MYSQL_UNKNOWN =  "UNKNOWN";//t13 [B  driver-8  GEOMETRY
     public static final String MYSQL_INTEGER =  "INTEGER";//t14 java.lang.Integer  driver-8  INT
     public static final String MYSQL_INTEGER_UNSIGNED =  "INTEGER UNSIGNED";//t14_1 java.lang.Long  driver-8 INT UNSIGNED
