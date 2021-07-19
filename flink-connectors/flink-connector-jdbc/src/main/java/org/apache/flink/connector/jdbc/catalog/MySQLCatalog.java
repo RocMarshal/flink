@@ -61,7 +61,7 @@ import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.USERNAM
 import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.IDENTIFIER;
 import static org.apache.flink.table.factories.FactoryUtil.CONNECTOR;
 
-/** Catalog for MySQL. TODO: 关于两个switch无符号数需要仔细留意 */
+/** Catalog for MySQL. */
 public class MySQLCatalog extends AbstractJdbcCatalog {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySQLCatalog.class);
@@ -169,6 +169,9 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     public static final String COLUMN_CLASS_TIME = "java.sql.Time";
     public static final String COLUMN_CLASS_TIMESTAMP = "java.sql.Timestamp";
 
+    public static final int RAW_TIME_LENGTH = 10;
+    public static final int RAW_TIMESTAMP_LENGTH = 19;
+
     private static final Set<String> builtinDatabases =
             new HashSet<String>() {
                 {
@@ -237,13 +240,11 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         try (Connection conn = DriverManager.getConnection(dbUrl, username, pwd)) {
             DatabaseMetaData metaData = conn.getMetaData();
 
-            // MySQL 没有 schema 概念，直接传 null
             Optional<UniqueConstraint> primaryKey =
-                    getPrimaryKey(metaData, null, tablePath.getObjectName());
+                    getPrimaryKey(metaData, tablePath.getDatabaseName(), tablePath.getObjectName());
 
-            PreparedStatement ps =
-                    conn.prepareStatement(
-                            String.format("SELECT * FROM %s limit 1;", tablePath.getObjectName()));
+            String sql = String.format("SELECT * FROM %s limit 1;", tablePath.getObjectName());
+            PreparedStatement ps = conn.prepareStatement(sql);
 
             ResultSetMetaData rsmd = ps.getMetaData();
 
@@ -254,7 +255,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
 
             for (int i = 1; i <= rsmd.getColumnCount(); i++) {
                 columnsClassnames[i - 1] = rsmd.getColumnName(i);
-                types[i - 1] = fromJDBCType(rsmd, i);
+                types[i - 1] = fromJDBCType(tablePath, rsmd, i);
                 if (rsmd.isNullable(i) == ResultSetMetaData.columnNoNulls) {
                     types[i - 1] = types[i - 1].notNull();
                 }
@@ -275,6 +276,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             props.put(TABLE_NAME.key(), tablePath.getObjectName());
             props.put(USERNAME.key(), username);
             props.put(PASSWORD.key(), pwd);
+            ps.close();
             // 返回 CatalogTableImpl 与 create table sql 所做的事情是一致的
             return new CatalogTableImpl(tableSchema, props, "");
         } catch (Exception e) {
@@ -342,7 +344,8 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     }
 
     /** Converts MySQL type to Flink {@link DataType} * */
-    private DataType fromJDBCType(ResultSetMetaData metadata, int colIndex) throws SQLException {
+    private DataType fromJDBCType(ObjectPath tablePath, ResultSetMetaData metadata, int colIndex)
+            throws SQLException {
         String mysqlType =
                 Preconditions.checkNotNull(metadata.getColumnTypeName(colIndex)).toUpperCase();
         int precision = metadata.getPrecision(colIndex);
@@ -352,8 +355,8 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_UNKNOWN:
             case MYSQL_BIT:
                 // 由于版本差异
-                return fromJDBCClassType(metadata, colIndex);
-                // ----------number------------
+                return fromJDBCClassType(tablePath, metadata, colIndex);
+            // ----------number------------
             case MYSQL_TINYINT:
                 return DataTypes.TINYINT();
             case MYSQL_TINYINT_UNSIGNED:
@@ -375,6 +378,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_BIGINT:
                 return DataTypes.BIGINT();
             case MYSQL_BIGINT_UNSIGNED:
+                // TODO 溢出警告
                 return DataTypes.DECIMAL(20, 0);
             case MYSQL_DECIMAL:
                 return DataTypes.DECIMAL(precision, scale);
@@ -385,13 +389,13 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
                 return DataTypes.FLOAT();
             case MYSQL_FLOAT_UNSIGNED:
                 // TODO 溢出警告
-                return DataTypes.FLOAT();
+                return DataTypes.DOUBLE();
             case MYSQL_DOUBLE:
                 return DataTypes.DOUBLE();
             case MYSQL_DOUBLE_UNSIGNED:
                 // TODO 溢出警告
                 return DataTypes.DOUBLE();
-                // -------string
+            // -------string
             case MYSQL_CHAR:
                 return DataTypes.CHAR(precision);
             case MYSQL_VARCHAR:
@@ -401,8 +405,8 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_LONGTEXT:
             case MYSQL_JSON:
                 return DataTypes.VARCHAR(precision);
-                // -------time---------
-            case MYSQL_YEAR: // TODO
+            // -------time---------
+            case MYSQL_YEAR:
             case MYSQL_DATE:
                 return DataTypes.DATE();
             case MYSQL_TIME:
@@ -410,7 +414,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_DATETIME:
             case MYSQL_TIMESTAMP:
                 return DataTypes.TIMESTAMP(scale);
-                // -------blob---------
+            // -------blob---------
             case MYSQL_TINYBLOB:
             case MYSQL_MEDIUMBLOB:
             case MYSQL_BLOB:
@@ -427,12 +431,26 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     }
 
     /** Converts MySQL type to Flink {@link DataType} * */
-    private DataType fromJDBCClassType(ResultSetMetaData metadata, int colIndex)
+    private DataType fromJDBCClassType(
+            ObjectPath tablePath,
+            ResultSetMetaData metadata,
+            int colIndex)
             throws SQLException {
-        // TODO 进行退化的声明警告
         final String jdbcColumnClassType = metadata.getColumnClassName(colIndex);
+        final String jdbcColumnType = metadata.getColumnTypeName(colIndex);
+        final String columnName = metadata.getColumnName(colIndex);
         int precision = metadata.getPrecision(colIndex);
         int scale = metadata.getScale(colIndex);
+        LOGGER.warn(
+                "Column {} in {} of mysql database, jdbcColumnClassType: {},"
+                        + " jdbcColumnType: {}, precision: {}, scale: {},"
+                        + " will use jdbc column class name to inference the type mapping.",
+                columnName,
+                tablePath.getFullName(),
+                jdbcColumnClassType,
+                jdbcColumnType,
+                precision,
+                scale);
 
         switch (jdbcColumnClassType) {
             case COLUMN_CLASS_BOOLEAN:
@@ -440,17 +458,21 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case COLUMN_CLASS_INTEGER:
                 return DataTypes.INT();
             case COLUMN_CLASS_BIG_INTEGER:
-                // TODO 需要声明告警的无符号问题
+                // TODO class 溢出警告 没有 precision
                 return DataTypes.DECIMAL(precision + 1, 0);
             case COLUMN_CLASS_LONG:
                 return DataTypes.BIGINT();
             case COLUMN_CLASS_FLOAT:
+                // TODO class 溢出警告
                 return DataTypes.FLOAT();
             case COLUMN_CLASS_DOUBLE:
+                // TODO class 溢出警告
                 return DataTypes.DOUBLE();
             case COLUMN_CLASS_BIG_DECIMAL:
-                // TODO 需要声明告警的无符号问题
-                if (precision == 65) {
+                // TODO class 溢出警告
+                if (precision < 65) {
+                    LOGGER.warn(
+                            "If field %s is type of 'DECIMAL UNSIGNED' in %s (mysql), the mapping will cause arithmetic overflow.");
                     return DataTypes.DECIMAL(precision, scale);
                 } else {
                     return DataTypes.DECIMAL(precision + 1, scale);
@@ -462,9 +484,12 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case COLUMN_CLASS_DATE:
                 return DataTypes.DATE();
             case COLUMN_CLASS_TIME:
-                return DataTypes.TIME(precision > 10 ? precision - 11 : precision);
+                return DataTypes.TIME(
+                        precision > RAW_TIME_LENGTH ? precision - RAW_TIME_LENGTH - 1 : precision);
             case COLUMN_CLASS_TIMESTAMP:
-                return DataTypes.TIMESTAMP(precision > 19 ? precision - 20 : precision);
+                return DataTypes.TIMESTAMP(
+                        precision > RAW_TIMESTAMP_LENGTH ? precision - RAW_TIMESTAMP_LENGTH - 1 :
+                                precision);
             default:
                 throw new UnsupportedOperationException(
                         String.format(
