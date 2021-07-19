@@ -54,10 +54,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.USERNAME;
 import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.PASSWORD;
 import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.TABLE_NAME;
 import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.URL;
+import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.USERNAME;
 import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.IDENTIFIER;
 import static org.apache.flink.table.factories.FactoryUtil.CONNECTOR;
 
@@ -102,10 +102,6 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     public static final String MYSQL_DECIMAL = "DECIMAL";
     /** t8_1 java.math.BigDecimal * */
     public static final String MYSQL_DECIMAL_UNSIGNED = "DECIMAL UNSIGNED";
-    /** t26 java.math.BigDecimal * */
-    public static final String MYSQL_NUMERIC = MYSQL_DECIMAL;
-    /** t26_1 java.math.BigDecimal * */
-    public static final String MYSQL_NUMERIC_UNSIGNED = MYSQL_DECIMAL_UNSIGNED;
     /** t11 java.lang.Float * */
     public static final String MYSQL_FLOAT = "FLOAT";
     /** t11_1 java.lang.Float * */
@@ -114,18 +110,10 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     public static final String MYSQL_DOUBLE = "DOUBLE";
     /** t9_1 java.lang.Double * */
     public static final String MYSQL_DOUBLE_UNSIGNED = "DOUBLE UNSIGNED";
-    /** t29 java.lang.Double * */
-    public static final String MYSQL_REAL = MYSQL_DOUBLE;
-    /** t29_1 java.lang.Double * */
-    public static final String MYSQL_REAL_UNSIGNED = MYSQL_DOUBLE_UNSIGNED;
 
     // -------------------------string----------------------------------
     /** t5 java.lang.String * */
     public static final String MYSQL_CHAR = "CHAR";
-    /** t10 java.lang.String 最大precision为最大元素的长度* */
-    public static final String MYSQL_ENUM = MYSQL_CHAR;
-    /** t30 java.lang.String * */
-    public static final String MYSQL_SET = MYSQL_CHAR;
     /** t39 java.lang.String * */
     public static final String MYSQL_VARCHAR = "VARCHAR";
     /** t37 java.lang.String * */
@@ -166,22 +154,6 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     public static final String MYSQL_VARBINARY = "VARBINARY";
     /** t12 [B * */
     public static final String MYSQL_GEOMETRY = "GEOMETRY";
-    /** t13 [B in mysql5.7X * */
-    public static final String MYSQL_GEOMETRY_COLLECTION = MYSQL_GEOMETRY;
-    /** t13 [B in mysql8 * */
-    public static final String MYSQL_GEOM_COLLECTION = MYSQL_GEOMETRY;
-    /** t17 [B * */
-    public static final String MYSQL_LINE_STRING = MYSQL_GEOMETRY;
-    /** t23 [B * */
-    public static final String MYSQL_MULTI_LINE_STRING = MYSQL_GEOMETRY;
-    /** t24 [B * */
-    public static final String MYSQL_MULTI_POINT = MYSQL_GEOMETRY;
-    /** t25 [B * */
-    public static final String MYSQL_MULTI_POLYGON = MYSQL_GEOMETRY;
-    /** t27 [B * */
-    public static final String MYSQL_POINT = MYSQL_GEOMETRY;
-    /** t28 [B * */
-    public static final String MYSQL_POLYGON = MYSQL_GEOMETRY;
 
     // column class names
     public static final String COLUMN_CLASS_BOOLEAN = "java.lang.Boolean";
