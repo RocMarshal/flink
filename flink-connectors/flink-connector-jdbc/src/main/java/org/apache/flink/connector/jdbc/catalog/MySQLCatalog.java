@@ -52,7 +52,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.PASSWORD;
@@ -318,8 +317,8 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     }
 
     private boolean isSupportedVersion(Set<String> supportedVersions, String version) {
-        return Objects.nonNull(supportedVersions) &&
-                supportedVersions.stream().anyMatch(version::startsWith);
+        return Objects.nonNull(supportedVersions)
+                && supportedVersions.stream().anyMatch(version::startsWith);
     }
 
     private String getDatabaseVersion() {
@@ -333,9 +332,9 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
 
     private String getDriverVersion() {
         try (Connection conn = DriverManager.getConnection(defaultUrl, username, pwd)) {
-            Pattern regexp = Pattern.compile("\\d*?\\.\\d*?\\.\\d*");
-            Matcher matcher = regexp.matcher(conn.getMetaData().getDriverVersion());
-            return matcher.group(0);
+            return Pattern.compile("\\d*?\\.\\d*?\\.\\d*")
+                    .matcher(conn.getMetaData().getDriverVersion())
+                    .group(0);
         } catch (Exception e) {
             throw new CatalogException(
                     String.format("Failed in getting mysql driver version by %s.", defaultUrl), e);
@@ -344,13 +343,17 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
 
     private void release(AutoCloseable... autoCloseables) {
         if (Objects.nonNull(autoCloseables)) {
-            Arrays.stream(autoCloseables).filter(Objects::nonNull).forEach(autoCloseable -> {
-                try {
-                    autoCloseable.close();
-                } catch (Exception e) {
-                    throw new CatalogException("Failed in releasing sql resource.", e);
-                }
-            });
+            Arrays.stream(autoCloseables)
+                    .filter(Objects::nonNull)
+                    .forEach(
+                            autoCloseable -> {
+                                try {
+                                    autoCloseable.close();
+                                } catch (Exception e) {
+                                    throw new CatalogException(
+                                            "Failed in releasing sql resource.", e);
+                                }
+                            });
         }
     }
 
@@ -391,7 +394,10 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_FLOAT:
                 return DataTypes.FLOAT();
             case MYSQL_FLOAT_UNSIGNED:
-                LOGGER.warn("Performing type conversion [from {} to {}] to prevent value overflow.", MYSQL_FLOAT_UNSIGNED, MYSQL_DOUBLE);
+                LOGGER.warn(
+                        "Performing type conversion [from {} to {}] to prevent value overflow.",
+                        MYSQL_FLOAT_UNSIGNED,
+                        MYSQL_DOUBLE);
                 return DataTypes.DOUBLE();
             case MYSQL_DOUBLE:
                 return DataTypes.DOUBLE();
@@ -435,7 +441,9 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
                 return fromJDBCClassType(tablePath, metadata, colIndex);
             default:
                 throw new UnsupportedOperationException(
-                        String.format("Doesn't support mysql type '%s' in mysql version %s, driver version %s yet.", mysqlType, databaseVersion, driverVersion));
+                        String.format(
+                                "Doesn't support mysql type '%s' in mysql version %s, driver version %s yet.",
+                                mysqlType, databaseVersion, driverVersion));
         }
     }
 
