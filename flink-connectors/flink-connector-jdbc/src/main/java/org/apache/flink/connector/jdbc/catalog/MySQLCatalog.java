@@ -72,46 +72,26 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     // ============================data types=================================
 
     public static final String MYSQL_UNKNOWN = "UNKNOWN";
-
-    /** t3 [B in driver5.X.X; Boolean in driver6/8 .0.X * */
     public static final String MYSQL_BIT = "BIT";
 
-    /** number * */
-    /** t36 java.lang.Integer * */
+    // -------------------------number----------------------------
     public static final String MYSQL_TINYINT = "TINYINT";
-    /** t36_1 java.lang.Integer * */
     public static final String MYSQL_TINYINT_UNSIGNED = "TINYINT UNSIGNED";
-    /** t31 java.lang.Integer * */
     public static final String MYSQL_SMALLINT = "SMALLINT";
-    /** t31_1 java.lang.Integer * */
     public static final String MYSQL_SMALLINT_UNSIGNED = "SMALLINT UNSIGNED";
-    /** t21 java.lang.Integer * */
     public static final String MYSQL_MEDIUMINT = "MEDIUMINT";
-    /** t21_1 java.lang.Integer * */
     public static final String MYSQL_MEDIUMINT_UNSIGNED = "MEDIUMINT UNSIGNED";
-    /** t14 java.lang.Integer * */
     public static final String MYSQL_INT = "INT";
-    /** t14_1 java.lang.Long * */
     public static final String MYSQL_INT_UNSIGNED = "INT UNSIGNED";
-    /** t14 java.lang.Integer driver 5.X.X * */
     public static final String MYSQL_INTEGER = "INTEGER";
-    /** t14_1 java.lang.Long driver 5.X.X * */
     public static final String MYSQL_INTEGER_UNSIGNED = "INTEGER UNSIGNED";
-    /** t1_1 java.lang.Long * */
     public static final String MYSQL_BIGINT = "BIGINT";
-    /** t1 java.math.BigInteger * */
     public static final String MYSQL_BIGINT_UNSIGNED = "BIGINT UNSIGNED";
-    /** t8 java.math.BigDecimal * */
     public static final String MYSQL_DECIMAL = "DECIMAL";
-    /** t8_1 java.math.BigDecimal * */
     public static final String MYSQL_DECIMAL_UNSIGNED = "DECIMAL UNSIGNED";
-    /** t11 java.lang.Float * */
     public static final String MYSQL_FLOAT = "FLOAT";
-    /** t11_1 java.lang.Float * */
     public static final String MYSQL_FLOAT_UNSIGNED = "FLOAT UNSIGNED";
-    /** t9 java.lang.Double * */
     public static final String MYSQL_DOUBLE = "DOUBLE";
-    /** t9_1 java.lang.Double * */
     public static final String MYSQL_DOUBLE_UNSIGNED = "DOUBLE UNSIGNED";
 
     // -------------------------string----------------------------
@@ -141,17 +121,8 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
 
     // column class names
     public static final String COLUMN_CLASS_BOOLEAN = "java.lang.Boolean";
-    /*public static final String COLUMN_CLASS_INTEGER = "java.lang.Integer";
-    public static final String COLUMN_CLASS_BIG_INTEGER = "java.math.BigInteger";
-    public static final String COLUMN_CLASS_LONG = "java.lang.Long";
-    public static final String COLUMN_CLASS_FLOAT = "java.lang.Float";
-    public static final String COLUMN_CLASS_DOUBLE = "java.lang.Double";
-    public static final String COLUMN_CLASS_BIG_DECIMAL = "java.math.BigDecimal";*/
     public static final String COLUMN_CLASS_BYTE_ARRAY = "[B";
     public static final String COLUMN_CLASS_STRING = "java.lang.String";
-    /*public static final String COLUMN_CLASS_DATE = "java.sql.Date";
-    public static final String COLUMN_CLASS_TIME = "java.sql.Time";
-    public static final String COLUMN_CLASS_TIMESTAMP = "java.sql.Timestamp";*/
 
     public static final int RAW_TIME_LENGTH = 10;
     public static final int RAW_TIMESTAMP_LENGTH = 19;
@@ -478,38 +449,10 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
                 scale);
 
         switch (jdbcColumnClassType) {
-                /*case COLUMN_CLASS_BOOLEAN:
-                    return DataTypes.BOOLEAN();
-                case COLUMN_CLASS_INTEGER:
-                    return DataTypes.INT();
-                case COLUMN_CLASS_BIG_INTEGER:
-                    return DataTypes.DECIMAL(precision + 1, 0);
-                case COLUMN_CLASS_LONG:
-                    return DataTypes.BIGINT();
-                case COLUMN_CLASS_FLOAT:
-                    LOGGER.info("If raw type of %s in %s is %s, it will probably case value overflow.",
-                            columnName, tablePath.getFullName(), MYSQL_DOUBLE_UNSIGNED);
-                    return DataTypes.DOUBLE();
-                case COLUMN_CLASS_DOUBLE:
-                    LOGGER.warn(String.format("If raw type of %s in %s is %s, it will probably case value overflow.",
-                            columnName, tablePath.getFullName(), MYSQL_DOUBLE_UNSIGNED));
-                    return DataTypes.DOUBLE();
-                case COLUMN_CLASS_BIG_DECIMAL:
-                    checkMaxPrecision(tablePath,columnName, precision);
-                    return DataTypes.DECIMAL(precision + 1, scale);*/
             case COLUMN_CLASS_BYTE_ARRAY:
                 return DataTypes.VARBINARY(precision);
             case COLUMN_CLASS_STRING:
                 return DataTypes.VARCHAR(precision);
-                /*case COLUMN_CLASS_DATE:
-                    return DataTypes.DATE();
-                case COLUMN_CLASS_TIME:
-                    return DataTypes.TIME(
-                            precision > RAW_TIME_LENGTH ? precision - RAW_TIME_LENGTH - 1 : precision);
-                case COLUMN_CLASS_TIMESTAMP:
-                    return DataTypes.TIMESTAMP(
-                            precision > RAW_TIMESTAMP_LENGTH ? precision - RAW_TIMESTAMP_LENGTH - 1 :
-                                    precision);*/
             default:
                 throw new UnsupportedOperationException(
                         String.format(
