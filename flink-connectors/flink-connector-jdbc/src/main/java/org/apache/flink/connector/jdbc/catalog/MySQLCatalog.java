@@ -64,10 +64,10 @@ import static org.apache.flink.table.factories.FactoryUtil.CONNECTOR;
 /** Catalog for MySQL. */
 public class MySQLCatalog extends AbstractJdbcCatalog {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MySQLCatalog.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MySQLCatalog.class);
 
-    private String databaseVersion;
-    private String driverVersion;
+    private final String databaseVersion;
+    private final String driverVersion;
 
     // ============================data types=================================
 
@@ -274,7 +274,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             props.put(TABLE_NAME.key(), tablePath.getObjectName());
             props.put(USERNAME.key(), username);
             props.put(PASSWORD.key(), pwd);
-            LOGGER.info("_____{}", props);
+            LOG.info("_____{}", props);
             ps.close();
             return new CatalogTableImpl(tableSchema, props, "");
         } catch (Exception e) {
@@ -394,7 +394,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_FLOAT:
                 return DataTypes.FLOAT();
             case MYSQL_FLOAT_UNSIGNED:
-                LOGGER.warn(
+                LOG.warn(
                         "Performing type conversion [from {} to {}] to prevent value overflow.",
                         MYSQL_FLOAT_UNSIGNED,
                         MYSQL_DOUBLE);
@@ -402,7 +402,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_DOUBLE:
                 return DataTypes.DOUBLE();
             case MYSQL_DOUBLE_UNSIGNED:
-                LOGGER.warn("{} will probably case value overflow.", MYSQL_DOUBLE_UNSIGNED);
+                LOG.warn("{} will probably case value overflow.", MYSQL_DOUBLE_UNSIGNED);
                 return DataTypes.DOUBLE();
 
             case MYSQL_CHAR:
@@ -466,7 +466,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         final String jdbcColumnClassType = metadata.getColumnClassName(colIndex);
         int precision = metadata.getPrecision(colIndex);
         int scale = metadata.getScale(colIndex);
-        LOGGER.warn(
+        LOG.warn(
                 "Column {} in {} of mysql database, jdbcColumnClassType: {},"
                         + " jdbcColumnType: {}, precision: {}, scale: {},"
                         + " will use jdbc column class name to inference the type mapping.",
