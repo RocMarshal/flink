@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.PASSWORD;
@@ -69,7 +70,14 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     private final String databaseVersion;
     private final String driverVersion;
 
-    // ============================data types=================================
+    static {
+        try {
+            Class.forName("com.mysql.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            LOG.error("获取驱动失败");
+        }
+    }
+    // ============================data types=====================
 
     public static final String MYSQL_UNKNOWN = "UNKNOWN";
     public static final String MYSQL_BIT = "BIT";
@@ -160,6 +168,8 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             String pwd,
             String baseUrl) {
         super(catalogName, defaultDatabase, username, pwd, baseUrl);
+        LOG.info("debug: catalogName: {}, defaultDatabase: {}, username: {}, pwd: {}, baseUrl: {}",
+                catalogName, defaultDatabase, username, pwd, baseUrl);
         this.driverVersion =
                 Preconditions.checkNotNull(getDriverVersion(), "driver version must not be null.");
         this.databaseVersion =
@@ -221,13 +231,13 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
                 DriverManager.getConnection(baseUrl + tablePath.getDatabaseName(), username, pwd)) {
             String sql = String.format("SELECT * FROM %s limit 1;", tablePath.getObjectName());
             PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSetMetaData rsmd = ps.getMetaData();
-            String[] columnsClassnames = new String[rsmd.getColumnCount()];
-            DataType[] types = new DataType[rsmd.getColumnCount()];
-            for (int i = 1; i <= rsmd.getColumnCount(); i++) {
-                columnsClassnames[i - 1] = rsmd.getColumnName(i);
-                types[i - 1] = fromJDBCType(tablePath, rsmd, i);
-                if (rsmd.isNullable(i) == ResultSetMetaData.columnNoNulls) {
+            ResultSetMetaData resultSetMetaData = ps.getMetaData();
+            String[] columnsClassnames = new String[resultSetMetaData.getColumnCount()];
+            DataType[] types = new DataType[resultSetMetaData.getColumnCount()];
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                columnsClassnames[i - 1] = resultSetMetaData.getColumnName(i);
+                types[i - 1] = fromJDBCType(tablePath, resultSetMetaData, i);
+                if (resultSetMetaData.isNullable(i) == ResultSetMetaData.columnNoNulls) {
                     types[i - 1] = types[i - 1].notNull();
                 }
             }
@@ -303,9 +313,11 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
 
     private String getDriverVersion() {
         try (Connection conn = DriverManager.getConnection(defaultUrl, username, pwd)) {
-            return Pattern.compile("\\d*?\\.\\d*?\\.\\d*")
-                    .matcher(conn.getMetaData().getDriverVersion())
-                    .group(0);
+            String driverVersion = conn.getMetaData().getDriverVersion();
+            LOG.info("dep-roc: " + driverVersion);
+            Pattern regexp = Pattern.compile("\\d*?\\.\\d*?\\.\\d*");
+            Matcher matcher = regexp.matcher(driverVersion);
+            return matcher.group();
         } catch (Exception e) {
             throw new CatalogException(
                     String.format("Failed in getting mysql driver version by %s.", defaultUrl), e);
