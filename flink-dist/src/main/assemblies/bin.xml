@@ -61,6 +61,11 @@ under the License.
 			<fileMode>0644</fileMode>
 		</file>
 		<file>
+			<source>target/classes/postgre/postgresql-42.2.23.jar</source>
+			<outputDirectory>lib/</outputDirectory>
+			<fileMode>0644</fileMode>
+		</file>
+		<file>
 			<source>../flink-connectors/flink-connector-jdbc/target/flink-connector-jdbc_${scala.binary.version}-${project.version}.jar</source>
 			<outputDirectory>lib/</outputDirectory>
 			<!--<destName>flink-json-${project.version}.jar</destName>-->
