@@ -55,6 +55,17 @@ under the License.
 	</dependencySets>
 
 	<files>
+		<file>
+			<source>target/classes/mysql/mysql-connector-java-8.0.22.jar</source>
+			<outputDirectory>lib/</outputDirectory>
+			<fileMode>0644</fileMode>
+		</file>
+		<file>
+			<source>../flink-connectors/flink-connector-jdbc/target/flink-connector-jdbc_${scala.binary.version}-${project.version}.jar</source>
+			<outputDirectory>lib/</outputDirectory>
+			<!--<destName>flink-json-${project.version}.jar</destName>-->
+			<fileMode>0644</fileMode>
+		</file>
 		<!-- copy flink-dist fat jar -->
 		<file>
 			<source>target/flink-dist_${scala.binary.version}-${project.version}.jar</source>

@@ -168,8 +168,13 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             String pwd,
             String baseUrl) {
         super(catalogName, defaultDatabase, username, pwd, baseUrl);
-        LOG.info("debug: catalogName: {}, defaultDatabase: {}, username: {}, pwd: {}, baseUrl: {}",
-                catalogName, defaultDatabase, username, pwd, baseUrl);
+        LOG.info(
+                "debug: catalogName: {}, defaultDatabase: {}, username: {}, pwd: {}, baseUrl: {}",
+                catalogName,
+                defaultDatabase,
+                username,
+                pwd,
+                baseUrl);
         this.driverVersion =
                 Preconditions.checkNotNull(getDriverVersion(), "driver version must not be null.");
         this.databaseVersion =
@@ -216,7 +221,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         String connUrl = baseUrl + databaseName;
         String sql =
                 String.format(
-                        "SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_SCHEMA = %s",
+                        "SELECT TABLE_NAME FROM information_schema.`TABLES` WHERE TABLE_SCHEMA = '%s'",
                         databaseName);
         return extractColumnValuesBySQL(connUrl, sql, 1, null);
     }
@@ -315,9 +320,9 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         try (Connection conn = DriverManager.getConnection(defaultUrl, username, pwd)) {
             String driverVersion = conn.getMetaData().getDriverVersion();
             LOG.info("dep-roc: " + driverVersion);
-            Pattern regexp = Pattern.compile("\\d*?\\.\\d*?\\.\\d*");
+            Pattern regexp = Pattern.compile("\\d+?\\.\\d+?\\.\\d+");
             Matcher matcher = regexp.matcher(driverVersion);
-            return matcher.group();
+            return matcher.find() ? matcher.group(0) : null;
         } catch (Exception e) {
             throw new CatalogException(
                     String.format("Failed in getting mysql driver version by %s.", defaultUrl), e);
@@ -402,14 +407,14 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_DATE:
                 return DataTypes.DATE();
             case MYSQL_TIME:
-                return DataTypes.TIME(
-                        precision > RAW_TIME_LENGTH ? precision - RAW_TIME_LENGTH - 1 : precision);
+                return isExplicitPrecision(precision, RAW_TIME_LENGTH)
+                        ? DataTypes.TIME(precision - RAW_TIME_LENGTH - 1)
+                        : DataTypes.TIME();
             case MYSQL_DATETIME:
             case MYSQL_TIMESTAMP:
-                return DataTypes.TIMESTAMP(
-                        precision > RAW_TIMESTAMP_LENGTH
-                                ? precision - RAW_TIMESTAMP_LENGTH - 1
-                                : precision);
+                return isExplicitPrecision(precision, RAW_TIMESTAMP_LENGTH)
+                        ? DataTypes.TIMESTAMP(precision - RAW_TIMESTAMP_LENGTH - 1)
+                        : DataTypes.TIMESTAMP();
 
             case MYSQL_TINYBLOB:
             case MYSQL_MEDIUMBLOB:
@@ -428,6 +433,10 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
                                 "Doesn't support mysql type '%s' in mysql version %s, driver version %s yet.",
                                 mysqlType, databaseVersion, driverVersion));
         }
+    }
+
+    private boolean isExplicitPrecision(int precision, int defaultPrecision) {
+        return precision > defaultPrecision && precision - defaultPrecision - 1 <= 9;
     }
 
     private void checkMaxPrecision(ObjectPath tablePath, String columnName, int precision) {
