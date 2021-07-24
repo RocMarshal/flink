@@ -71,6 +71,8 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     private final String databaseVersion;
     private final String driverVersion;
 
+    private final String DIRVER_PATTERN= "jdbc:mysql://<hostname/ip>:<port>[/][?...]";
+
     // ============================data types=====================
 
     public static final String MYSQL_UNKNOWN = "UNKNOWN";
