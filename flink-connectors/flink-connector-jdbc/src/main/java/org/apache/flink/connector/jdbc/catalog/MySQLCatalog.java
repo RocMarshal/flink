@@ -62,6 +62,7 @@ import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.USERNAM
 import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.IDENTIFIER;
 import static org.apache.flink.table.factories.FactoryUtil.CONNECTOR;
 
+//TODO 关于拼接 baseUrl和参数需要特殊处理
 /** Catalog for MySQL. */
 public class MySQLCatalog extends AbstractJdbcCatalog {
 
@@ -70,13 +71,6 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     private final String databaseVersion;
     private final String driverVersion;
 
-    static {
-        try {
-            Class.forName("com.mysql.jdbc.Driver");
-        } catch (ClassNotFoundException e) {
-            LOG.error("获取驱动失败");
-        }
-    }
     // ============================data types=====================
 
     public static final String MYSQL_UNKNOWN = "UNKNOWN";
@@ -128,7 +122,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     public static final String MYSQL_GEOMETRY = "GEOMETRY";
 
     // column class names
-    public static final String COLUMN_CLASS_BOOLEAN = "java.lang.Boolean";
+    // public static final String COLUMN_CLASS_BOOLEAN = "java.lang.Boolean";
     public static final String COLUMN_CLASS_BYTE_ARRAY = "[B";
     public static final String COLUMN_CLASS_STRING = "java.lang.String";
 
@@ -424,7 +418,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_VARBINARY:
                 return DataTypes.VARBINARY(precision);
             case MYSQL_BINARY:
-                return DataTypes.BINARY(precision);
+                return DataTypes.BYTES();
             case MYSQL_UNKNOWN:
                 return fromJDBCClassType(tablePath, metadata, colIndex);
             default:
@@ -443,7 +437,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         if (precision >= DecimalType.MAX_PRECISION) {
             throw new CatalogException(
                     String.format(
-                            "precision %s of table %s column name %s in type %s exceeds DecimalType.MAX_PRECISION %s.",
+                            "Precision %s of table %s column name %s in type %s exceeds DecimalType.MAX_PRECISION %s.",
                             precision,
                             tablePath.getFullName(),
                             columnName,
