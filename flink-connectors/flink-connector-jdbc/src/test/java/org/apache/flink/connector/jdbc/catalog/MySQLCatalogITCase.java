@@ -18,5 +18,4 @@
 
 package org.apache.flink.connector.jdbc.catalog;
 
-public class MySQLCatalogITCase extends MySQLCatalogTest {
-}
+public class MySQLCatalogITCase extends MySQLCatalogTest {}

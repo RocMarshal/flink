@@ -17,6 +17,5 @@
  */
 
 package org.apache.flink.connector.jdbc.catalog;
-
-public class MySQLCatalogTestBase {
-}
+// TODO 1. test cases; 2. documentation.
+public class MySQLCatalogTestBase {}

@@ -186,10 +186,12 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
                 Preconditions.checkNotNull(
                         getDatabaseVersion(), "database version must not be null.");
         if (isSupportedVersion(supportedDriverVersions, driverVersion)) {
-            LOG.warn("Doesn't support driver version '%s' yet. It will probably case incompatible errors.");
+            LOG.warn(
+                    "Doesn't support driver version '%s' yet. It will probably case incompatible errors.");
         }
         if (isSupportedVersion(supportedMySQLVersions, databaseVersion)) {
-            LOG.warn("Doesn't support mysql version '%s' yet. It will probably case incompatible errors.");
+            LOG.warn(
+                    "Doesn't support mysql version '%s' yet. It will probably case incompatible errors.");
         }
     }
 
@@ -415,6 +417,8 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_BIGINT:
                 return DataTypes.BIGINT();
             case MYSQL_BIGINT_UNSIGNED:
+                // See
+                // https://ci.apache.org/projects/flink/flink-docs-release-1.13/docs/connectors/table/jdbc/#data-type-mapping
                 return DataTypes.DECIMAL(20, 0);
             case MYSQL_DECIMAL:
                 return DataTypes.DECIMAL(precision, scale);
