@@ -125,8 +125,17 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
 
     // column class names
     public static final String COLUMN_CLASS_BOOLEAN = "java.lang.Boolean";
+    public static final String COLUMN_CLASS_INTEGER = "java.lang.Integer";
+    public static final String COLUMN_CLASS_BIG_INTEGER = "java.math.BigInteger";
+    public static final String COLUMN_CLASS_LONG = "java.lang.Long";
+    public static final String COLUMN_CLASS_FLOAT = "java.lang.Float";
+    public static final String COLUMN_CLASS_DOUBLE = "java.lang.Double";
+    public static final String COLUMN_CLASS_BIG_DECIMAL = "java.math.BigDecimal";
     public static final String COLUMN_CLASS_BYTE_ARRAY = "[B";
     public static final String COLUMN_CLASS_STRING = "java.lang.String";
+    public static final String COLUMN_CLASS_DATE = "java.sql.Date";
+    public static final String COLUMN_CLASS_TIME = "java.sql.Time";
+    public static final String COLUMN_CLASS_TIMESTAMP = "java.sql.Timestamp";
 
     public static final int RAW_TIME_LENGTH = 10;
     public static final int RAW_TIMESTAMP_LENGTH = 19;
@@ -382,15 +391,14 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     private DataType fromJDBCType(ObjectPath tablePath, ResultSetMetaData metadata, int colIndex)
             throws SQLException {
         String mysqlType = metadata.getColumnTypeName(colIndex).toUpperCase();
+        String columnName = metadata.getColumnName(colIndex);
         int precision = metadata.getPrecision(colIndex);
         int scale = metadata.getScale(colIndex);
-        String columnName = metadata.getColumnName(colIndex);
 
         switch (mysqlType) {
             case MYSQL_BIT:
-            case MYSQL_UNKNOWN:
-                return fromJDBCClassType(tablePath, metadata, colIndex);
-
+                // If set type to boolean, there will cause a cast value error.
+                return DataTypes.BYTES();
             case MYSQL_TINYINT:
                 return DataTypes.TINYINT();
             case MYSQL_TINYINT_UNSIGNED:
@@ -424,7 +432,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_DOUBLE:
                 return DataTypes.DOUBLE();
             case MYSQL_DOUBLE_UNSIGNED:
-                LOG.warn("{} will probably case value overflow.", MYSQL_DOUBLE_UNSIGNED);
+                LOG.warn("{} will probably cause value overflow.", MYSQL_DOUBLE_UNSIGNED);
                 return DataTypes.DOUBLE();
 
             case MYSQL_CHAR:
@@ -459,6 +467,9 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_BINARY:
                 return DataTypes.BYTES();
 
+            case MYSQL_UNKNOWN:
+                return fromJDBCClassType(tablePath, metadata, colIndex);
+
             default:
                 throw new UnsupportedOperationException(
                         String.format(
@@ -488,18 +499,23 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     private DataType fromJDBCClassType(
             ObjectPath tablePath, ResultSetMetaData metadata, int colIndex) throws SQLException {
         final String jdbcColumnClassType = metadata.getColumnClassName(colIndex);
+        final String jdbcColumnName = metadata.getColumnName(colIndex);
         int precision = metadata.getPrecision(colIndex);
         int scale = metadata.getScale(colIndex);
         LOG.warn(
-                "Column {} in {} of mysql database, jdbcColumnClassType: {},"
-                        + " jdbcColumnType: {}, precision: {}, scale: {},"
-                        + " will use jdbc column class name to inference the type mapping.",
+                "Column {} in {} of mysql database, jdbcColumnClassType: {}, "
+                        + "jdbcColumnType: {}, precision: {}, scale: {}, "
+                        + "will use jdbc column class name to inference the type mapping. "
+                        + "When the field '{}' of source table '{}' is unsigned numeric, "
+                        + "please pay attention to the risk of value overflow.",
                 metadata.getColumnName(colIndex),
                 tablePath.getFullName(),
                 jdbcColumnClassType,
                 metadata.getColumnTypeName(colIndex),
                 precision,
-                scale);
+                scale,
+                jdbcColumnName,
+                tablePath.getFullName());
 
         switch (jdbcColumnClassType) {
             case COLUMN_CLASS_BYTE_ARRAY:
@@ -507,7 +523,30 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case COLUMN_CLASS_STRING:
                 return DataTypes.STRING();
             case COLUMN_CLASS_BOOLEAN:
-                return DataTypes.BOOLEAN();
+                // If set type to boolean, there will cause a cast value error.
+                return DataTypes.BYTES();
+            case COLUMN_CLASS_INTEGER:
+                return DataTypes.INT();
+            case COLUMN_CLASS_BIG_INTEGER:
+                return DataTypes.DECIMAL(precision + 1, 0);
+            case COLUMN_CLASS_LONG:
+                return DataTypes.BIGINT();
+            case COLUMN_CLASS_FLOAT:
+                return DataTypes.FLOAT();
+            case COLUMN_CLASS_DOUBLE:
+                return DataTypes.DOUBLE();
+            case COLUMN_CLASS_BIG_DECIMAL:
+                return DataTypes.DECIMAL(precision, scale);
+            case COLUMN_CLASS_DATE:
+                return DataTypes.DATE();
+            case COLUMN_CLASS_TIME:
+                return isExplicitPrecision(precision, RAW_TIME_LENGTH)
+                        ? DataTypes.TIME(precision - RAW_TIME_LENGTH - 1)
+                        : DataTypes.TIME();
+            case COLUMN_CLASS_TIMESTAMP:
+                return isExplicitPrecision(precision, RAW_TIMESTAMP_LENGTH)
+                        ? DataTypes.TIMESTAMP(precision - RAW_TIMESTAMP_LENGTH - 1)
+                        : DataTypes.TIMESTAMP();
             default:
                 throw new UnsupportedOperationException(
                         String.format(
