@@ -185,12 +185,12 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         this.databaseVersion =
                 Preconditions.checkNotNull(
                         getDatabaseVersion(), "database version must not be null.");
-        Preconditions.checkState(
-                isSupportedVersion(supportedDriverVersions, driverVersion),
-                "Doesn't support driver version '%s' yet.");
-        Preconditions.checkState(
-                isSupportedVersion(supportedMySQLVersions, databaseVersion),
-                "Doesn't support mysql version '%s' yet.");
+        if (isSupportedVersion(supportedDriverVersions, driverVersion)) {
+            LOG.warn("Doesn't support driver version '%s' yet. It will probably case incompatible errors.");
+        }
+        if (isSupportedVersion(supportedMySQLVersions, databaseVersion)) {
+            LOG.warn("Doesn't support mysql version '%s' yet. It will probably case incompatible errors.");
+        }
     }
 
     @Override
@@ -397,7 +397,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
 
         switch (mysqlType) {
             case MYSQL_BIT:
-                // If set type to boolean, there will cause a cast value error.
+                // If set type to boolean, it will cause a cast value error.
                 return DataTypes.BYTES();
             case MYSQL_TINYINT:
                 return DataTypes.TINYINT();
@@ -523,7 +523,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case COLUMN_CLASS_STRING:
                 return DataTypes.STRING();
             case COLUMN_CLASS_BOOLEAN:
-                // If set type to boolean, there will cause a cast value error.
+                // If set type to boolean, it will cause a cast value error.
                 return DataTypes.BYTES();
             case COLUMN_CLASS_INTEGER:
                 return DataTypes.INT();
