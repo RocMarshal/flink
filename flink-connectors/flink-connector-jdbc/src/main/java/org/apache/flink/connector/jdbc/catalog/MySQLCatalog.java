@@ -124,7 +124,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
     public static final String MYSQL_GEOMETRY = "GEOMETRY";
 
     // column class names
-    // public static final String COLUMN_CLASS_BOOLEAN = "java.lang.Boolean";
+    public static final String COLUMN_CLASS_BOOLEAN = "java.lang.Boolean";
     public static final String COLUMN_CLASS_BYTE_ARRAY = "[B";
     public static final String COLUMN_CLASS_STRING = "java.lang.String";
 
@@ -230,8 +230,8 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         // According to the Javadoc of java.sql.DatabaseMetaData#getPrimaryKeys,
         // the returned primary key columns are ordered by COLUMN_NAME, not by KEY_SEQ.
         // We need to sort them based on the KEY_SEQ value.
-        ResultSet rs = metaData.getPrimaryKeys(table.getDatabaseName(), schema,
-                table.getObjectName());
+        ResultSet rs =
+                metaData.getPrimaryKeys(table.getDatabaseName(), schema, table.getObjectName());
 
         Map<Integer, String> keySeqColumnName = new HashMap<>();
         String pkName = null;
@@ -261,9 +261,10 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         try (Connection conn =
                 DriverManager.getConnection(baseUrl + tablePath.getDatabaseName(), username, pwd)) {
             DatabaseMetaData metaData = conn.getMetaData();
-            Optional<UniqueConstraint> primaryKey =
-                    getPrimaryKey(metaData,null,tablePath);
-            PreparedStatement ps = conn.prepareStatement(String.format("SELECT * FROM %s;", tablePath.getObjectName()));
+            Optional<UniqueConstraint> primaryKey = getPrimaryKey(metaData, null, tablePath);
+            PreparedStatement ps =
+                    conn.prepareStatement(
+                            String.format("SELECT * FROM %s;", tablePath.getObjectName()));
             ResultSetMetaData resultSetMetaData = ps.getMetaData();
 
             String[] columnsClassnames = new String[resultSetMetaData.getColumnCount()];
@@ -278,9 +279,9 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             TableSchema.Builder tableBuilder =
                     new TableSchema.Builder().fields(columnsClassnames, types);
             primaryKey.ifPresent(
-                            pk ->
-                                    tableBuilder.primaryKey(
-                                            pk.getName(), pk.getColumns().toArray(new String[0])));
+                    pk ->
+                            tableBuilder.primaryKey(
+                                    pk.getName(), pk.getColumns().toArray(new String[0])));
             TableSchema tableSchema = tableBuilder.build();
             Map<String, String> props = new HashMap<>();
             props.put(CONNECTOR.key(), IDENTIFIER);
@@ -387,7 +388,8 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
 
         switch (mysqlType) {
             case MYSQL_BIT:
-                return DataTypes.BOOLEAN();
+            case MYSQL_UNKNOWN:
+                return fromJDBCClassType(tablePath, metadata, colIndex);
 
             case MYSQL_TINYINT:
                 return DataTypes.TINYINT();
@@ -454,11 +456,9 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_LONGBLOB:
             case MYSQL_GEOMETRY:
             case MYSQL_VARBINARY:
-                return DataTypes.VARBINARY(precision);
             case MYSQL_BINARY:
-                return DataTypes.BINARY(precision);
-            case MYSQL_UNKNOWN:
-                return fromJDBCClassType(tablePath, metadata, colIndex);
+                return DataTypes.BYTES();
+
             default:
                 throw new UnsupportedOperationException(
                         String.format(
@@ -503,9 +503,11 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
 
         switch (jdbcColumnClassType) {
             case COLUMN_CLASS_BYTE_ARRAY:
-                return DataTypes.VARBINARY(precision);
+                return DataTypes.BYTES();
             case COLUMN_CLASS_STRING:
-                return DataTypes.VARCHAR(precision);
+                return DataTypes.STRING();
+            case COLUMN_CLASS_BOOLEAN:
+                return DataTypes.BOOLEAN();
             default:
                 throw new UnsupportedOperationException(
                         String.format(
