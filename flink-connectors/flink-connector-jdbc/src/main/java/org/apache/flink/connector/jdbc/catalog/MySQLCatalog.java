@@ -21,6 +21,7 @@ package org.apache.flink.connector.jdbc.catalog;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.api.constraints.UniqueConstraint;
 import org.apache.flink.table.catalog.CatalogBaseTable;
 import org.apache.flink.table.catalog.CatalogDatabase;
 import org.apache.flink.table.catalog.CatalogDatabaseImpl;
@@ -39,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -51,6 +53,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -62,7 +65,6 @@ import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.USERNAM
 import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.IDENTIFIER;
 import static org.apache.flink.table.factories.FactoryUtil.CONNECTOR;
 
-//TODO 关于拼接 baseUrl和参数需要特殊处理
 /** Catalog for MySQL. */
 public class MySQLCatalog extends AbstractJdbcCatalog {
 
@@ -70,8 +72,6 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
 
     private final String databaseVersion;
     private final String driverVersion;
-
-    private final String DIRVER_PATTERN= "jdbc:mysql://<hostname/ip>:<port>[/][?...]";
 
     // ============================data types=====================
 
@@ -222,6 +222,36 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         return extractColumnValuesBySQL(connUrl, sql, 1, null);
     }
 
+    // ------ retrieve PK constraint ------
+
+    private Optional<UniqueConstraint> getPrimaryKey(
+            DatabaseMetaData metaData, String schema, ObjectPath table) throws SQLException {
+
+        // According to the Javadoc of java.sql.DatabaseMetaData#getPrimaryKeys,
+        // the returned primary key columns are ordered by COLUMN_NAME, not by KEY_SEQ.
+        // We need to sort them based on the KEY_SEQ value.
+        ResultSet rs = metaData.getPrimaryKeys(table.getDatabaseName(), schema,
+                table.getObjectName());
+
+        Map<Integer, String> keySeqColumnName = new HashMap<>();
+        String pkName = null;
+        while (rs.next()) {
+            String columnName = rs.getString("COLUMN_NAME");
+            pkName = rs.getString("PK_NAME"); // all the PK_NAME should be the same
+            int keySeq = rs.getInt("KEY_SEQ");
+            keySeqColumnName.put(keySeq - 1, columnName); // KEY_SEQ is 1-based index
+        }
+        List<String> pkFields =
+                Arrays.asList(new String[keySeqColumnName.size()]); // initialize size
+        keySeqColumnName.forEach(pkFields::set);
+        if (!pkFields.isEmpty()) {
+            // PK_NAME maybe null according to the javadoc, generate an unique name in that case
+            pkName = pkName == null ? "pk_" + String.join("_", pkFields) : pkName;
+            return Optional.of(UniqueConstraint.primaryKey(pkName, pkFields));
+        }
+        return Optional.empty();
+    }
+
     @Override
     public CatalogBaseTable getTable(ObjectPath tablePath)
             throws TableNotExistException, CatalogException {
@@ -230,9 +260,12 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         }
         try (Connection conn =
                 DriverManager.getConnection(baseUrl + tablePath.getDatabaseName(), username, pwd)) {
-            String sql = String.format("SELECT * FROM %s limit 1;", tablePath.getObjectName());
-            PreparedStatement ps = conn.prepareStatement(sql);
+            DatabaseMetaData metaData = conn.getMetaData();
+            Optional<UniqueConstraint> primaryKey =
+                    getPrimaryKey(metaData,null,tablePath);
+            PreparedStatement ps = conn.prepareStatement(String.format("SELECT * FROM %s;", tablePath.getObjectName()));
             ResultSetMetaData resultSetMetaData = ps.getMetaData();
+
             String[] columnsClassnames = new String[resultSetMetaData.getColumnCount()];
             DataType[] types = new DataType[resultSetMetaData.getColumnCount()];
             for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -244,8 +277,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             }
             TableSchema.Builder tableBuilder =
                     new TableSchema.Builder().fields(columnsClassnames, types);
-            getPrimaryKey(conn.getMetaData(), null, tablePath.getObjectName())
-                    .ifPresent(
+            primaryKey.ifPresent(
                             pk ->
                                     tableBuilder.primaryKey(
                                             pk.getName(), pk.getColumns().toArray(new String[0])));
@@ -257,6 +289,10 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             props.put(USERNAME.key(), username);
             props.put(PASSWORD.key(), pwd);
             LOG.info("_____{}", props);
+            System.out.println("==============");
+            System.out.println(props);
+            System.out.println(tablePath.getFullName());
+            System.out.println("==============");
             ps.close();
             return new CatalogTableImpl(tableSchema, props, "");
         } catch (Exception e) {
@@ -420,7 +456,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_VARBINARY:
                 return DataTypes.VARBINARY(precision);
             case MYSQL_BINARY:
-                return DataTypes.BYTES();
+                return DataTypes.BINARY(precision);
             case MYSQL_UNKNOWN:
                 return fromJDBCClassType(tablePath, metadata, colIndex);
             default:
