@@ -158,6 +158,7 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
                 }
             };
 
+
     private static final Set<String> supportedMySQLVersions =
             new HashSet<String>() {
                 {
@@ -185,6 +186,10 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         this.databaseVersion =
                 Preconditions.checkNotNull(
                         getDatabaseVersion(), "database version must not be null.");
+        validateVersions();
+    }
+
+    private void validateVersions() {
         if (isSupportedVersion(supportedDriverVersions, driverVersion)) {
             LOG.warn(
                     "Doesn't support driver version '%s' yet. It will probably case incompatible errors.");
@@ -192,6 +197,9 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
         if (isSupportedVersion(supportedMySQLVersions, databaseVersion)) {
             LOG.warn(
                     "Doesn't support mysql version '%s' yet. It will probably case incompatible errors.");
+        }
+        if (driverVersion.startsWith("6") && databaseVersion.startsWith("8")) {
+            throw new CatalogException("Please upgrade your driver version for mysql version.");
         }
     }
 

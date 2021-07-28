@@ -19,6 +19,6 @@ public class Main {
         tEnv.executeSql("show current database").print();
         tEnv.executeSql("show tables").print();
         // tEnv.executeSql("desc t_alltypes")
-        tEnv.executeSql("select * from t_alltypes").print();
+        tEnv.executeSql("select * from t_all_types").print();
     }
 }
