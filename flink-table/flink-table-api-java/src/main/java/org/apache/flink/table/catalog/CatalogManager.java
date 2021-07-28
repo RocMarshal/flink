@@ -651,15 +651,8 @@ public final class CatalogManager {
     public void createTable(
             CatalogBaseTable table, ObjectIdentifier objectIdentifier, boolean ignoreIfExists) {
         execute(
-                new ModifyCatalog() {
-                    @Override
-                    public void execute(Catalog catalog, ObjectPath path) throws Exception {
-                        catalog.createTable(
-                                path,
-                                CatalogManager.this.resolveCatalogBaseTable(table),
-                                ignoreIfExists);
-                    }
-                },
+                (catalog, path) ->
+                        catalog.createTable(path, resolveCatalogBaseTable(table), ignoreIfExists),
                 objectIdentifier,
                 false,
                 "CreateTable");
