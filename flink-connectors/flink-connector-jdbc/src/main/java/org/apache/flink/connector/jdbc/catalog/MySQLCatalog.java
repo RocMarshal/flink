@@ -278,7 +278,10 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             throw new TableNotExistException(getName(), tablePath);
         }
         try (Connection conn =
-                DriverManager.getConnection(baseUrl + tablePath.getDatabaseName(), username, pwd)) {
+                     DriverManager.getConnection(
+                             baseUrl + tablePath.getDatabaseName(),
+                             username,
+                             pwd)) {
             DatabaseMetaData metaData = conn.getMetaData();
             Optional<UniqueConstraint> primaryKey = getPrimaryKey(metaData, null, tablePath);
             PreparedStatement ps =
@@ -474,9 +477,12 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
             case MYSQL_MEDIUMBLOB:
             case MYSQL_BLOB:
             case MYSQL_LONGBLOB:
-            case MYSQL_GEOMETRY:
             case MYSQL_VARBINARY:
             case MYSQL_BINARY:
+                return DataTypes.BYTES();
+            case MYSQL_GEOMETRY:
+                LOG.warn(
+                        "Supports 'GEOMETRY' with 'bytes' format for mysql source table but mysql sink table.");
                 return DataTypes.BYTES();
 
             case MYSQL_UNKNOWN:
@@ -486,7 +492,9 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
                 throw new UnsupportedOperationException(
                         String.format(
                                 "Doesn't support mysql type '%s' in mysql version %s, driver version %s yet.",
-                                mysqlType, databaseVersion, driverVersion));
+                                mysqlType,
+                                databaseVersion,
+                                driverVersion));
         }
     }
 
@@ -563,7 +571,9 @@ public class MySQLCatalog extends AbstractJdbcCatalog {
                 throw new UnsupportedOperationException(
                         String.format(
                                 "Doesn't support mysql column class type '%s' in mysql version %s, driver version %s yet.",
-                                jdbcColumnClassType, databaseVersion, driverVersion));
+                                jdbcColumnClassType,
+                                databaseVersion,
+                                driverVersion));
         }
     }
 }
