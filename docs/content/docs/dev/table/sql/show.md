@@ -26,7 +26,7 @@ under the License.
 
 # SHOW Statements
 
-SHOW statements are used to list all catalogs, or list all databases in the current catalog, or list all tables/views in the current catalog and the current database, or show current catalog and database, or show create statement for specified table, or list all functions including system functions and user-defined functions in the current catalog and current database, or list only user-defined functions in the current catalog and current database, or list enabled module names, or list all loaded modules with enabled status in the current session.
+SHOW statements are used to list all catalogs, or list all databases in the current catalog, or list all tables/views in the current catalog and the current database, or show current catalog and database, or show create statement for specified table, or list all functions including system functions and user-defined functions in the current catalog and current database, or list only user-defined functions in the current catalog and current database, or list enabled module names, or list all loaded modules with enabled status in the current session, or list the columns of the table with given table name and optional like clause.
 
 Flink SQL supports the following SHOW statements for now:
 - SHOW CATALOGS
@@ -39,6 +39,7 @@ Flink SQL supports the following SHOW statements for now:
 - SHOW FUNCTIONS
 - SHOW MODULES
 - SHOW JARS
+- SHOW COLUMNS
 
 ## Run a SHOW statement
 
@@ -178,6 +179,14 @@ tEnv.executeSql("SHOW FULL MODULES").print();
 // |        hive | false |
 // +-------------+-------+
 
+// show columns
+tEnv.executeSql("SHOW COLUMNS FROM MY_TABLE LIKE '%f%'").print();
+// +--------+-------+------+-----+--------+-----------+
+// |   name |  type | null | key | extras | watermark |
+// +--------+-------+------+-----+--------+-----------+
+// | field2 | BYTES | true |     |        |           |
+// +--------+-------+------+-----+--------+-----------+
+
 ```
 {{< /tab >}}
 {{< tab "Scala" >}}
@@ -266,6 +275,14 @@ tEnv.executeSql("SHOW FULL MODULES").print()
 // |        hive | false |
 // +-------------+-------+
 
+// show columns
+tEnv.executeSql("SHOW COLUMNS FROM MY_TABLE LIKE '%f%'").print()
+// +--------+-------+------+-----+--------+-----------+
+// |   name |  type | null | key | extras | watermark |
+// +--------+-------+------+-----+--------+-----------+
+// | field2 | BYTES | true |     |        |           |
+// +--------+-------+------+-----+--------+-----------+
+
 ```
 {{< /tab >}}
 {{< tab "Python" >}}
@@ -352,6 +369,15 @@ table_env.execute_sql("SHOW FULL MODULES").print()
 # |        core |  true |
 # |        hive | false |
 # +-------------+-------+
+
+# show columns
+table_env.execute_sql("SHOW COLUMNS FROM MY_TABLE LIKE '%f%'").print()
+# +--------+-------+------+-----+--------+-----------+
+# |   name |  type | null | key | extras | watermark |
+# +--------+-------+------+-----+--------+-----------+
+# | field2 | BYTES | true |     |        |           |
+# +--------+-------+------+-----+--------+-----------+
+
 ```
 {{< /tab >}}
 {{< tab "SQL CLI" >}}
@@ -411,8 +437,18 @@ Flink SQL> SHOW FULL MODULES;
 +-------------+------+
 1 row in set
 
+
 Flink SQL> SHOW JARS;
 /path/to/addedJar.jar
+
+
+Flink SQL> SHOW COLUMNS from MyUserTable LIKE '%f%';
++--------+-------+------+-----+--------+-----------+
+|   name |  type | null | key | extras | watermark |
++--------+-------+------+-----+--------+-----------+
+| field2 | BYTES | true |     |        |           |
++--------+-------+------+-----+--------+-----------+
+1 row in set
 
 ```
 {{< /tab >}}
@@ -510,5 +546,16 @@ SHOW JARS
 Show all added jars in the session classloader which are added by [`ADD JAR`]({{< ref "docs/dev/table/sql/jar" >}}#add-jar) statements.
 
 <span class="label label-danger">Attention</span> Currently `SHOW JARS` only works in the [SQL CLI]({{< ref "docs/dev/table/sqlClient" >}}).
+
+## SHOW COLUMNS
+
+```sql
+SHOW COLUMNS ( FROM | IN ) <table_name> [LIKE <sql_like_pattern>]
+```
+
+Show all columns of the table with given table name and optional like clause.
+
+**LIKE**
+Show all columns of the table with given table name and optional `LIKE` clause, whose name is whether similar to the `<sql_like_pattern>`.
 
 {{< top >}}

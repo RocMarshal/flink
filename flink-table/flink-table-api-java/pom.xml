@@ -42,6 +42,14 @@ under the License.
 			<artifactId>flink-table-common</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		<!-- Used for sql function like -->
+		<dependency>
+			<groupId>org.apache.calcite</groupId>
+			<artifactId>calcite-core</artifactId>
+			<!-- When updating the Calcite version, make sure to update the dependency exclusions -->
+			<version>${calcite.version}</version>
+			<scope>provided</scope>
+		</dependency>
 
 		<!-- test dependencies -->
 

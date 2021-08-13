@@ -28,7 +28,7 @@ under the License.
 
 
 
-SHOW 语句用于列出所有的 catalog，或者列出当前 catalog 中所有的 database，或者列出当前 catalog 和当前 database 的所有表或视图，或者列出当前正在使用的 catalog 和 database, 或者列出创建指定表的语句，或者列出当前 catalog 和当前 database 中所有的 function，包括：系统 function 和用户定义的 function，或者仅仅列出当前 catalog 和当前 database 中用户定义的 function，或者列出当前环境所有激活的 module，或者列出当前环境所有加载的 module 及激活状态。
+SHOW 语句用于列出所有的 catalog，或者列出当前 catalog 中所有的 database，或者列出当前 catalog 和当前 database 的所有表或视图，或者列出当前正在使用的 catalog 和 database, 或者列出创建指定表的语句，或者列出当前 catalog 和当前 database 中所有的 function，包括：系统 function 和用户定义的 function，或者仅仅列出当前 catalog 和当前 database 中用户定义的 function，或者列出当前环境所有激活的 module，或者列出当前环境所有加载的 module 及激活状态，或者根据可选的模糊查询语句列出给定表的相应列。
 
 目前 Flink SQL 支持下列 SHOW 语句：
 - SHOW CATALOGS
@@ -42,6 +42,7 @@ SHOW 语句用于列出所有的 catalog，或者列出当前 catalog 中所有�
 - SHOW MODULES
 - SHOW FULL MODULES
 - SHOW JARS
+- SHOW COLUMNS
 
 
 ## 执行 SHOW 语句
@@ -179,6 +180,14 @@ tEnv.executeSql("SHOW FULL MODULES").print();
 // |        hive | false |
 // +-------------+-------+
 
+// show columns
+tEnv.executeSql("SHOW COLUMNS FROM MY_TABLE LIKE '%f%'").print();
+// +--------+-------+------+-----+--------+-----------+
+// |   name |  type | null | key | extras | watermark |
+// +--------+-------+------+-----+--------+-----------+
+// | field2 | BYTES | true |     |        |           |
+// +--------+-------+------+-----+--------+-----------+
+
 ```
 {{< /tab >}}
 {{< tab "Scala" >}}
@@ -267,6 +276,14 @@ tEnv.executeSql("SHOW FULL MODULES").print()
 // |        hive | false |
 // +-------------+-------+
 
+// show columns
+tEnv.executeSql("SHOW COLUMNS FROM MY_TABLE LIKE '%f%'").print()
+// +--------+-------+------+-----+--------+-----------+
+// |   name |  type | null | key | extras | watermark |
+// +--------+-------+------+-----+--------+-----------+
+// | field2 | BYTES | true |     |        |           |
+// +--------+-------+------+-----+--------+-----------+
+
 ```
 {{< /tab >}}
 {{< tab "Python" >}}
@@ -353,6 +370,15 @@ table_env.execute_sql("SHOW FULL MODULES").print()
 # |        core |  true |
 # |        hive | false |
 # +-------------+-------+
+
+# show columns
+table_env.execute_sql("SHOW COLUMNS FROM MY_TABLE LIKE '%f%'").print()
+# +--------+-------+------+-----+--------+-----------+
+# |   name |  type | null | key | extras | watermark |
+# +--------+-------+------+-----+--------+-----------+
+# | field2 | BYTES | true |     |        |           |
+# +--------+-------+------+-----+--------+-----------+
+
 ```
 {{< /tab >}}
 {{< tab "SQL CLI" >}}
@@ -412,8 +438,18 @@ Flink SQL> SHOW FULL MODULES;
 +-------------+------+
 1 row in set
 
+
 Flink SQL> SHOW JARS;
 /path/to/addedJar.jar
+
+
+Flink SQL> SHOW COLUMNS from MyUserTable LIKE '%f%';
++--------+-------+------+-----+--------+-----------+
+|   name |  type | null | key | extras | watermark |
++--------+-------+------+-----+--------+-----------+
+| field2 | BYTES | true |     |        |           |
++--------+-------+------+-----+--------+-----------+
+1 row in set
 
 ```
 {{< /tab >}}
@@ -510,5 +546,16 @@ SHOW JARS
 展示所有通过 [`ADD JAR`]({{< ref "docs/dev/table/sql/jar" >}}#add-jar) 语句加入到 session classloader 中的 jar。
 
 <span class="label label-danger">Attention</span> 当前 SHOW JARS 命令只能在 [SQL CLI]({{< ref "docs/dev/table/sqlClient" >}}) 中使用。
+
+## SHOW COLUMNS
+
+```sql
+SHOW COLUMNS ( FROM | IN ) <table_name> [ [NOT] LIKE <sql_like_pattern>]
+```
+
+展示给定表的所有列。
+
+**LIKE**
+根据可选的 `LIKE` 语句展示给定表中与 `<sql_like_pattern>` 是否模糊相似的所有列。
 
 {{< top >}}
