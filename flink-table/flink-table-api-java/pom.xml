@@ -49,6 +49,12 @@ under the License.
 			<!-- When updating the Calcite version, make sure to update the dependency exclusions -->
 			<version>${calcite.version}</version>
 			<scope>provided</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>log4j</groupId>
+					<artifactId>log4j</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 		<!-- test dependencies -->
