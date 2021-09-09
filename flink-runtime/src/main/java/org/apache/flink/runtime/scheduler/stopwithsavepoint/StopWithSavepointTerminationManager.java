@@ -102,12 +102,7 @@ public class StopWithSavepointTerminationManager {
                     "Trying to cancel job {} with savepoint, but no savepoint directory configured.",
                     jobId);
 
-            throw new IllegalStateException(
-                    "No savepoint directory configured. You can either specify a directory "
-                            + "while cancelling via -s :targetDirectory or configure a cluster-wide "
-                            + "default via key '"
-                            + CheckpointingOptions.SAVEPOINT_DIRECTORY.key()
-                            + "'.");
+            throw new IllegalStateException("No savepoint directory configured. You can either specify a directory via configure a cluster-wide default via key '" + CheckpointingOptions.SAVEPOINT_DIRECTORY.key() + "' or specify a directory in the command line, like -s :targetDirectory for cancelling, -p :targetDirectory for stopping or :targetDirectory for purely taking savepoint.");
         }
     }
 }
