@@ -472,6 +472,22 @@ SqlShowCreateTable SqlShowCreateTable() :
 }
 
 /**
+* Parse a "Show Create View" query command.
+*/
+SqlShowCreateView SqlShowCreateView() :
+{
+    SqlIdentifier viewName;
+    SqlParserPos pos;
+}
+{
+    <SHOW> <CREATE> <VIEW> { pos = getPos();}
+    viewName = CompoundIdentifier()
+    {
+        return new SqlShowCreateView(pos, viewName);
+    }
+}
+
+/**
  * DESCRIBE | DESC [ EXTENDED] [[catalogName.] dataBasesName].tableName sql call.
  * Here we add Rich in className to distinguish from calcite's original SqlDescribeTable.
  */
