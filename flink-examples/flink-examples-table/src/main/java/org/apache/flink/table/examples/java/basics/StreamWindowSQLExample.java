@@ -18,7 +18,10 @@
 
 package org.apache.flink.table.examples.java.basics;
 
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.source.SourceFunction;
+import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.util.FileUtils;
 
@@ -67,18 +70,33 @@ public class StreamWindowSQLExample {
                         + "  'format.type' = 'csv'\n"
                         + ")";
         tEnv.executeSql(ddl);
+        DataStream<String> dataStream = env.addSource(new SourceFunction<String>() {
+            @Override
+            public void run(SourceContext<String> ctx) throws Exception {
+
+            }
+
+            @Override
+            public void cancel() {
+
+            }
+        });
+        tEnv.createTemporaryView("streamView", dataStream);
+        tEnv.executeSql("create view t_view as select * from orders");
+        tEnv.executeSql("show views ").print();
+        tEnv.executeSql("show tables").print();
 
         // run a SQL query on the table and retrieve the result as a new Table
-        String query =
-                "SELECT\n"
-                        + "  CAST(TUMBLE_START(ts, INTERVAL '5' SECOND) AS STRING) window_start,\n"
-                        + "  COUNT(*) order_num,\n"
-                        + "  SUM(amount) total_amount,\n"
-                        + "  COUNT(DISTINCT product) unique_products\n"
-                        + "FROM orders\n"
-                        + "GROUP BY TUMBLE(ts, INTERVAL '5' SECOND)";
-
-        tEnv.executeSql(query).print();
+//        String query =
+//                "SELECT\n"
+//                        + "  CAST(TUMBLE_START(ts, INTERVAL '5' SECOND) AS STRING) window_start,\n"
+//                        + "  COUNT(*) order_num,\n"
+//                        + "  SUM(amount) total_amount,\n"
+//                        + "  COUNT(DISTINCT product) unique_products\n"
+//                        + "FROM orders\n"
+//                        + "GROUP BY TUMBLE(ts, INTERVAL '5' SECOND)";
+//
+//        tEnv.executeSql(query).print();
         // should output:
         // +----+--------------------------------+--------------+--------------+-----------------+
         // | op |                   window_start |    order_num | total_amount | unique_products |
