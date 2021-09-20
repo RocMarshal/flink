@@ -478,12 +478,13 @@ SqlShowCreateView SqlShowCreateView() :
 {
     SqlIdentifier viewName;
     SqlParserPos pos;
+    boolean temporary = false;
 }
 {
-    <SHOW> <CREATE> <VIEW> { pos = getPos();}
+    <SHOW> <CREATE> [ <TEMPORARY> { temporary = true;} ] <VIEW> { pos = getPos();}
     viewName = CompoundIdentifier()
     {
-        return new SqlShowCreateView(pos, viewName);
+        return new SqlShowCreateView(pos, viewName, temporary);
     }
 }
 

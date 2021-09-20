@@ -24,17 +24,23 @@ import org.apache.flink.table.catalog.ObjectIdentifier;
 public class ShowCreateViewOperation implements ShowOperation {
 
     private final ObjectIdentifier viewIdentifier;
+    private final boolean temporary;
 
-    public ShowCreateViewOperation(ObjectIdentifier sqlIdentifier) {
+    public ShowCreateViewOperation(ObjectIdentifier sqlIdentifier, boolean temporary) {
         this.viewIdentifier = sqlIdentifier;
+        this.temporary = temporary;
     }
 
     public ObjectIdentifier getViewIdentifier() {
         return viewIdentifier;
     }
 
+    public boolean isTemporary() {
+        return this.temporary;
+    }
+
     @Override
     public String asSummaryString() {
-        return String.format("SHOW CREATE VIEW %s", viewIdentifier.asSummaryString());
+        return this.temporary ? String.format("SHOW CREATE TEMPORARY VIEW %s", viewIdentifier.asSummaryString()) : String.format("SHOW CREATE VIEW %s", viewIdentifier.asSummaryString());
     }
 }
