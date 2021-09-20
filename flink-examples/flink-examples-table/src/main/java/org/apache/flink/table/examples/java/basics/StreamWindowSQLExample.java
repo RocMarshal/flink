@@ -18,6 +18,7 @@
 
 package org.apache.flink.table.examples.java.basics;
 
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
@@ -70,9 +71,9 @@ public class StreamWindowSQLExample {
                         + "  'format.type' = 'csv'\n"
                         + ")";
         tEnv.executeSql(ddl);
-        DataStream<String> dataStream = env.addSource(new SourceFunction<String>() {
+        DataStream<Tuple2<String, String>> dataStream = env.addSource(new SourceFunction<Tuple2<String, String>>() {
             @Override
-            public void run(SourceContext<String> ctx) throws Exception {
+            public void run(SourceContext<Tuple2<String, String>> ctx) throws Exception {
 
             }
 
@@ -82,9 +83,14 @@ public class StreamWindowSQLExample {
             }
         });
         tEnv.createTemporaryView("streamView", dataStream);
-        tEnv.executeSql("create view t_view as select * from orders");
-        tEnv.executeSql("show views ").print();
+        tEnv.executeSql("create view view1 as select * from orders");
+        tEnv.executeSql("create temporary view view1 as select user_id from orders");
+
+        tEnv.executeSql("create temporary view t_view1 as select * from orders");
+
+        tEnv.executeSql("show views").print();
         tEnv.executeSql("show tables").print();
+        System.out.println();
 
         // run a SQL query on the table and retrieve the result as a new Table
 //        String query =
