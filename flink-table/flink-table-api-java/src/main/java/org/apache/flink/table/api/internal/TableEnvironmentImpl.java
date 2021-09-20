@@ -56,6 +56,7 @@ import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.catalog.QueryOperationCatalogView;
 import org.apache.flink.table.catalog.ResolvedCatalogBaseTable;
 import org.apache.flink.table.catalog.ResolvedCatalogTable;
+import org.apache.flink.table.catalog.ResolvedCatalogView;
 import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.catalog.UnresolvedIdentifier;
 import org.apache.flink.table.catalog.WatermarkSpec;
@@ -1177,9 +1178,8 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
                                         .getTableIdentifier()
                                         .asSerializableString()));
             }
-        }  else if (operation instanceof ShowCreateViewOperation) {
-            ShowCreateViewOperation showCreateViewOperation =
-                    (ShowCreateViewOperation) operation;
+        } else if (operation instanceof ShowCreateViewOperation) {
+            ShowCreateViewOperation showCreateViewOperation = (ShowCreateViewOperation) operation;
             Optional<CatalogManager.TableLookupResult> result =
                     catalogManager.getTable(showCreateViewOperation.getViewIdentifier());
             if (result.isPresent()) {
@@ -1191,8 +1191,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
                                         Row.of(
                                                 buildShowCreateViewRow(
                                                         result.get().getResolvedTable(),
-                                                        showCreateViewOperation
-                                                                .getViewIdentifier(),
+                                                        showCreateViewOperation.getViewIdentifier(),
                                                         result.get().isTemporary()))))
                         .setPrintStyle(TableResultImpl.PrintStyle.rawContent())
                         .build();
@@ -1469,7 +1468,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
         return sb.toString();
     }
 
-    //TODO
+    /** Show create view statement only for views. */
     private String buildShowCreateViewRow(
             ResolvedCatalogBaseTable<?> view,
             ObjectIdentifier viewIdentifier,
@@ -1482,67 +1481,38 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
                             "SHOW CREATE VIEW does not support showing CREATE TABLE statement with identifier %s.",
                             viewIdentifier.asSerializableString()));
         }
-        StringBuilder sb =
-                new StringBuilder(
-                        String.format(
-                                "CREATE %sVIEW %s (\n",
-                                isTemporary ? "TEMPORARY " : "",
-                                viewIdentifier.asSerializableString()));
-        ResolvedSchema schema = view.getResolvedSchema();
-        // append columns
-        sb.append(
-                schema.getColumns().stream()
-                        .map(column -> String.format("%s%s", printIndent, getColumnString(column)))
-                        .collect(Collectors.joining(",\n")));
-        // append watermark spec
-        if (!schema.getWatermarkSpecs().isEmpty()) {
-            sb.append(",\n");
-            sb.append(
-                    schema.getWatermarkSpecs().stream()
-                            .map(
-                                    watermarkSpec ->
-                                            String.format(
-                                                    "%sWATERMARK FOR %s AS %s",
-                                                    printIndent,
-                                                    EncodingUtils.escapeIdentifier(
-                                                            watermarkSpec.getRowtimeAttribute()),
-                                                    watermarkSpec
-                                                            .getWatermarkExpression()
-                                                            .asSerializableString()))
-                            .collect(Collectors.joining("\n")));
-        }
+        StringBuilder stringBuilder = new StringBuilder();
+        if (view.getOrigin() instanceof QueryOperationCatalogView) {
+            ResolvedSchema schema = view.getResolvedSchema();
+            String.format(
+                    "CREATE %sVIEW %s (\n",
+                    isTemporary ? "TEMPORARY " : "", viewIdentifier.asSerializableString());
 
-        sb.append("\n) ");
+            // append columns
+            stringBuilder.append(
+                    schema.getColumns().stream()
+                            .map(
+                                    column ->
+                                            String.format(
+                                                    "%s%s", printIndent, getColumnString(column)))
+                            .collect(Collectors.joining(",\n")));
+
+            stringBuilder.append("\n) ");
+        } else {
+            stringBuilder.append(
+                    String.format(
+                            "CREATE %sVIEW %s as %s ",
+                            isTemporary ? "TEMPORARY " : "",
+                            viewIdentifier.asSerializableString(),
+                            ((ResolvedCatalogView) view.getOrigin()).getOriginalQuery()));
+        }
         // append comment
         String comment = view.getComment();
         if (StringUtils.isNotEmpty(comment)) {
-            sb.append(String.format("COMMENT '%s'\n", comment));
+            stringBuilder.append(String.format("COMMENT '%s'", comment));
         }
-        // append partitions
-        ResolvedCatalogTable catalogTable = (ResolvedCatalogTable) view;
-        if (catalogTable.isPartitioned()) {
-            sb.append("PARTITIONED BY (")
-                    .append(
-                            catalogTable.getPartitionKeys().stream()
-                                    .map(EncodingUtils::escapeIdentifier)
-                                    .collect(Collectors.joining(", ")))
-                    .append(")\n");
-        }
-        // append `with` properties
-        Map<String, String> options = view.getOptions();
-        sb.append("WITH (\n")
-                .append(
-                        options.entrySet().stream()
-                                .map(
-                                        entry ->
-                                                String.format(
-                                                        "%s'%s' = '%s'",
-                                                        printIndent,
-                                                        entry.getKey(),
-                                                        entry.getValue()))
-                                .collect(Collectors.joining(",\n")))
-                .append("\n)\n");
-        return sb.toString();
+        stringBuilder.append(";\n");
+        return stringBuilder.toString();
     }
 
     private TableResult buildDescribeResult(ResolvedSchema schema) {

@@ -36,16 +36,10 @@ public class SqlShowCreateView extends SqlCall {
     public static final SqlSpecialOperator OPERATOR =
             new SqlSpecialOperator("SHOW CREATE VIEW", SqlKind.OTHER_DDL);
     private final SqlIdentifier viewName;
-    private final boolean temporary;
 
-    public SqlShowCreateView(SqlParserPos pos, SqlIdentifier viewName, boolean temporary) {
+    public SqlShowCreateView(SqlParserPos pos, SqlIdentifier viewName) {
         super(pos);
         this.viewName = viewName;
-        this.temporary = temporary;
-    }
-
-    public boolean isTemporary() {
-        return temporary;
     }
 
     public SqlIdentifier getViewName() {
@@ -68,11 +62,7 @@ public class SqlShowCreateView extends SqlCall {
 
     @Override
     public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
-        if (this.temporary) {
-            writer.keyword("SHOW CREATE TEMPORARY VIEW");
-        } else {
-            writer.keyword("SHOW CREATE VIEW");
-        }
+        writer.keyword("SHOW CREATE VIEW");
         viewName.unparse(writer, leftPrec, rightPrec);
     }
 }

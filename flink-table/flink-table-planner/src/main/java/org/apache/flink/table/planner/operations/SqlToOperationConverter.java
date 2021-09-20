@@ -859,7 +859,7 @@ public class SqlToOperationConverter {
         UnresolvedIdentifier unresolvedIdentifier =
                 UnresolvedIdentifier.of(sqlShowCreateView.getFullViewName());
         ObjectIdentifier identifier = catalogManager.qualifyIdentifier(unresolvedIdentifier);
-        return new ShowCreateViewOperation(identifier, sqlShowCreateView.isTemporary());
+        return new ShowCreateViewOperation(identifier);
     }
 
     /** Convert SHOW FUNCTIONS statement. */

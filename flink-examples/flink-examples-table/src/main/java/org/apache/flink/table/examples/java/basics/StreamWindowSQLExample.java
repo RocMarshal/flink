@@ -22,12 +22,13 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
-import org.apache.flink.table.api.TableEnvironment;
+import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.util.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
 
 /**
  * Simple example for demonstrating the use of SQL in Java.
@@ -57,7 +58,7 @@ public class StreamWindowSQLExample {
         // register table via DDL with watermark,
         // the events are out of order, hence, we use 3 seconds to wait the late events
         String ddl =
-                "CREATE TABLE orders (\n"
+                "CREATE temporary TABLE orders (\n"
                         + "  user_id INT,\n"
                         + "  product STRING,\n"
                         + "  amount INT,\n"
@@ -71,38 +72,52 @@ public class StreamWindowSQLExample {
                         + "  'format.type' = 'csv'\n"
                         + ")";
         tEnv.executeSql(ddl);
-        DataStream<Tuple2<String, String>> dataStream = env.addSource(new SourceFunction<Tuple2<String, String>>() {
-            @Override
-            public void run(SourceContext<Tuple2<String, String>> ctx) throws Exception {
+        DataStream<Tuple2<Timestamp, String>> dataStream =
+                env.addSource(
+                        new SourceFunction<Tuple2<Timestamp, String>>() {
+                            @Override
+                            public void run(SourceContext<Tuple2<Timestamp, String>> ctx)
+                                    throws Exception {}
 
-            }
-
-            @Override
-            public void cancel() {
-
-            }
-        });
-        tEnv.createTemporaryView("streamView", dataStream);
+                            @Override
+                            public void cancel() {}
+                        });
+        tEnv.createTemporaryView(
+                "streamView",
+                dataStream,
+                Schema.newBuilder()
+                        .column("f0", "Timestamp(3)")
+                        .column("f1", "String")
+                        .watermark("f0", "`f0` - INTERVAL '3' SECOND")
+                        .build());
         tEnv.executeSql("create view view1 as select * from orders");
-        tEnv.executeSql("create temporary view view1 as select user_id from orders");
+        tEnv.executeSql("create temporary view view1_sql_temporary as select user_id from orders");
 
         tEnv.executeSql("create temporary view t_view1 as select * from orders");
 
         tEnv.executeSql("show views").print();
+        tEnv.executeSql("desc orders").print();
+        tEnv.executeSql("desc view1").print();
         tEnv.executeSql("show tables").print();
-        System.out.println();
+
+        System.out.println("-------------------");
+        tEnv.executeSql("show create view streamView").print();
+        tEnv.executeSql("show create view t_view1").print();
+        tEnv.executeSql("show create view view1").print();
+        tEnv.executeSql("show create view view1_sql_temporary").print();
 
         // run a SQL query on the table and retrieve the result as a new Table
-//        String query =
-//                "SELECT\n"
-//                        + "  CAST(TUMBLE_START(ts, INTERVAL '5' SECOND) AS STRING) window_start,\n"
-//                        + "  COUNT(*) order_num,\n"
-//                        + "  SUM(amount) total_amount,\n"
-//                        + "  COUNT(DISTINCT product) unique_products\n"
-//                        + "FROM orders\n"
-//                        + "GROUP BY TUMBLE(ts, INTERVAL '5' SECOND)";
-//
-//        tEnv.executeSql(query).print();
+        //        String query =
+        //                "SELECT\n"
+        //                        + "  CAST(TUMBLE_START(ts, INTERVAL '5' SECOND) AS STRING)
+        // window_start,\n"
+        //                        + "  COUNT(*) order_num,\n"
+        //                        + "  SUM(amount) total_amount,\n"
+        //                        + "  COUNT(DISTINCT product) unique_products\n"
+        //                        + "FROM orders\n"
+        //                        + "GROUP BY TUMBLE(ts, INTERVAL '5' SECOND)";
+        //
+        //        tEnv.executeSql(query).print();
         // should output:
         // +----+--------------------------------+--------------+--------------+-----------------+
         // | op |                   window_start |    order_num | total_amount | unique_products |
