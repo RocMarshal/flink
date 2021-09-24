@@ -101,6 +101,7 @@ public class StreamWindowSQLExample {
         tEnv.executeSql("show tables").print();
 
         System.out.println("-------------------");
+        // tEnv.executeSql("show create table orders").print();
         tEnv.executeSql("show create view streamView").print();
         tEnv.executeSql("show create view t_view1").print();
         tEnv.executeSql("show create view view1").print();

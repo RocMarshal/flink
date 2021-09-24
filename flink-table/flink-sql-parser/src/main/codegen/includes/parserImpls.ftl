@@ -456,6 +456,22 @@ SqlShowColumns SqlShowColumns() :
 }
 
 /**
+* Parse a "Show Create View" query command.
+*/
+SqlShowCreateView SqlShowCreateView() :
+{
+SqlIdentifier viewName;
+SqlParserPos pos;
+}
+{
+<SHOW> <CREATE> <VIEW> { pos = getPos();}
+viewName = CompoundIdentifier()
+{
+return new SqlShowCreateView(pos, viewName);
+}
+}
+
+/**
 * Parse a "Show Create Table" query command.
 */
 SqlShowCreateTable SqlShowCreateTable() :
@@ -468,25 +484,6 @@ SqlShowCreateTable SqlShowCreateTable() :
     tableName = CompoundIdentifier()
     {
         return new SqlShowCreateTable(pos, tableName);
-    }
-}
-
-/**
-* Parse a "Show Create View" query command.
-*/
-SqlShowCreateView SqlShowCreateView() :
-{
-    SqlIdentifier viewName;
-    SqlParserPos pos;
-}
-{
-    <SHOW> <CREATE> <VIEW>
-    {
-        pos = getPos();
-    }
-    viewName = CompoundIdentifier()
-    {
-        return new SqlShowCreateView(pos, viewName);
     }
 }
 

@@ -47,6 +47,7 @@ import org.apache.flink.table.catalog.CatalogPartition;
 import org.apache.flink.table.catalog.CatalogPartitionSpec;
 import org.apache.flink.table.catalog.CatalogTable;
 import org.apache.flink.table.catalog.CatalogTableImpl;
+import org.apache.flink.table.catalog.CatalogView;
 import org.apache.flink.table.catalog.Column;
 import org.apache.flink.table.catalog.ConnectorCatalogTable;
 import org.apache.flink.table.catalog.FunctionCatalog;
@@ -1484,9 +1485,9 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
         StringBuilder stringBuilder = new StringBuilder();
         if (view.getOrigin() instanceof QueryOperationCatalogView) {
             ResolvedSchema schema = view.getResolvedSchema();
-            String.format(
+            stringBuilder.append(String.format(
                     "CREATE %sVIEW %s (\n",
-                    isTemporary ? "TEMPORARY " : "", viewIdentifier.asSerializableString());
+                    isTemporary ? "TEMPORARY " : "", viewIdentifier.asSerializableString()));
 
             // append columns
             stringBuilder.append(
@@ -1501,17 +1502,17 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
         } else {
             stringBuilder.append(
                     String.format(
-                            "CREATE %sVIEW %s as %s ",
+                            "CREATE %sVIEW %s as\n%s",
                             isTemporary ? "TEMPORARY " : "",
                             viewIdentifier.asSerializableString(),
-                            ((ResolvedCatalogView) view.getOrigin()).getOriginalQuery()));
+                            ((CatalogView) view.getOrigin()).getOriginalQuery()));
         }
         // append comment
         String comment = view.getComment();
         if (StringUtils.isNotEmpty(comment)) {
-            stringBuilder.append(String.format("COMMENT '%s'", comment));
+            stringBuilder.append(String.format(" COMMENT '%s'", comment));
         }
-        stringBuilder.append(";\n");
+        stringBuilder.append("\n");
         return stringBuilder.toString();
     }
 
