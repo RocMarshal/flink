@@ -175,6 +175,49 @@ public class BroadcastConnectedStream<IN1, IN2> {
      * @return The transformed {@link DataStream}.
      */
     @PublicEvolving
+    public <OUT> SingleOutputStreamOperator<OUT> dynamicRulesNonParallelism(
+            final BroadcastProcessFunction<IN1, IN2, OUT> function) {
+
+        TypeInformation<OUT> outTypeInfo =
+                TypeExtractor.getBinaryOperatorReturnType(
+                        function,
+                        BroadcastProcessFunction.class,
+                        0,
+                        1,
+                        2,
+                        TypeExtractor.NO_INDEX,
+                        getType1(),
+                        getType2(),
+                        Utils.getCallLocationName(),
+                        true);
+
+        return process(function, outTypeInfo);
+    }
+
+    @PublicEvolving
+    public <KEY, OUT> SingleOutputStreamOperator<OUT> dynamicRules(
+            final KeyedBroadcastProcessFunction<KEY, IN1, IN2, OUT> function,
+            final TypeInformation<OUT> outTypeInfo) {
+
+        Preconditions.checkNotNull(function);
+        Preconditions.checkArgument(
+                nonBroadcastStream instanceof KeyedStream,
+                "A KeyedBroadcastProcessFunction can only be used on a keyed stream.");
+
+        return transform(function, outTypeInfo);
+    }
+
+    /**
+     * Assumes as inputs a {@link BroadcastStream} and a non-keyed {@link DataStream} and applies
+     * the given {@link BroadcastProcessFunction} on them, thereby creating a transformed output
+     * stream.
+     *
+     * @param function The {@link BroadcastProcessFunction} that is called for each element in the
+     *     stream.
+     * @param <OUT> The type of the output elements.
+     * @return The transformed {@link DataStream}.
+     */
+    @PublicEvolving
     public <OUT> SingleOutputStreamOperator<OUT> process(
             final BroadcastProcessFunction<IN1, IN2, OUT> function) {
 

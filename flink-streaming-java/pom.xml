@@ -80,6 +80,12 @@ under the License.
 			<version>3.6.1</version>
 		</dependency>
 
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>1.18.16</version>
+		</dependency>
+
 		<!-- test dependencies -->
 
 		<dependency>
