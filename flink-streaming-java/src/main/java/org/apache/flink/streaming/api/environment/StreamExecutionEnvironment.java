@@ -78,7 +78,10 @@ import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.datastream.sn.rules.Metric;
+import org.apache.flink.streaming.api.datastream.sn.rules.Rule;
 import org.apache.flink.streaming.api.functions.source.ContinuousFileMonitoringFunction;
 import org.apache.flink.streaming.api.functions.source.ContinuousFileReaderOperatorFactory;
 import org.apache.flink.streaming.api.functions.source.FileMonitoringFunction;
@@ -1874,6 +1877,14 @@ public class StreamExecutionEnvironment {
         final StreamSource<OUT, ?> sourceOperator = new StreamSource<>(function);
         return new DataStreamSource<>(
                 this, resolvedTypeInfo, sourceOperator, isParallel, sourceName, boundedness);
+    }
+
+    private <OUT> DataStreamSource<OUT> addRuleStreamMetricStream(DataStream<Rule> ruleDataStream, DataStream<Metric> metricDataStream) {
+        return null;
+    }
+
+    private <OUT> DataStreamSource<OUT> addRuleStreamMetricStream(DataStream<Rule> ruleDataStream, KeyedStream<Metric, Object> keyedMetricStream) {
+        return null;
     }
 
     /**

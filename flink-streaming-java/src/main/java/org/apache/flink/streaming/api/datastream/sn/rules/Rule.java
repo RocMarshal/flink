@@ -34,10 +34,10 @@ public class Rule implements Serializable {
 
     private RuleState ruleState;
 
-    // Group by {@link Metric#getTag(String)}
+    /** Group by {@link Metric#getTag(String)} .*/
     private List<String> groupingKeyNames;
 
-    // Query from {@link Metric#getMetric(String)}
+    /** Query from {@link Metric#getMetric(String)} .*/
     private String aggregateFieldName;
 
     private AggregatorFunctionType aggregatorFunctionType;
