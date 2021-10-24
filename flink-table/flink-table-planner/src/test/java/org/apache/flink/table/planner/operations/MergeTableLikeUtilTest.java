@@ -401,7 +401,7 @@ public class MergeTableLikeUtilTest {
         thrown.expect(ValidationException.class);
         thrown.expectMessage(
                 "A column named 'two' already exists in the base table."
-                        + " Metadata columns can only overwrite other metadata columns.");
+                        + " Metadata columns can only overwrite other metadata columns");
         util.mergeTables(
                 mergingStrategies, sourceSchema, derivedColumns, Collections.emptyList(), null);
     }
@@ -470,7 +470,7 @@ public class MergeTableLikeUtilTest {
         thrown.expect(ValidationException.class);
         thrown.expectMessage(
                 "There already exists a watermark spec for column 'timestamp' in the "
-                        + "base table. You might want to specify EXCLUDING WATERMARKS or OVERWRITING WATERMARKS.");
+                        + "base table. You might want to specify EXCLUDING WATERMARKS or OVERWRITING WATERMARKS");
         util.mergeTables(
                 getDefaultMergingStrategies(),
                 sourceSchema,
@@ -635,7 +635,7 @@ public class MergeTableLikeUtilTest {
         thrown.expect(ValidationException.class);
         thrown.expectMessage(
                 "The base table already has a primary key. You might want to specify "
-                        + "EXCLUDING CONSTRAINTS.");
+                        + "EXCLUDING CONSTRAINTS");
         util.mergeTables(
                 getDefaultMergingStrategies(),
                 sourceSchema,
@@ -757,7 +757,7 @@ public class MergeTableLikeUtilTest {
         thrown.expect(ValidationException.class);
         thrown.expectMessage(
                 "There already exists an option ['offset' -> '1']  in the base table. You might want"
-                        + " to specify EXCLUDING OPTIONS or OVERWRITING OPTIONS.");
+                        + " to specify EXCLUDING OPTIONS or OVERWRITING OPTIONS");
         util.mergeOptions(MergingStrategy.INCLUDING, sourceOptions, derivedOptions);
     }
 

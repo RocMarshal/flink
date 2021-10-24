@@ -29,6 +29,7 @@ import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.ExplainDetail;
 import org.apache.flink.table.api.ResultKind;
+import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.SqlParserException;
 import org.apache.flink.table.api.StatementSet;
 import org.apache.flink.table.api.Table;
@@ -114,7 +115,9 @@ import org.apache.flink.table.operations.ddl.AddPartitionsOperation;
 import org.apache.flink.table.operations.ddl.AlterCatalogFunctionOperation;
 import org.apache.flink.table.operations.ddl.AlterDatabaseOperation;
 import org.apache.flink.table.operations.ddl.AlterPartitionPropertiesOperation;
+import org.apache.flink.table.operations.ddl.AlterTableAddColumnsOperation;
 import org.apache.flink.table.operations.ddl.AlterTableAddConstraintOperation;
+import org.apache.flink.table.operations.ddl.AlterTableAddWatermarkOperation;
 import org.apache.flink.table.operations.ddl.AlterTableCompactOperation;
 import org.apache.flink.table.operations.ddl.AlterTableDropConstraintOperation;
 import org.apache.flink.table.operations.ddl.AlterTableOperation;
@@ -999,6 +1002,45 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
                     }
                 } else if (alterTableOperation instanceof AlterTableCompactOperation) {
                     // TODO: FLINK-25176 work with managed table
+                } else if (alterTableOperation instanceof AlterTableAddWatermarkOperation) {
+                    AlterTableAddWatermarkOperation addWatermarkOperation =
+                            (AlterTableAddWatermarkOperation) alterTableOperation;
+                    CatalogTable oriTable =
+                            (CatalogTable)
+                                    catalogManager
+                                            .getTable(addWatermarkOperation.getTableIdentifier())
+                                            .get()
+                                            .getTable();
+                    List<Schema.UnresolvedWatermarkSpec> watermarkSpecs =
+                            oriTable.getUnresolvedSchema().getWatermarkSpecs();
+                    if (watermarkSpecs.isEmpty()) {
+                        TableSchema.Builder builder =
+                                TableSchemaUtils.builderWithGivenSchema(oriTable.getSchema())
+                                        .watermark(
+                                                addWatermarkOperation.getRowtimeAttribute(),
+                                                addWatermarkOperation.getExpressions(),
+                                                addWatermarkOperation.getExprDataType());
+                        CatalogTable newTable =
+                                new CatalogTableImpl(
+                                        builder.build(),
+                                        oriTable.getPartitionKeys(),
+                                        oriTable.getOptions(),
+                                        oriTable.getComment());
+                        catalogManager.alterTable(
+                                newTable, alterTableOperation.getTableIdentifier(), false);
+                    } else {
+                        throw new TableException(
+                                String.format(
+                                        "There is a watermark '%s' already.",
+                                        watermarkSpecs.get(0)));
+                    }
+                } else if (operation instanceof AlterTableAddColumnsOperation) {
+                    AlterTableAddColumnsOperation addColumnsOperation =
+                            (AlterTableAddColumnsOperation) operation;
+                    catalogManager.alterTable(
+                            addColumnsOperation.getNewCatalogTable(),
+                            addColumnsOperation.getTableIdentifier(),
+                            false);
                 }
                 return TableResultImpl.TABLE_RESULT_OK;
             } catch (TableAlreadyExistException | TableNotExistException e) {
