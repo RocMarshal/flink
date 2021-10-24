@@ -31,6 +31,7 @@
     "org.apache.flink.sql.parser.ddl.SqlAlterFunction"
     "org.apache.flink.sql.parser.ddl.SqlAlterTable"
     "org.apache.flink.sql.parser.ddl.SqlAlterTableAddConstraint"
+    "org.apache.flink.sql.parser.ddl.SqlAlterTableAddWatermark"
     "org.apache.flink.sql.parser.ddl.SqlAlterTableDropConstraint"
     "org.apache.flink.sql.parser.ddl.SqlAlterTableOptions"
     "org.apache.flink.sql.parser.ddl.SqlAlterTableRename"
@@ -152,7 +153,6 @@
     "ADA"
     "ADD"
     "ADMIN"
-    "AFTER"
     "ALWAYS"
     "APPLY"
     "ASC"
@@ -226,7 +226,6 @@
     "EXCLUDE"
     "EXCLUDING"
     "FINAL"
-    "FIRST"
     "FOLLOWING"
     "FORMAT"
     "FORTRAN"
@@ -469,10 +468,12 @@
   # Please keep the keyword in alphabetical order if new keyword is added.
   nonReservedKeywordsToAdd: [
     # not in core, added in Flink
+    "AFTER"
     "CHANGELOG_MODE"
     "COLUMNS"
     "ENFORCED"
     "ESTIMATED_COST"
+    "FIRST"
     "IF"
     "JSON_EXECUTION_PLAN"
     "METADATA"

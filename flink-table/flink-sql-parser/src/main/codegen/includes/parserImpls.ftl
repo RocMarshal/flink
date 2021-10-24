@@ -510,6 +510,7 @@ SqlAlterTable SqlAlterTable() :
     SqlNodeList propertyKeyList = SqlNodeList.EMPTY;
     SqlIdentifier constraintName;
     SqlTableConstraint constraint;
+    SqlWatermark watermark = null;
 }
 {
     <ALTER> <TABLE> { startPos = getPos(); }
@@ -542,12 +543,26 @@ SqlAlterTable SqlAlterTable() :
                         propertyList);
         }
     |
-        <ADD> constraint = TableConstraint() {
-            return new SqlAlterTableAddConstraint(
+        <ADD> {
+                TableCreationContext ctx = new TableCreationContext();
+              }
+            (
+                constraint = TableConstraint() {
+                    return new SqlAlterTableAddConstraint(
                         tableIdentifier,
                         constraint,
                         startPos.plus(getPos()));
-        }
+                }
+            |
+
+                watermark = Watermark(ctx)
+                {
+                    return new SqlAlterTableAddWatermark(
+                        tableIdentifier,
+                        watermark,
+                        startPos.plus(getPos()));
+                }
+            )
     |
         <DROP> <CONSTRAINT>
         constraintName = SimpleIdentifier() {
@@ -603,7 +618,7 @@ void TableColumn(TableCreationContext context) :
     )
 }
 
-void Watermark(TableCreationContext context) :
+SqlWatermark Watermark(TableCreationContext context) :
 {
     SqlIdentifier eventTimeColumnName;
     SqlParserPos pos;
@@ -620,6 +635,7 @@ void Watermark(TableCreationContext context) :
         } else {
             context.watermark = new SqlWatermark(pos, eventTimeColumnName, watermarkStrategy);
         }
+        return context.watermark;
     }
 }
 
@@ -898,8 +914,8 @@ SqlCreate SqlCreateTable(Span s, boolean replace, boolean isTemporary) :
     List<SqlTableConstraint> constraints = new ArrayList<SqlTableConstraint>();
     SqlWatermark watermark = null;
     SqlNodeList columnList = SqlNodeList.EMPTY;
-	SqlCharStringLiteral comment = null;
-	SqlTableLike tableLike = null;
+    SqlCharStringLiteral comment = null;
+    SqlTableLike tableLike = null;
 
     SqlNodeList propertyList = SqlNodeList.EMPTY;
     SqlNodeList partitionColumns = SqlNodeList.EMPTY;
