@@ -163,16 +163,26 @@ public class WindowOperator<K, IN, ACC, OUT, W extends Window>
      */
     protected transient TimestampedCollector<OUT> timestampedCollector;
 
+    /**
+     * WindowOperator.Context implements Trigger.OnMergeContext.
+     */
     protected transient Context triggerContext = new Context(null, null);
 
+    /**
+     * WindowOperator.WindowContext.
+     */
     protected transient WindowContext processContext;
 
+    /**
+     * WindowAssigner.WindowAssignerContext only get getCurrentProcessingTime method.
+     */
     protected transient WindowAssigner.WindowAssignerContext windowAssignerContext;
 
     // ------------------------------------------------------------------------
     // State that needs to be checkpointed
     // ------------------------------------------------------------------------
 
+    // 查看此属性的使用流程
     protected transient InternalTimerService<W> internalTimerService;
 
     /** Creates a new {@code WindowOperator} based on the given policies and user functions. */
