@@ -30,6 +30,8 @@ import org.apache.calcite.sql.SqlNodeList;
 import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
+import static org.apache.flink.sql.parser.utils.SqlDdlUnParseUtil.printIndent;
+
 /** CREATE Database DDL for Hive dialect. */
 public class SqlCreateHiveDatabase extends SqlCreateDatabase {
 

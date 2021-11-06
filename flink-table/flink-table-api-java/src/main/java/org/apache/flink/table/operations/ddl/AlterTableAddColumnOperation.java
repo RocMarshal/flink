@@ -18,59 +18,35 @@
 
 package org.apache.flink.table.operations.ddl;
 
+import org.apache.flink.table.catalog.CatalogTable;
 import org.apache.flink.table.catalog.ObjectIdentifier;
 import org.apache.flink.table.operations.Operation;
 import org.apache.flink.table.operations.OperationUtils;
-import org.apache.flink.table.types.DataType;
-import org.apache.flink.util.Preconditions;
-import org.apache.flink.util.StringUtils;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Operation of "ALTER TABLE ADD WATERMARK AS ..." clause. */
-public class AlterTableAddWatermarkOperation extends AlterTableOperation {
+/** Operation for ALTER TABLE ADD single column clause. */
+public class AlterTableAddColumnOperation extends AlterTableAddColumnsOperation {
 
-    private final String rowtimeAttribute;
-    private final String expressions;
-    private final DataType exprDataType;
-
-    public AlterTableAddWatermarkOperation(
-            ObjectIdentifier tableName,
-            String rowtimeAttribute,
-            String expressions,
-            DataType exprDataType) {
-        super(tableName);
-        Preconditions.checkState(!StringUtils.isNullOrWhitespaceOnly(rowtimeAttribute));
-        Preconditions.checkState(!StringUtils.isNullOrWhitespaceOnly(expressions));
-        this.exprDataType = Preconditions.checkNotNull(exprDataType);
-        this.rowtimeAttribute = rowtimeAttribute;
-        this.expressions = expressions;
-    }
-
-    public String getRowtimeAttribute() {
-        return rowtimeAttribute;
-    }
-
-    public String getExpressions() {
-        return expressions;
-    }
-
-    public DataType getExprDataType() {
-        return exprDataType;
+    public AlterTableAddColumnOperation(
+            ObjectIdentifier tableIdentifier,
+            CatalogTable catalogTable,
+            CatalogTable origCatalogTable) {
+        super(tableIdentifier, catalogTable, origCatalogTable);
     }
 
     @Override
     public String asSummaryString() {
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("identifier", tableIdentifier);
-        params.put("rowtimeAttribute", this.rowtimeAttribute);
-        params.put("expressions", this.expressions);
-        params.put("exprDataType", this.exprDataType);
+        getAddedColumns()
+                .ifPresent(
+                        tableColumns -> params.put("addedColumn", getAddedColumns().get().get(0)));
 
         return OperationUtils.formatWithChildren(
-                "ALTER TABLE ADD WATERMARK",
+                "ALTER TABLE ADD COLUMN",
                 params,
                 Collections.emptyList(),
                 Operation::asSummaryString);

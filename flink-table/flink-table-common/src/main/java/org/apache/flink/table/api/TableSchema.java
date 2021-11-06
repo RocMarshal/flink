@@ -21,6 +21,8 @@ package org.apache.flink.table.api;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
+import org.apache.flink.sql.parser.ddl.columnposition.ColumnPositionDesc;
+import org.apache.flink.sql.parser.ddl.columnposition.ReferencedColumnNotFoundException;
 import org.apache.flink.table.api.TableColumn.ComputedColumn;
 import org.apache.flink.table.api.TableColumn.MetadataColumn;
 import org.apache.flink.table.api.TableColumn.PhysicalColumn;
@@ -678,7 +680,25 @@ public class TableSchema {
          * <p>The call order of this method determines the order of fields in the schema.
          */
         public Builder add(TableColumn column) {
-            columns.add(column);
+            ColumnPositionDesc colPos = column.getColPosition();
+            if (colPos == ColumnPositionDesc.DEFAULT_POSIT) {
+                columns.add(column);
+            } else if (colPos == ColumnPositionDesc.FIRST_POSIT) {
+                columns.add(0, column);
+            } else {
+                List<String> columnNames =
+                        columns == null
+                                ? Collections.emptyList()
+                                : columns.stream()
+                                        .map(TableColumn::getName)
+                                        .collect(Collectors.toList());
+                int afterIndex = columnNames.indexOf(colPos.getReferencedColumn().getSimple());
+                if (afterIndex == -1) {
+                    throw new ReferencedColumnNotFoundException(
+                            column.getName(), colPos.getReferencedColumn().getSimple());
+                }
+                columns.add(afterIndex + 1, column);
+            }
             return this;
         }
 

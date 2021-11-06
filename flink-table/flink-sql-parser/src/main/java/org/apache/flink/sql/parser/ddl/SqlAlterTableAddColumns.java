@@ -18,6 +18,8 @@
 
 package org.apache.flink.sql.parser.ddl;
 
+import org.apache.flink.sql.parser.ddl.constraint.SqlTableConstraint;
+
 import org.apache.calcite.sql.SqlIdentifier;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNodeList;
@@ -26,66 +28,56 @@ import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.calcite.util.ImmutableNullableList;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 import java.util.List;
 
-import static org.apache.flink.sql.parser.utils.SqlDdlUnParseUtil.unParseAddReplaceColumns;
+import static org.apache.flink.sql.parser.utils.SqlDdlUnParseUtil.unParseTableDdlBody;
 
-/** ALTER DDL to ADD or REPLACE columns for a table. */
-public class SqlAddReplaceColumns extends SqlAlterTable {
+/** Class for ALTER TABLE ADD multi columns clause. */
+public class SqlAlterTableAddColumns extends SqlAlterTable {
 
-    private final SqlNodeList newColumns;
-    // Whether to replace all the existing columns. If false, new columns will be appended to the
-    // end of the schema.
-    private final boolean replace;
-    // properties that should be added to the table
-    private final SqlNodeList properties;
+    protected final SqlNodeList columnList;
+    protected final SqlWatermark watermark;
+    protected final List<SqlTableConstraint> tableConstraints;
 
-    public SqlAddReplaceColumns(
+    public SqlAlterTableAddColumns(
             SqlParserPos pos,
             SqlIdentifier tableName,
-            SqlNodeList newColumns,
-            boolean replace,
-            @Nullable SqlNodeList properties) {
-        super(pos, tableName);
-        this.newColumns = newColumns;
-        this.replace = replace;
-        this.properties = properties;
+            SqlNodeList columnList,
+            SqlWatermark sqlWatermark,
+            List<SqlTableConstraint> tableConstraints) {
+        super(pos, tableName, null);
+        this.columnList = columnList;
+        this.watermark = sqlWatermark;
+        this.tableConstraints = tableConstraints;
     }
 
-    public SqlNodeList getNewColumns() {
-        return newColumns;
+    public SqlNodeList getColumnList() {
+        return columnList;
     }
 
-    public boolean isReplace() {
-        return replace;
+    public SqlWatermark getWatermark() {
+        return watermark;
     }
 
-    public SqlNodeList getProperties() {
-        return properties;
+    public List<SqlTableConstraint> getTableConstraints() {
+        return tableConstraints;
     }
 
     @Nonnull
     @Override
     public List<SqlNode> getOperandList() {
-        return ImmutableNullableList.of(tableIdentifier, partitionSpec, newColumns, properties);
+        return ImmutableNullableList.of(
+                getTableName(),
+                this.columnList,
+                this.watermark,
+                new SqlNodeList(tableConstraints, SqlParserPos.ZERO));
     }
 
     @Override
     public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
         super.unparse(writer, leftPrec, rightPrec);
-        if (isReplace()) {
-            writer.keyword("REPLACE");
-        } else {
-            writer.keyword("ADD");
-        }
-        unParseAddReplaceColumns(writer, leftPrec, rightPrec, newColumns.getList());
-    }
-
-    protected void printIndent(SqlWriter writer) {
-        writer.sep(",", false);
-        writer.newlineAndIndent();
-        writer.print("  ");
+        writer.keyword("ADD");
+        unParseTableDdlBody(writer, leftPrec, rightPrec, columnList, tableConstraints, watermark);
     }
 }

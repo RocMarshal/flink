@@ -20,18 +20,10 @@ package org.apache.flink.table.planner.operations;
 
 import org.apache.flink.sql.parser.ddl.SqlCreateTable;
 import org.apache.flink.sql.parser.ddl.SqlTableColumn;
-import org.apache.flink.sql.parser.ddl.SqlTableColumn.SqlComputedColumn;
-import org.apache.flink.sql.parser.ddl.SqlTableColumn.SqlMetadataColumn;
-import org.apache.flink.sql.parser.ddl.SqlTableColumn.SqlRegularColumn;
 import org.apache.flink.sql.parser.ddl.SqlTableLike;
-import org.apache.flink.sql.parser.ddl.SqlTableLike.FeatureOption;
-import org.apache.flink.sql.parser.ddl.SqlTableLike.MergingStrategy;
 import org.apache.flink.sql.parser.ddl.SqlWatermark;
 import org.apache.flink.sql.parser.ddl.constraint.SqlTableConstraint;
 import org.apache.flink.table.api.TableColumn;
-import org.apache.flink.table.api.TableColumn.ComputedColumn;
-import org.apache.flink.table.api.TableColumn.MetadataColumn;
-import org.apache.flink.table.api.TableColumn.PhysicalColumn;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.api.WatermarkSpec;
@@ -62,50 +54,51 @@ import java.util.stream.Collectors;
 import static org.apache.flink.table.planner.calcite.FlinkTypeFactory.toLogicalType;
 import static org.apache.flink.table.types.utils.TypeConversions.fromLogicalToDataType;
 
-/** A utility class with logic for handling the {@code CREATE TABLE ... LIKE} clause. */
-class MergeTableLikeUtil {
+/** A utility class with logic for handling the {@code ALTER TABLE ADD ... } clause. */
+public class AlterTableAddComponentsUtil {
     /** Default merging strategy if given option was not provided explicitly by the user. */
-    private static final HashMap<FeatureOption, MergingStrategy> defaultMergingStrategies =
+    private static final HashMap<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy>
+            defaultMergingStrategies =
             new HashMap<>();
 
     static {
-        defaultMergingStrategies.put(FeatureOption.OPTIONS, MergingStrategy.OVERWRITING);
-        defaultMergingStrategies.put(FeatureOption.WATERMARKS, MergingStrategy.INCLUDING);
-        defaultMergingStrategies.put(FeatureOption.GENERATED, MergingStrategy.INCLUDING);
-        defaultMergingStrategies.put(FeatureOption.METADATA, MergingStrategy.INCLUDING);
-        defaultMergingStrategies.put(FeatureOption.CONSTRAINTS, MergingStrategy.INCLUDING);
-        defaultMergingStrategies.put(FeatureOption.PARTITIONS, MergingStrategy.INCLUDING);
+        defaultMergingStrategies.put(SqlTableLike.FeatureOption.OPTIONS, SqlTableLike.MergingStrategy.OVERWRITING);
+        defaultMergingStrategies.put(SqlTableLike.FeatureOption.WATERMARKS, SqlTableLike.MergingStrategy.INCLUDING);
+        defaultMergingStrategies.put(SqlTableLike.FeatureOption.GENERATED, SqlTableLike.MergingStrategy.INCLUDING);
+        defaultMergingStrategies.put(SqlTableLike.FeatureOption.METADATA, SqlTableLike.MergingStrategy.INCLUDING);
+        defaultMergingStrategies.put(SqlTableLike.FeatureOption.CONSTRAINTS, SqlTableLike.MergingStrategy.INCLUDING);
+        defaultMergingStrategies.put(SqlTableLike.FeatureOption.PARTITIONS, SqlTableLike.MergingStrategy.INCLUDING);
     }
 
     private final SqlValidator validator;
     private final Function<SqlNode, String> escapeExpression;
 
-    MergeTableLikeUtil(SqlValidator validator, Function<SqlNode, String> escapeExpression) {
+    AlterTableAddComponentsUtil(SqlValidator validator, Function<SqlNode, String> escapeExpression) {
         this.validator = validator;
         this.escapeExpression = escapeExpression;
     }
 
     /**
      * Calculates merging strategies for all options. It applies options given by a user to the
-     * {@link #defaultMergingStrategies}. The {@link MergingStrategy} specified for {@link
-     * FeatureOption#ALL} overwrites all the default options. Those can be further changed with a
-     * specific {@link FeatureOption}.
+     * {@link #defaultMergingStrategies}. The {@link SqlTableLike.MergingStrategy} specified for {@link
+     * SqlTableLike.FeatureOption#ALL} overwrites all the default options. Those can be further changed with a
+     * specific {@link SqlTableLike.FeatureOption}.
      */
-    public Map<FeatureOption, MergingStrategy> computeMergingStrategies(
+    public Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> computeMergingStrategies(
             List<SqlTableLike.SqlTableLikeOption> mergingOptions) {
 
-        Map<FeatureOption, MergingStrategy> result = new HashMap<>(defaultMergingStrategies);
+        Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> result = new HashMap<>(defaultMergingStrategies);
 
         Optional<SqlTableLike.SqlTableLikeOption> maybeAllOption =
                 mergingOptions.stream()
-                        .filter(option -> option.getFeatureOption() == FeatureOption.ALL)
+                        .filter(option -> option.getFeatureOption() == SqlTableLike.FeatureOption.ALL)
                         .findFirst();
 
         maybeAllOption.ifPresent(
                 (allOption) -> {
-                    MergingStrategy strategy = allOption.getMergingStrategy();
-                    for (FeatureOption featureOption : FeatureOption.values()) {
-                        if (featureOption != FeatureOption.ALL) {
+                    SqlTableLike.MergingStrategy strategy = allOption.getMergingStrategy();
+                    for (SqlTableLike.FeatureOption featureOption : SqlTableLike.FeatureOption.values()) {
+                        if (featureOption != SqlTableLike.FeatureOption.ALL) {
                             result.put(featureOption, strategy);
                         }
                     }
@@ -134,14 +127,14 @@ class MergeTableLikeUtil {
      * table can be defined in the source table.
      */
     public TableSchema mergeTables(
-            Map<FeatureOption, MergingStrategy> mergingStrategies,
+            Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> mergingStrategies,
             TableSchema sourceSchema,
             List<SqlNode> derivedColumns,
             List<SqlWatermark> derivedWatermarkSpecs,
             SqlTableConstraint derivedPrimaryKey) {
 
-        SchemaBuilder schemaBuilder =
-                new SchemaBuilder(
+        AlterTableAddComponentsUtil.SchemaBuilder schemaBuilder =
+                new AlterTableAddComponentsUtil.SchemaBuilder(
                         mergingStrategies,
                         sourceSchema,
                         (FlinkTypeFactory) validator.getTypeFactory(),
@@ -158,17 +151,17 @@ class MergeTableLikeUtil {
      * Merges the partitions part of {@code CREATE TABLE} statement.
      *
      * <p>Partitioning is a single property of a Table, thus there can be at most a single instance
-     * of partitioning. Therefore it is not possible to use {@link MergingStrategy#INCLUDING} with
+     * of partitioning. Therefore it is not possible to use {@link SqlTableLike.MergingStrategy#INCLUDING} with
      * partitioning defined in both source and derived table.
      */
     public List<String> mergePartitions(
-            MergingStrategy mergingStrategy,
+            SqlTableLike.MergingStrategy mergingStrategy,
             List<String> sourcePartitions,
             List<String> derivedPartitions) {
 
         if (!derivedPartitions.isEmpty()
                 && !sourcePartitions.isEmpty()
-                && mergingStrategy != MergingStrategy.EXCLUDING) {
+                && mergingStrategy != SqlTableLike.MergingStrategy.EXCLUDING) {
             throw new ValidationException(
                     "The base table already has partitions defined. You might want to specify "
                             + "EXCLUDING PARTITIONS.");
@@ -182,17 +175,17 @@ class MergeTableLikeUtil {
 
     /** Merges the options part of {@code CREATE TABLE} statement. */
     public Map<String, String> mergeOptions(
-            MergingStrategy mergingStrategy,
+            SqlTableLike.MergingStrategy mergingStrategy,
             Map<String, String> sourceOptions,
             Map<String, String> derivedOptions) {
         Map<String, String> options = new HashMap<>();
-        if (mergingStrategy != MergingStrategy.EXCLUDING) {
+        if (mergingStrategy != SqlTableLike.MergingStrategy.EXCLUDING) {
             options.putAll(sourceOptions);
         }
 
         derivedOptions.forEach(
                 (key, value) -> {
-                    if (mergingStrategy != MergingStrategy.OVERWRITING
+                    if (mergingStrategy != SqlTableLike.MergingStrategy.OVERWRITING
                             && options.containsKey(key)) {
                         throw new ValidationException(
                                 String.format(
@@ -206,7 +199,7 @@ class MergeTableLikeUtil {
         return options;
     }
 
-    private static class SchemaBuilder {
+    public static class SchemaBuilder {
 
         Map<String, TableColumn> columns = new LinkedHashMap<>();
         Map<String, WatermarkSpec> watermarkSpecs = new HashMap<>();
@@ -222,7 +215,7 @@ class MergeTableLikeUtil {
         SqlValidator sqlValidator;
 
         SchemaBuilder(
-                Map<FeatureOption, MergingStrategy> mergingStrategies,
+                Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> mergingStrategies,
                 TableSchema sourceSchema,
                 FlinkTypeFactory typeFactory,
                 SqlValidator sqlValidator,
@@ -236,22 +229,22 @@ class MergeTableLikeUtil {
         }
 
         private void populateColumnsFromSourceTable(
-                Map<FeatureOption, MergingStrategy> mergingStrategies, TableSchema sourceSchema) {
+                Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> mergingStrategies, TableSchema sourceSchema) {
             for (TableColumn sourceColumn : sourceSchema.getTableColumns()) {
-                if (sourceColumn instanceof PhysicalColumn) {
+                if (sourceColumn instanceof TableColumn.PhysicalColumn) {
                     physicalFieldNamesToTypes.put(
                             sourceColumn.getName(),
                             typeFactory.createFieldTypeFromLogicalType(
                                     sourceColumn.getType().getLogicalType()));
                     columns.put(sourceColumn.getName(), sourceColumn);
-                } else if (sourceColumn instanceof ComputedColumn) {
-                    if (mergingStrategies.get(FeatureOption.GENERATED)
-                            != MergingStrategy.EXCLUDING) {
+                } else if (sourceColumn instanceof TableColumn.ComputedColumn) {
+                    if (mergingStrategies.get(SqlTableLike.FeatureOption.GENERATED)
+                            != SqlTableLike.MergingStrategy.EXCLUDING) {
                         columns.put(sourceColumn.getName(), sourceColumn);
                     }
-                } else if (sourceColumn instanceof MetadataColumn) {
-                    if (mergingStrategies.get(FeatureOption.METADATA)
-                            != MergingStrategy.EXCLUDING) {
+                } else if (sourceColumn instanceof TableColumn.MetadataColumn) {
+                    if (mergingStrategies.get(SqlTableLike.FeatureOption.METADATA)
+                            != SqlTableLike.MergingStrategy.EXCLUDING) {
                         columns.put(sourceColumn.getName(), sourceColumn);
                     }
                 }
@@ -259,9 +252,9 @@ class MergeTableLikeUtil {
         }
 
         private void populateWatermarksFromSourceTable(
-                Map<FeatureOption, MergingStrategy> mergingStrategies, TableSchema sourceSchema) {
+                Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> mergingStrategies, TableSchema sourceSchema) {
             for (WatermarkSpec sourceWatermarkSpec : sourceSchema.getWatermarkSpecs()) {
-                if (mergingStrategies.get(FeatureOption.WATERMARKS) != MergingStrategy.EXCLUDING) {
+                if (mergingStrategies.get(SqlTableLike.FeatureOption.WATERMARKS) != SqlTableLike.MergingStrategy.EXCLUDING) {
                     watermarkSpecs.put(
                             sourceWatermarkSpec.getRowtimeAttribute(), sourceWatermarkSpec);
                 }
@@ -269,10 +262,10 @@ class MergeTableLikeUtil {
         }
 
         private void populatePrimaryKeyFromSourceTable(
-                Map<FeatureOption, MergingStrategy> mergingStrategies, TableSchema sourceSchema) {
+                Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> mergingStrategies, TableSchema sourceSchema) {
             if (sourceSchema.getPrimaryKey().isPresent()
-                    && mergingStrategies.get(FeatureOption.CONSTRAINTS)
-                            == MergingStrategy.INCLUDING) {
+                    && mergingStrategies.get(SqlTableLike.FeatureOption.CONSTRAINTS)
+                    == SqlTableLike.MergingStrategy.INCLUDING) {
                 primaryKey = sourceSchema.getPrimaryKey().get();
             }
         }
@@ -311,7 +304,7 @@ class MergeTableLikeUtil {
         }
 
         private void appendDerivedWatermarks(
-                Map<FeatureOption, MergingStrategy> mergingStrategies,
+                Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> mergingStrategies,
                 List<SqlWatermark> derivedWatermarkSpecs) {
             for (SqlWatermark derivedWatermarkSpec : derivedWatermarkSpecs) {
                 SqlIdentifier eventTimeColumnName = derivedWatermarkSpec.getEventTimeColumnName();
@@ -342,15 +335,15 @@ class MergeTableLikeUtil {
         }
 
         private void verifyRowtimeAttribute(
-                Map<FeatureOption, MergingStrategy> mergingStrategies,
+                Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> mergingStrategies,
                 SqlIdentifier eventTimeColumnName,
                 Map<String, RelDataType> allFieldsTypes) {
             String fullRowtimeExpression = eventTimeColumnName.toString();
             boolean specAlreadyExists = watermarkSpecs.containsKey(fullRowtimeExpression);
 
             if (specAlreadyExists
-                    && mergingStrategies.get(FeatureOption.WATERMARKS)
-                            != MergingStrategy.OVERWRITING) {
+                    && mergingStrategies.get(SqlTableLike.FeatureOption.WATERMARKS)
+                    != SqlTableLike.MergingStrategy.OVERWRITING) {
                 throw new ValidationException(
                         String.format(
                                 "There already exists a watermark spec for column '%s' in the base table. You "
@@ -390,8 +383,8 @@ class MergeTableLikeUtil {
             }
         }
 
-        private void appendDerivedColumns(
-                Map<FeatureOption, MergingStrategy> mergingStrategies,
+        public void appendDerivedColumns(
+                Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> mergingStrategies,
                 List<SqlNode> derivedColumns) {
 
             collectPhysicalFieldsTypes(derivedColumns);
@@ -399,16 +392,17 @@ class MergeTableLikeUtil {
             for (SqlNode derivedColumn : derivedColumns) {
                 final String name = ((SqlTableColumn) derivedColumn).getName().getSimple();
                 final TableColumn column;
-                if (derivedColumn instanceof SqlRegularColumn) {
+                if (derivedColumn instanceof SqlTableColumn.SqlRegularColumn) {
                     final LogicalType logicalType =
                             FlinkTypeFactory.toLogicalType(physicalFieldNamesToTypes.get(name));
                     column =
                             TableColumn.physical(
                                     name, TypeConversions.fromLogicalToDataType(logicalType));
-                } else if (derivedColumn instanceof SqlComputedColumn) {
-                    final SqlComputedColumn computedColumn = (SqlComputedColumn) derivedColumn;
+                } else if (derivedColumn instanceof SqlTableColumn.SqlComputedColumn) {
+                    final SqlTableColumn.SqlComputedColumn
+                            computedColumn = (SqlTableColumn.SqlComputedColumn) derivedColumn;
                     if (columns.containsKey(name)) {
-                        if (!(columns.get(name) instanceof ComputedColumn)) {
+                        if (!(columns.get(name) instanceof TableColumn.ComputedColumn)) {
                             throw new ValidationException(
                                     String.format(
                                             "A column named '%s' already exists in the base table. "
@@ -416,8 +410,8 @@ class MergeTableLikeUtil {
                                             name));
                         }
 
-                        if (mergingStrategies.get(FeatureOption.GENERATED)
-                                != MergingStrategy.OVERWRITING) {
+                        if (mergingStrategies.get(SqlTableLike.FeatureOption.GENERATED)
+                                != SqlTableLike.MergingStrategy.OVERWRITING) {
                             throw new ValidationException(
                                     String.format(
                                             "A generated column named '%s' already exists in the base table. You "
@@ -441,10 +435,11 @@ class MergeTableLikeUtil {
                                     fromLogicalToDataType(toLogicalType(validatedType)),
                                     escapeExpressions.apply(validatedExpr));
                     computedFieldNamesToTypes.put(name, validatedType);
-                } else if (derivedColumn instanceof SqlMetadataColumn) {
-                    final SqlMetadataColumn metadataColumn = (SqlMetadataColumn) derivedColumn;
+                } else if (derivedColumn instanceof SqlTableColumn.SqlMetadataColumn) {
+                    final SqlTableColumn.SqlMetadataColumn
+                            metadataColumn = (SqlTableColumn.SqlMetadataColumn) derivedColumn;
                     if (columns.containsKey(name)) {
-                        if (!(columns.get(name) instanceof MetadataColumn)) {
+                        if (!(columns.get(name) instanceof TableColumn.MetadataColumn)) {
                             throw new ValidationException(
                                     String.format(
                                             "A column named '%s' already exists in the base table. "
@@ -452,8 +447,8 @@ class MergeTableLikeUtil {
                                             name));
                         }
 
-                        if (mergingStrategies.get(FeatureOption.METADATA)
-                                != MergingStrategy.OVERWRITING) {
+                        if (mergingStrategies.get(SqlTableLike.FeatureOption.METADATA)
+                                != SqlTableLike.MergingStrategy.OVERWRITING) {
                             throw new ValidationException(
                                     String.format(
                                             "A metadata column named '%s' already exists in the base table. You "
@@ -463,7 +458,7 @@ class MergeTableLikeUtil {
                     }
 
                     SqlDataTypeSpec type = metadataColumn.getType();
-                    boolean nullable = type.getNullable() == null ? true : type.getNullable();
+                    boolean nullable = type.getNullable() == null || type.getNullable();
                     RelDataType relType = type.deriveType(sqlValidator, nullable);
                     column =
                             TableColumn.metadata(
@@ -482,8 +477,9 @@ class MergeTableLikeUtil {
 
         private void collectPhysicalFieldsTypes(List<SqlNode> derivedColumns) {
             for (SqlNode derivedColumn : derivedColumns) {
-                if (derivedColumn instanceof SqlRegularColumn) {
-                    SqlRegularColumn regularColumn = (SqlRegularColumn) derivedColumn;
+                if (derivedColumn instanceof SqlTableColumn.SqlRegularColumn) {
+                    SqlTableColumn.SqlRegularColumn
+                            regularColumn = (SqlTableColumn.SqlRegularColumn) derivedColumn;
                     String name = regularColumn.getName().getSimple();
                     if (columns.containsKey(name)) {
                         throw new ValidationException(
@@ -492,7 +488,7 @@ class MergeTableLikeUtil {
                                         name));
                     }
                     SqlDataTypeSpec type = regularColumn.getType();
-                    boolean nullable = type.getNullable() == null ? true : type.getNullable();
+                    boolean nullable = type.getNullable() == null || type.getNullable();
                     RelDataType relType = type.deriveType(sqlValidator, nullable);
                     // add field name and field type to physical field list
                     physicalFieldNamesToTypes.put(name, relType);

@@ -46,14 +46,7 @@ public abstract class SqlAlterHiveTable extends SqlAlterTableOptions {
 
     @Override
     public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
-        writer.keyword("ALTER TABLE");
-        tableIdentifier.unparse(writer, leftPrec, rightPrec);
-        SqlNodeList partitionSpec = getPartitionSpec();
-        if (partitionSpec != null && partitionSpec.size() > 0) {
-            writer.keyword("PARTITION");
-            partitionSpec.unparse(
-                    writer, getOperator().getLeftPrec(), getOperator().getRightPrec());
-        }
+        super.unparse(writer, leftPrec, rightPrec);
     }
 
     /** Type of ALTER TABLE operation. */

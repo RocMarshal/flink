@@ -40,6 +40,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.flink.sql.parser.utils.SqlDdlUnParseUtil.printIndent;
+
 /** CREATE Table DDL for Hive dialect. */
 public class SqlCreateHiveTable extends SqlCreateTable {
 

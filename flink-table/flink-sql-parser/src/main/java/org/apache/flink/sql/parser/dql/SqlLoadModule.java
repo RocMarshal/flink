@@ -32,6 +32,7 @@ import org.apache.calcite.util.ImmutableNullableList;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.flink.sql.parser.utils.SqlDdlUnParseUtil.unParseCatalogDdlProps;
 
 /** LOAD MODULE sql call. */
 public class SqlLoadModule extends SqlCall {
@@ -62,17 +63,7 @@ public class SqlLoadModule extends SqlCall {
     public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
         writer.keyword("LOAD MODULE");
         moduleName.unparse(writer, leftPrec, rightPrec);
-
-        if (this.propertyList.size() > 0) {
-            writer.keyword("WITH");
-            SqlWriter.Frame withFrame = writer.startList("(", ")");
-            for (SqlNode property : propertyList) {
-                printIndent(writer);
-                property.unparse(writer, leftPrec, rightPrec);
-            }
-            writer.newlineAndIndent();
-            writer.endList(withFrame);
-        }
+        unParseCatalogDdlProps(writer, leftPrec, rightPrec, propertyList);
     }
 
     private void printIndent(SqlWriter writer) {

@@ -64,14 +64,7 @@ public class SqlAlterHiveTableChangeColumn extends SqlChangeColumn {
 
     @Override
     public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
-        writer.keyword("ALTER TABLE");
-        tableIdentifier.unparse(writer, leftPrec, rightPrec);
-        SqlNodeList partitionSpec = getPartitionSpec();
-        if (partitionSpec != null && partitionSpec.size() > 0) {
-            writer.keyword("PARTITION");
-            partitionSpec.unparse(
-                    writer, getOperator().getLeftPrec(), getOperator().getRightPrec());
-        }
+        super.unparse(writer, leftPrec, rightPrec);
         writer.keyword("CHANGE COLUMN");
         getOldName().unparse(writer, leftPrec, rightPrec);
         origNewColumn.unparse(writer, leftPrec, rightPrec);

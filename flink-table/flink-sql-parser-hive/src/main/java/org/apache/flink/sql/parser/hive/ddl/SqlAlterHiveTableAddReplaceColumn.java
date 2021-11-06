@@ -22,7 +22,6 @@ import org.apache.flink.sql.parser.ddl.SqlAddReplaceColumns;
 import org.apache.flink.sql.parser.hive.impl.ParseException;
 
 import org.apache.calcite.sql.SqlIdentifier;
-import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNodeList;
 import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.parser.SqlParserPos;
@@ -62,27 +61,7 @@ public class SqlAlterHiveTableAddReplaceColumn extends SqlAddReplaceColumns {
 
     @Override
     public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
-        writer.keyword("ALTER TABLE");
-        tableIdentifier.unparse(writer, leftPrec, rightPrec);
-        SqlNodeList partitionSpec = getPartitionSpec();
-        if (partitionSpec != null && partitionSpec.size() > 0) {
-            writer.keyword("PARTITION");
-            partitionSpec.unparse(
-                    writer, getOperator().getLeftPrec(), getOperator().getRightPrec());
-        }
-        if (isReplace()) {
-            writer.keyword("REPLACE");
-        } else {
-            writer.keyword("ADD");
-        }
-        writer.keyword("COLUMNS");
-        SqlWriter.Frame frame = writer.startList(SqlWriter.FrameTypeEnum.create("sds"), "(", ")");
-        for (SqlNode column : origColumns) {
-            printIndent(writer);
-            column.unparse(writer, leftPrec, rightPrec);
-        }
-        writer.newlineAndIndent();
-        writer.endList(frame);
+        super.unparse(writer, leftPrec, leftPrec);
         if (cascade) {
             writer.keyword("CASCADE");
         } else {

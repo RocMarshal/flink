@@ -22,6 +22,7 @@ import org.apache.flink.sql.parser.ExtendedSqlNode;
 import org.apache.flink.sql.parser.ddl.SqlTableColumn.SqlComputedColumn;
 import org.apache.flink.sql.parser.ddl.SqlTableColumn.SqlRegularColumn;
 import org.apache.flink.sql.parser.ddl.constraint.SqlTableConstraint;
+import org.apache.flink.sql.parser.ddl.context.TableDefinitionContext;
 import org.apache.flink.sql.parser.error.SqlValidateException;
 
 import org.apache.calcite.sql.SqlCharStringLiteral;
@@ -50,6 +51,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.flink.sql.parser.utils.SqlDdlUnParseUtil.unParseTableDdlBody;
+import static org.apache.flink.sql.parser.utils.SqlDdlUnParseUtil.unParseTableDdlComment;
+import static org.apache.flink.sql.parser.utils.SqlDdlUnParseUtil.unParseTableDdlPartitionKeys;
+import static org.apache.flink.sql.parser.utils.SqlDdlUnParseUtil.unParseTableDdlProps;
 
 /** CREATE TABLE DDL sql call. */
 public class SqlCreateTable extends SqlCreate implements ExtendedSqlNode {
@@ -266,53 +271,14 @@ public class SqlCreateTable extends SqlCreate implements ExtendedSqlNode {
             writer.keyword("IF NOT EXISTS");
         }
         tableName.unparse(writer, leftPrec, rightPrec);
-        if (columnList.size() > 0 || tableConstraints.size() > 0 || watermark != null) {
-            SqlWriter.Frame frame =
-                    writer.startList(SqlWriter.FrameTypeEnum.create("sds"), "(", ")");
-            for (SqlNode column : columnList) {
-                printIndent(writer);
-                column.unparse(writer, leftPrec, rightPrec);
-            }
-            if (tableConstraints.size() > 0) {
-                for (SqlTableConstraint constraint : tableConstraints) {
-                    printIndent(writer);
-                    constraint.unparse(writer, leftPrec, rightPrec);
-                }
-            }
-            if (watermark != null) {
-                printIndent(writer);
-                watermark.unparse(writer, leftPrec, rightPrec);
-            }
 
-            writer.newlineAndIndent();
-            writer.endList(frame);
-        }
+        unParseTableDdlBody(writer, leftPrec, rightPrec, columnList, tableConstraints, watermark);
 
-        if (comment != null) {
-            writer.newlineAndIndent();
-            writer.keyword("COMMENT");
-            comment.unparse(writer, leftPrec, rightPrec);
-        }
+        unParseTableDdlComment(writer, leftPrec, rightPrec, comment);
 
-        if (this.partitionKeyList.size() > 0) {
-            writer.newlineAndIndent();
-            writer.keyword("PARTITIONED BY");
-            SqlWriter.Frame partitionedByFrame = writer.startList("(", ")");
-            this.partitionKeyList.unparse(writer, leftPrec, rightPrec);
-            writer.endList(partitionedByFrame);
-            writer.newlineAndIndent();
-        }
+        unParseTableDdlPartitionKeys(writer, leftPrec, rightPrec, partitionKeyList);
 
-        if (this.propertyList.size() > 0) {
-            writer.keyword("WITH");
-            SqlWriter.Frame withFrame = writer.startList("(", ")");
-            for (SqlNode property : propertyList) {
-                printIndent(writer);
-                property.unparse(writer, leftPrec, rightPrec);
-            }
-            writer.newlineAndIndent();
-            writer.endList(withFrame);
-        }
+        unParseTableDdlProps(writer, leftPrec, rightPrec, propertyList);
 
         if (this.tableLike != null) {
             writer.newlineAndIndent();
@@ -320,18 +286,8 @@ public class SqlCreateTable extends SqlCreate implements ExtendedSqlNode {
         }
     }
 
-    protected void printIndent(SqlWriter writer) {
-        writer.sep(",", false);
-        writer.newlineAndIndent();
-        writer.print("  ");
-    }
-
     /** Table creation context. */
-    public static class TableCreationContext {
-        public List<SqlNode> columnList = new ArrayList<>();
-        public List<SqlTableConstraint> constraints = new ArrayList<>();
-        @Nullable public SqlWatermark watermark;
-    }
+    public static class TableCreationContext extends TableDefinitionContext {}
 
     public String[] fullTableName() {
         return tableName.names.toArray(new String[0]);

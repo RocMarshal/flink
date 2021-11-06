@@ -19,6 +19,7 @@
 package org.apache.flink.table.api;
 
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.sql.parser.ddl.columnposition.ColumnPositionDesc;
 import org.apache.flink.table.catalog.Column;
 import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.types.DataType;
@@ -45,9 +46,12 @@ public abstract class TableColumn {
 
     private final DataType type;
 
+    protected ColumnPositionDesc colPosition;
+
     private TableColumn(String name, DataType type) {
         this.name = name;
         this.type = type;
+        this.colPosition = ColumnPositionDesc.DEFAULT_POSIT;
     }
 
     /** Creates a regular table column that represents physical data. */
@@ -116,6 +120,16 @@ public abstract class TableColumn {
     @Deprecated
     public static TableColumn of(String name, DataType type, String expression) {
         return computed(name, type, expression);
+    }
+
+    /** Returns the position reference information of this column. */
+    public ColumnPositionDesc getColPosition() {
+        return colPosition;
+    }
+
+    /** Sets the position reference information of this column. */
+    public void setColPosition(ColumnPositionDesc colPosition) {
+        this.colPosition = colPosition;
     }
 
     /**

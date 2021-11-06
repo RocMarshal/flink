@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.flink.sql.parser.utils.SqlDdlUnParseUtil.unParseDatabaseDdlComment;
+import static org.apache.flink.sql.parser.utils.SqlDdlUnParseUtil.unParseDatabaseDdlProps;
 
 /** CREATE Database DDL sql call. */
 public class SqlCreateDatabase extends SqlCreate {
@@ -95,28 +97,8 @@ public class SqlCreateDatabase extends SqlCreate {
         }
         databaseName.unparse(writer, leftPrec, rightPrec);
 
-        if (comment != null) {
-            writer.newlineAndIndent();
-            writer.keyword("COMMENT");
-            comment.unparse(writer, leftPrec, rightPrec);
-        }
-
-        if (this.propertyList.size() > 0) {
-            writer.keyword("WITH");
-            SqlWriter.Frame withFrame = writer.startList("(", ")");
-            for (SqlNode property : propertyList) {
-                printIndent(writer);
-                property.unparse(writer, leftPrec, rightPrec);
-            }
-            writer.newlineAndIndent();
-            writer.endList(withFrame);
-        }
-    }
-
-    protected void printIndent(SqlWriter writer) {
-        writer.sep(",", false);
-        writer.newlineAndIndent();
-        writer.print("  ");
+        unParseDatabaseDdlComment(writer, leftPrec, rightPrec, comment);
+        unParseDatabaseDdlProps(writer, leftPrec, rightPrec, propertyList);
     }
 
     public String[] fullDatabaseName() {
