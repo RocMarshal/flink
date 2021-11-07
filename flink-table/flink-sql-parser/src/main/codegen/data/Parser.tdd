@@ -107,6 +107,7 @@
   # keyword, please also add it to 'nonReservedKeywords' section.
   # Please keep the keyword in alphabetical order if new keyword is added.
   keywords: [
+    "AFTER"
     "BYTES"
     "CATALOGS"
     "CHANGELOG_MODE"
@@ -117,6 +118,7 @@
     "ESTIMATED_COST"
     "EXTENDED"
     "FUNCTIONS"
+    "FIRST"
     "IF"
     "JSON_EXECUTION_PLAN"
     "JAR"

@@ -36,6 +36,7 @@ import org.apache.calcite.util.NlsString;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
 
@@ -82,6 +83,11 @@ public abstract class SqlTableColumn extends SqlCall {
 
     public Optional<SqlNode> getComment() {
         return Optional.ofNullable(comment);
+    }
+
+    public static class ColumnOrder implements Serializable {
+        // todo
+
     }
 
     /** A regular, physical column. */
