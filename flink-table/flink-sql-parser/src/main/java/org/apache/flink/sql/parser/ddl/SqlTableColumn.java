@@ -38,6 +38,7 @@ import javax.annotation.Nullable;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
@@ -52,10 +53,28 @@ public abstract class SqlTableColumn extends SqlCall {
 
     protected final SqlNode comment;
 
+    protected final ColumnPositionDesc columnPositionDesc;
+
     private SqlTableColumn(SqlParserPos pos, SqlIdentifier name, @Nullable SqlNode comment) {
+        this(pos, name, comment, ColumnPositionDesc.DEFAULT);
+    }
+
+    private SqlTableColumn(
+            SqlParserPos pos,
+            SqlIdentifier name,
+            @Nullable SqlNode comment,
+            ColumnPositionDesc columnPositionDesc) {
         super(pos);
         this.name = requireNonNull(name, "Column name should not be null");
         this.comment = comment;
+        this.columnPositionDesc =
+                Objects.nonNull(columnPositionDesc)
+                        ? columnPositionDesc
+                        : ColumnPositionDesc.DEFAULT;
+    }
+
+    public ColumnPositionDesc getColumnPositionDesc() {
+        return this.columnPositionDesc;
     }
 
     protected abstract void unparseColumn(SqlWriter writer, int leftPrec, int rightPrec);
@@ -85,9 +104,39 @@ public abstract class SqlTableColumn extends SqlCall {
         return Optional.ofNullable(comment);
     }
 
-    public static class ColumnOrder implements Serializable {
-        // todo
+    /** Util class for description of column order definition. */
+    public static class ColumnPositionDesc implements Serializable {
+        public static final ColumnPositionDesc DEFAULT = new ColumnPositionDesc();
 
+        private final SqlIdentifier referencedColumn;
+        private final Preposition preposition;
+
+        private ColumnPositionDesc() {
+            this(null, Preposition.DEFAULT);
+        }
+
+        public ColumnPositionDesc(SqlIdentifier referencedColumn, Preposition preposition) {
+            if (preposition == Preposition.AFTER && referencedColumn == null) {
+                throw new UnsupportedOperationException("Invalid column location description");
+            }
+            this.referencedColumn = referencedColumn;
+            this.preposition = preposition;
+        }
+
+        public SqlIdentifier getReferencedColumn() {
+            return referencedColumn;
+        }
+
+        public Preposition getPreposition() {
+            return preposition;
+        }
+    }
+
+    /** Enum of preposition of the referenced column . */
+    public enum Preposition {
+        FIRST,
+        AFTER,
+        DEFAULT
     }
 
     /** A regular, physical column. */
@@ -103,7 +152,17 @@ public abstract class SqlTableColumn extends SqlCall {
                 @Nullable SqlNode comment,
                 SqlDataTypeSpec type,
                 @Nullable SqlTableConstraint constraint) {
-            super(pos, name, comment);
+            this(pos, name, comment, type, constraint, ColumnPositionDesc.DEFAULT);
+        }
+
+        public SqlRegularColumn(
+                SqlParserPos pos,
+                SqlIdentifier name,
+                @Nullable SqlNode comment,
+                SqlDataTypeSpec type,
+                @Nullable SqlTableConstraint constraint,
+                @Nullable ColumnPositionDesc columnPositionDesc) {
+            super(pos, name, comment, columnPositionDesc);
             this.type = requireNonNull(type, "Column type should not be null");
             this.constraint = constraint;
         }

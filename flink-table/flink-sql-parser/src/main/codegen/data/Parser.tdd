@@ -32,6 +32,7 @@
     "org.apache.flink.sql.parser.ddl.SqlAlterTable"
     "org.apache.flink.sql.parser.ddl.SqlAlterTableAddConstraint"
     "org.apache.flink.sql.parser.ddl.SqlAlterTableAddWatermark"
+    "org.apache.flink.sql.parser.ddl.SqlAlterTableAddColumn"
     "org.apache.flink.sql.parser.ddl.SqlAlterTableDropConstraint"
     "org.apache.flink.sql.parser.ddl.SqlAlterTableOptions"
     "org.apache.flink.sql.parser.ddl.SqlAlterTableRename"
@@ -107,7 +108,6 @@
   # keyword, please also add it to 'nonReservedKeywords' section.
   # Please keep the keyword in alphabetical order if new keyword is added.
   keywords: [
-    "AFTER"
     "BYTES"
     "CATALOGS"
     "CHANGELOG_MODE"
@@ -118,7 +118,6 @@
     "ESTIMATED_COST"
     "EXTENDED"
     "FUNCTIONS"
-    "FIRST"
     "IF"
     "JSON_EXECUTION_PLAN"
     "JAR"

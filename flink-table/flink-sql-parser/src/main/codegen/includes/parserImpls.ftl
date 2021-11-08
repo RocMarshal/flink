@@ -562,7 +562,7 @@ SqlAlterTable SqlAlterTable() :
                         watermark,
                         startPos.plus(getPos()));
                 }
-            |
+
 
             )
     |
