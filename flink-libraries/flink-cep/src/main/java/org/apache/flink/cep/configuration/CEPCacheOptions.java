@@ -32,21 +32,24 @@ public class CEPCacheOptions {
     public static final ConfigOption<Integer> CEP_SHARED_BUFFER_EVENT_CACHE_SLOTS =
             ConfigOptions.key("pipeline.global-job-parameters.cep.sharedbuffer.event-cache-slots")
                     .intType()
-                    .defaultValue(10000)
+                    .defaultValue(1024)
                     .withDescription(
-                            "The Config option to set the maximum element number the eventsBufferCache of SharedBuffer could hold.");
+                            "The Config option to set the maximum element number the "
+                                    + "eventsBufferCache of SharedBuffer could hold.");
 
     public static final ConfigOption<Integer> CEP_SHARED_BUFFER_ENTRY_CACHE_SLOTS =
             ConfigOptions.key("pipeline.global-job-parameters.cep.sharedbuffer.entry-cache-slots")
                     .intType()
-                    .defaultValue(10000)
+                    .defaultValue(1024)
                     .withDescription(
-                            "The Config option to set the maximum element number the entryCache of SharedBuffer could hold.");
+                            "The Config option to set the maximum element number the "
+                                    + "entryCache of SharedBuffer could hold.");
 
     public static final ConfigOption<Duration> CEP_CACHE_STATISTICS_INTERVAL =
             ConfigOptions.key("pipeline.global-job-parameters.cep.cache.statistics.interval")
                     .durationType()
-                    .defaultValue(TimeUtils.parseDuration("30 min"))
+                    .defaultValue(TimeUtils.parseDuration("10 min"))
                     .withDescription(
-                            "The interval to log the information of cache state statistics in CEP operator.");
+                            "The interval to log the information of cache state statistics "
+                                    + "in CEP operator.");
 }
