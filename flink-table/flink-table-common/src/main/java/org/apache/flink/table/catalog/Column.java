@@ -19,7 +19,6 @@
 package org.apache.flink.table.catalog;
 
 import org.apache.flink.annotation.PublicEvolving;
-import org.apache.flink.sql.parser.ddl.columnposition.ColumnPositionDesc;
 import org.apache.flink.table.expressions.ResolvedExpression;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.utils.EncodingUtils;
@@ -47,8 +46,6 @@ public abstract class Column {
     protected final DataType dataType;
 
     protected final @Nullable String comment;
-
-    protected ColumnPositionDesc colPosition;
 
     private Column(String name, DataType dataType, @Nullable String comment) {
         this.name = name;
@@ -94,16 +91,6 @@ public abstract class Column {
 
     /** Returns whether the given column is persisted in a sink operation. */
     public abstract boolean isPersisted();
-
-    /** Returns the position reference information of this column. */
-    public ColumnPositionDesc getColPosition() {
-        return colPosition;
-    }
-
-    /** Sets the position reference information of this column. */
-    public void setColPosition(ColumnPositionDesc colPosition) {
-        this.colPosition = colPosition;
-    }
 
     /** Returns the data type of this column. */
     public DataType getDataType() {

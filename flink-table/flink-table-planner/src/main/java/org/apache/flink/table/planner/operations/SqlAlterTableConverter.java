@@ -31,10 +31,8 @@ import org.apache.flink.sql.parser.ddl.SqlAlterTableRename;
 import org.apache.flink.sql.parser.ddl.SqlAlterTableReset;
 import org.apache.flink.sql.parser.ddl.SqlChangeColumn;
 import org.apache.flink.sql.parser.ddl.SqlDropPartitions;
-import org.apache.flink.sql.parser.ddl.SqlTableColumn;
+import org.apache.flink.sql.parser.ddl.SqlTableLike;
 import org.apache.flink.sql.parser.ddl.SqlWatermark;
-import org.apache.flink.sql.parser.ddl.columnposition.ColumnPositionDesc;
-import org.apache.flink.sql.parser.ddl.columnposition.ReferencedColumnNotFoundException;
 import org.apache.flink.sql.parser.ddl.constraint.SqlTableConstraint;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
@@ -62,7 +60,6 @@ import org.apache.flink.table.operations.ddl.AlterTableOptionsOperation;
 import org.apache.flink.table.operations.ddl.AlterTableRenameOperation;
 import org.apache.flink.table.operations.ddl.DropPartitionsOperation;
 import org.apache.flink.table.planner.calcite.FlinkPlannerImpl;
-import org.apache.flink.table.planner.calcite.FlinkTypeFactory;
 import org.apache.flink.table.planner.utils.OperationConverterUtils;
 import org.apache.flink.table.utils.TableSchemaUtils;
 import org.apache.flink.util.Preconditions;
@@ -70,7 +67,6 @@ import org.apache.flink.util.Preconditions;
 import org.apache.flink.shaded.guava30.com.google.common.collect.Maps;
 
 import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNodeList;
 import org.apache.calcite.sql.dialect.CalciteSqlDialect;
 
 import java.util.ArrayList;
@@ -79,7 +75,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -91,7 +86,7 @@ public class SqlAlterTableConverter {
     private final FlinkPlannerImpl flinkPlanner;
     private final CatalogManager catalogManager;
     private final Consumer<SqlTableConstraint> validateTableConstraint;
-    private final AlterTableAddComponentsUtil AlterTableAddComponentsUtil;
+    private final MergeTableLikeUtil mergeTableLikeUtil;
     private final Function<SqlNode, String> escapeExpression;
 
     SqlAlterTableConverter(
@@ -103,7 +98,8 @@ public class SqlAlterTableConverter {
         this.catalogManager = catalogManager;
         this.validateTableConstraint = validateTableConstraint;
         this.escapeExpression = escapeExpression;
-        this.AlterTableAddComponentsUtil = new AlterTableAddComponentsUtil(flinkPlanner.getOrCreateSqlValidator(), escapeExpression);
+        this.mergeTableLikeUtil =
+                new MergeTableLikeUtil(flinkPlanner.getOrCreateSqlValidator(), escapeExpression);
     }
 
     /** convert ALTER TABLE statement. */
@@ -116,8 +112,7 @@ public class SqlAlterTableConverter {
         if (!optionalCatalogTable.isPresent() || optionalCatalogTable.get().isTemporary()) {
             throw new ValidationException(
                     String.format(
-                            "Table %s doesn't exist or is a temporary table.",
-                            tableIdentifier.toString()));
+                            "Table %s doesn't exist or is a temporary table.", tableIdentifier));
         }
         CatalogBaseTable baseTable = optionalCatalogTable.get().getTable();
         if (baseTable instanceof CatalogView) {
@@ -229,106 +224,74 @@ public class SqlAlterTableConverter {
     }
 
     private Operation convertAlterTableAddColumns(SqlAlterTableAddColumns sqlAlterTableAddColumns) {
-        UnresolvedIdentifier unresolvedIdentifier =
-                UnresolvedIdentifier.of(sqlAlterTableAddColumns.fullTableName());
-        ObjectIdentifier tableIdentifier = catalogManager.qualifyIdentifier(unresolvedIdentifier);
+
+        List<SqlNode> columnList = sqlAlterTableAddColumns.getColumnNodes();
+        sqlAlterTableAddColumns.getFullConstraints().stream()
+                .filter(SqlTableConstraint::isUnique)
+                .findAny()
+                .ifPresent(validateTableConstraint);
+        Optional<SqlTableConstraint> primaryKey =
+                sqlAlterTableAddColumns.getFullConstraints().stream()
+                        .filter(SqlTableConstraint::isPrimaryKey)
+                        .findAny();
+        List<SqlWatermark> watermarks = sqlAlterTableAddColumns.getWatermarks();
         CatalogTable oriTable = lookupTargetTable(sqlAlterTableAddColumns);
+        Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> mergingStrategies =
+                mergeTableLikeUtil.computeMergingStrategies(Collections.emptyList());
         TableSchema sourceTableSchema =
                 TableSchema.fromResolvedSchema(
                         oriTable.getUnresolvedSchema().resolve(catalogManager.getSchemaResolver()));
-        SqlNodeList columnList = sqlAlterTableAddColumns.getColumnList();
-        sourceTableSchema =
-                addColumns(
-                        sourceTableSchema,
-                        Objects.isNull(columnList)
-                                ? Collections.emptyList()
-                                : columnList.getList());
-        List<SqlTableConstraint> tableConstraints = sqlAlterTableAddColumns.getTableConstraints();
-        SqlWatermark watermark = sqlAlterTableAddColumns.getWatermark();
 
         TableSchema mergedSchema =
-                AlterTableAddComponentsUtil.mergeTables(
-                        Maps.newHashMap(),
+                mergeTableLikeUtil.mergeTables(
+                        mergingStrategies,
                         sourceTableSchema,
-                        Collections.emptyList(),
-                        Objects.isNull(watermark)
-                                ? Collections.emptyList()
-                                : Collections.singletonList(watermark),
-                        (Objects.isNull(tableConstraints) || tableConstraints.isEmpty())
-                                ? null
-                                : tableConstraints.get(0));
-        CatalogTable newTable =
+                        columnList,
+                        watermarks,
+                        primaryKey.orElse(null));
+        UnresolvedIdentifier unresolvedIdentifier =
+                UnresolvedIdentifier.of(sqlAlterTableAddColumns.fullTableName());
+        ObjectIdentifier tableIdentifier = catalogManager.qualifyIdentifier(unresolvedIdentifier);
+
+        return new AlterTableAddColumnsOperation(
+                tableIdentifier,
                 new CatalogTableImpl(
                         mergedSchema,
                         oriTable.getPartitionKeys(),
                         oriTable.getOptions(),
-                        oriTable.getComment());
-        return new AlterTableAddColumnsOperation(tableIdentifier, newTable, oriTable);
+                        oriTable.getComment()),
+                oriTable);
     }
 
     private Operation convertAlterTableAddColumn(SqlAlterTableAddColumn alterTableAddColumn) {
-        UnresolvedIdentifier unresolvedIdentifier =
-                UnresolvedIdentifier.of(alterTableAddColumn.fullTableName());
-        ObjectIdentifier tableIdentifier = catalogManager.qualifyIdentifier(unresolvedIdentifier);
+        List<SqlNode> columnList = Collections.singletonList(alterTableAddColumn.getColumnNode());
         CatalogTable oriTable = lookupTargetTable(alterTableAddColumn);
+        alterTableAddColumn.getConstraint().ifPresent(validateTableConstraint);
+        Map<SqlTableLike.FeatureOption, SqlTableLike.MergingStrategy> mergingStrategies =
+                mergeTableLikeUtil.computeMergingStrategies(Collections.emptyList());
         TableSchema sourceTableSchema =
                 TableSchema.fromResolvedSchema(
                         oriTable.getUnresolvedSchema().resolve(catalogManager.getSchemaResolver()));
-        SqlTableColumn column = (SqlTableColumn) alterTableAddColumn.getColumnNode();
-        validateColumnPosition(sourceTableSchema, column);
-        sourceTableSchema = addColumns(sourceTableSchema, Collections.singletonList(column));
 
-        CatalogTable newTable =
-                new CatalogTableImpl(
+        TableSchema mergedSchema =
+                mergeTableLikeUtil.mergeTables(
+                        mergingStrategies,
                         sourceTableSchema,
+                        columnList,
+                        Collections.emptyList(),
+                        alterTableAddColumn.getConstraint().orElse(null));
+        UnresolvedIdentifier unresolvedIdentifier =
+                UnresolvedIdentifier.of(alterTableAddColumn.fullTableName());
+        ObjectIdentifier tableIdentifier = catalogManager.qualifyIdentifier(unresolvedIdentifier);
+
+        return new AlterTableAddColumnOperation(
+                tableIdentifier,
+                new CatalogTableImpl(
+                        mergedSchema,
                         oriTable.getPartitionKeys(),
                         oriTable.getOptions(),
-                        oriTable.getComment());
-        return new AlterTableAddColumnOperation(tableIdentifier, newTable, oriTable);
-    }
-
-    /**
-     * insert column into tagged position in the target table.
-     *
-     * @param sourceTableSchema the copy schema of the target table.
-     * @param sqlTableColumns the table physical column to be added.
-     * @return new TableSchema
-     */
-    private TableSchema addColumns(TableSchema sourceTableSchema, List<SqlNode> sqlTableColumns) {
-        AlterTableAddComponentsUtil.SchemaBuilder schemaBuilder =
-                new AlterTableAddComponentsUtil.SchemaBuilder(
-                        Maps.newHashMap(),
-                        sourceTableSchema,
-                        (FlinkTypeFactory) flinkPlanner.getOrCreateSqlValidator().getTypeFactory(),
-                        flinkPlanner.getOrCreateSqlValidator(),
-                        escapeExpression);
-        schemaBuilder.appendDerivedColumns(Maps.newHashMap(), sqlTableColumns);
-        return schemaBuilder.build();
-    }
-
-    private void validateColumnPosition(TableSchema tableSchema, SqlTableColumn column) {
-
-        if (tableSchema.getTableColumns().stream()
-                .allMatch(col -> col.getName().equals(column.getName().getSimple()))) {
-            throw new ValidationException(
-                    String.format(
-                            "TableColumn '%s' exists already.", column.getName().getSimple()));
-        }
-        ColumnPositionDesc positDesc = column.getColumnPositionDesc();
-        if (positDesc != ColumnPositionDesc.DEFAULT_POSIT
-                && positDesc != ColumnPositionDesc.FIRST_POSIT) {
-            if (!tableSchema.getTableColumns().stream()
-                    .anyMatch(
-                            col ->
-                                    positDesc
-                                            .getReferencedColumn()
-                                            .getSimple()
-                                            .equals(col.getName()))) {
-                throw new ReferencedColumnNotFoundException(
-                        column.getName().getSimple(),
-                        column.getColumnPositionDesc().getReferencedColumn().getSimple());
-            }
-        }
+                        oriTable.getComment()),
+                oriTable);
     }
 
     private Operation convertAlterTableAddWatermark(
@@ -353,7 +316,7 @@ public class SqlAlterTableConverter {
         }
         // reuse the part of create ... like ... clause code.
         TableSchema mergedSchema =
-                AlterTableAddComponentsUtil.mergeTables(
+                mergeTableLikeUtil.mergeTables(
                         Maps.newHashMap(),
                         sourceTableSchema,
                         Collections.emptyList(),

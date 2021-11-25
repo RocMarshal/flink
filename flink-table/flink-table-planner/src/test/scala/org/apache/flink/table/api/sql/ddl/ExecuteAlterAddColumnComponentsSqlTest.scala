@@ -82,6 +82,10 @@ class ExecuteAlterAddColumnComponentsSqlTest(isStreaming: Boolean,
     Row.of("cmp2", "INT", new JBoolean(true), null, "AS `cost` - `amount`", null)
   private val cmp3Row =
     Row.of("cmp3", "INT", new JBoolean(false), null, "AS `cost` - 1", null)
+  private val phyConstrRow = Row.of(
+    "physical_constraint_col", "INT", new JBoolean(false),
+    "PRI(physical_constraint_col)", null, null
+  )
 
   private val _tempFolder = new TemporaryFolder()
 
@@ -323,6 +327,26 @@ class ExecuteAlterAddColumnComponentsSqlTest(isStreaming: Boolean,
   }
 
   @Test
+  def testAlterTableAddColumnWithConstraint(): Unit = {
+    initTableAndView()
+    val pk = tEnv.getCatalog("default_catalog").get()
+      .getTable(new ObjectPath("default_database", "orders"))
+      .getUnresolvedSchema.getPrimaryKey.get().getConstraintName
+    tEnv.executeSql("alter table orders drop constraint " + pk)
+    tEnv.executeSql("alter table orders add physical_constraint_col " +
+      "int not null primary key not enforced first")
+    val expectedResultRows: util.List[Row] = Lists.newArrayList(
+      phyConstrRow, userRow, prodRow, amountRow, tsRow
+    )
+    val resultsWithFrom: util.List[Row] = CollectionUtil.iteratorToList(
+      tEnv
+        .executeSql("show columns from orders")
+        .collect()
+    )
+    Assert.assertEquals(expectedResultRows, resultsWithFrom)
+  }
+
+  @Test
   def testAlterTableAddColumnsNormal(): Unit = {
     initTableAndView()
     val pk = tEnv.getCatalog("default_catalog").get()
@@ -336,7 +360,7 @@ class ExecuteAlterAddColumnComponentsSqlTest(isStreaming: Boolean,
       "watermark for ts as ts - interval '1' second," +
       "mc1 timestamp_ltz(3) not null metadata from 'timestamp' virtual comment 'c' first," +
       "cmp as (`user` - 1) comment 'c' after mc1," +
-      "constraint ck1 unique(num1)" +
+      "constraint ck1 primary key(num1)" +
       ")"
     tEnv.executeSql(sql)
     val resultsWithFrom: util.List[Row] = CollectionUtil.iteratorToList(
@@ -345,7 +369,7 @@ class ExecuteAlterAddColumnComponentsSqlTest(isStreaming: Boolean,
         .collect()
     )
     val expectedResultRows: util.List[Row] = Lists.newArrayList(
-      numRow, mc1Row, cmpRow, userRow, prodRow, amountRow, wmTs, num1Row
+      mc1Row, cmpRow, numRow, userRow, prodRow, amountRow, wmTs, num1Row
     )
     Assert.assertEquals(expectedResultRows, resultsWithFrom)
   }

@@ -363,7 +363,7 @@ public class FlinkSqlParserImplTest extends SqlParserTest {
         final String sql4 =
                 "alter table t_a add col_int as col_a - col_b comment 'comment_str' first";
         final String expect4 =
-                "ALTER TABLE `T_A` ADD `COL_INT` AS `COL_A` - `COL_B` COMMENT 'comment_str' FIRST";
+                "ALTER TABLE `T_A` ADD `COL_INT` AS (`COL_A` - `COL_B`) COMMENT 'comment_str' FIRST";
         sql(sql4).ok(expect4);
 
         final String sql5 =

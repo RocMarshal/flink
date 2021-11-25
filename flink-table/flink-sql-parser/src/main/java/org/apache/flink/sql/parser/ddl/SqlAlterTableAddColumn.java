@@ -18,6 +18,8 @@
 
 package org.apache.flink.sql.parser.ddl;
 
+import org.apache.flink.sql.parser.ddl.constraint.SqlTableConstraint;
+
 import org.apache.calcite.sql.SqlIdentifier;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlWriter;
@@ -27,6 +29,7 @@ import org.apache.calcite.util.ImmutableNullableList;
 import javax.annotation.Nonnull;
 
 import java.util.List;
+import java.util.Optional;
 
 /** Class for ALTER TABLE ADD single column clause. */
 public class SqlAlterTableAddColumn extends SqlAlterTable {
@@ -40,6 +43,17 @@ public class SqlAlterTableAddColumn extends SqlAlterTable {
 
     public SqlNode getColumnNode() {
         return columnNode;
+    }
+
+    /** Returns the column constraints plus the table constraints. */
+    public Optional<SqlTableConstraint> getConstraint() {
+        SqlTableColumn tableColumn = (SqlTableColumn) columnNode;
+        if (tableColumn instanceof SqlTableColumn.SqlRegularColumn) {
+            SqlTableColumn.SqlRegularColumn regularColumn =
+                    (SqlTableColumn.SqlRegularColumn) tableColumn;
+            return regularColumn.getConstraint();
+        }
+        return Optional.empty();
     }
 
     @Nonnull

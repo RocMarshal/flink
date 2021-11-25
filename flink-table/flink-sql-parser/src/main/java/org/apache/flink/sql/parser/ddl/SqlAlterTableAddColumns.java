@@ -29,7 +29,11 @@ import org.apache.calcite.util.ImmutableNullableList;
 
 import javax.annotation.Nonnull;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 import static org.apache.flink.sql.parser.utils.SqlDdlUnParseUtil.unParseTableDdlBody;
 
@@ -52,16 +56,46 @@ public class SqlAlterTableAddColumns extends SqlAlterTable {
         this.tableConstraints = tableConstraints;
     }
 
-    public SqlNodeList getColumnList() {
-        return columnList;
+    /** Returns the column constraints plus the table constraints. */
+    public List<SqlTableConstraint> getFullConstraints() {
+        List<SqlTableConstraint> ret = new ArrayList<>();
+        this.columnList.forEach(
+                column -> {
+                    SqlTableColumn tableColumn = (SqlTableColumn) column;
+                    if (tableColumn instanceof SqlTableColumn.SqlRegularColumn) {
+                        SqlTableColumn.SqlRegularColumn regularColumn =
+                                (SqlTableColumn.SqlRegularColumn) tableColumn;
+                        regularColumn.getConstraint().map(ret::add);
+                    }
+                });
+        ret.addAll(this.tableConstraints);
+        return ret;
     }
 
-    public SqlWatermark getWatermark() {
-        return watermark;
+    public Optional<SqlNodeList> getColumnList() {
+        return Optional.ofNullable(columnList);
+    }
+
+    public List<SqlNode> getColumnNodes() {
+        return (Objects.isNull(columnList) || columnList.size() == 0)
+                ? Collections.emptyList()
+                : columnList.getList();
+    }
+
+    public Optional<SqlWatermark> getWatermark() {
+        return Optional.ofNullable(watermark);
+    }
+
+    public List<SqlWatermark> getWatermarks() {
+        return Objects.isNull(watermark)
+                ? Collections.emptyList()
+                : Collections.singletonList(watermark);
     }
 
     public List<SqlTableConstraint> getTableConstraints() {
-        return tableConstraints;
+        return (Objects.isNull(tableConstraints) || tableConstraints.isEmpty())
+                ? Collections.emptyList()
+                : tableConstraints;
     }
 
     @Nonnull
