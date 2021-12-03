@@ -257,8 +257,8 @@ public class YarnConfigOptions {
                     .noDefaultValue()
                     .withDescription(
                             "A semicolon-separated list of archives to be shipped to the YARN cluster."
-                                    + " These archives can come from the local client and remote file system,"
-                                    + " they will be un-packed when localizing and they can be any of the following types: "
+                                    + " These archives can come from the local client and remote file system."
+                                    + " They will be un-packed when localizing and they can be any of the following types: "
                                     + "\".tar.gz\", \".tar\", \".tgz\", \".dst\", \".jar\", \".zip\"."
                                     + " For example, yarn.ship-archives=/opt/path/conf.zip;hdfs://$namenode_address/path/jars.tar");
 

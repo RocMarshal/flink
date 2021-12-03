@@ -166,6 +166,12 @@ class YarnApplicationFileUploader implements AutoCloseable {
             if (srcFs.getScheme().equals(fileSystem.getScheme())) {
                 fileStatus = srcFs.getFileStatus(resourcePath);
             } else {
+                // todo FLINK-20681
+                // 1. Why do we need to copy the file from another remote filesystem to the default remote filesystem?
+                // 2.The method name uploadLocalFileToRemote is misleading. The file being uploaded is not local.
+                // 3.uploadLocalFileToRemote internally uses o.a.hadoop.fs.FileUtil.copy().
+                // Looking into hadoop source codes, this util method opens the src/dst
+                // files as Input/OutputStream and copy the bytes. That means all the data go through the local client.
                 Tuple2<Path, Long> remoteFileInfo =
                         uploadLocalFileToRemote(resourcePath, relativeDstPath, false);
                 fileStatus = fileSystem.getFileStatus(remoteFileInfo.f0);
@@ -201,6 +207,8 @@ class YarnApplicationFileUploader implements AutoCloseable {
             throws IOException {
 
         final Long lastModified;
+        // todo FLINK-20681
+        // Same here, we should not isLocal and the if-else branches.
         if (isLocal) {
             final File localFile = new File(localSrcPath.toUri().getPath());
             checkArgument(
@@ -413,7 +421,8 @@ class YarnApplicationFileUploader implements AutoCloseable {
                 localSrcPath,
                 dst,
                 replicationFactor);
-
+        // todo FLINK-20681
+        // Same here, we should not isLocal and the if-else branches.
         if (isLocal) {
             fileSystem.copyFromLocalFile(false, true, localSrcPath, dst);
         } else {

@@ -114,6 +114,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -190,6 +191,23 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         checkNotNull(configuration);
         checkNotNull(configOption);
 
+        // todo FLINK-20681
+        // There are differences between creating a Path directly from a string and creating a
+        // Path from uri of a File created from a string.
+        //
+        // String s = "a/b/c";
+        // System.out.println(new Path(s));
+        // System.out.println(new File(s).toURI());
+        //
+        // ### Output ###
+        // a/b/c
+        // file:/path/to/current/dir/a/b/c
+        // I haven't carefully check if these differences are causing problems. It at least
+        // requires carefully dealing with the relative/absolute paths, and the default schema
+        // depending on flink/hadoop configurations.
+        //
+        // I'd suggest to ensure all the results of this method are with absolute path and
+        // explicit schema. That should make the later process simpler.
         final List<Path> files =
                 ConfigUtils.decodeListFromConfig(configuration, configOption, Path::new);
         return files.isEmpty() ? Optional.empty() : Optional.of(files);
@@ -315,7 +333,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
                                     }
                                     return fileName;
                                 }))
-                .filter(name -> name != null)
+                .filter(Objects::nonNull)
                 .allMatch(
                         name ->
                                 name.endsWith(".tar.gz")
@@ -825,10 +843,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
                         getFileReplication());
 
         // The files need to be shipped and added to classpath.
-        Set<Path> systemShipFiles = new HashSet<>(shipFiles.size());
-        for (Path file : shipFiles) {
-            systemShipFiles.add(file);
-        }
+        Set<Path> systemShipFiles = new HashSet<>(shipFiles);
 
         final String logConfigFilePath =
                 configuration.getString(YarnConfigOptionsInternal.APPLICATION_LOG_CONFIG_FILE);
@@ -899,7 +914,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         final List<String> systemClassPaths = fileUploader.registerProvidedLocalResources();
         final List<String> uploadedDependencies =
                 fileUploader.registerMultipleLocalResources(
-                        systemShipFiles.stream().collect(Collectors.toSet()),
+                        new HashSet<>(systemShipFiles),
                         Path.CUR_DIR,
                         LocalResourceType.FILE);
         systemClassPaths.addAll(uploadedDependencies);
@@ -910,14 +925,14 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
             Set<Path> shipOnlyFiles = new HashSet<>();
             addPluginsFoldersToShipFiles(shipOnlyFiles);
             fileUploader.registerMultipleLocalResources(
-                    shipOnlyFiles.stream().collect(Collectors.toSet()),
+                    new HashSet<>(shipOnlyFiles),
                     Path.CUR_DIR,
                     LocalResourceType.FILE);
         }
 
         if (!shipArchives.isEmpty()) {
             fileUploader.registerMultipleLocalResources(
-                    shipArchives.stream().collect(Collectors.toSet()),
+                    new HashSet<>(shipArchives),
                     Path.CUR_DIR,
                     LocalResourceType.ARCHIVE);
         }
@@ -1701,11 +1716,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
     @VisibleForTesting
     void addPluginsFoldersToShipFiles(Collection<Path> effectiveShipFiles) {
         final Optional<File> pluginsDir = PluginConfig.getPluginsDir();
-        final Optional<Path> pluginsDirPath =
-                pluginsDir.isPresent()
-                        ? Optional.of(new Path(pluginsDir.get().toURI()))
-                        : Optional.empty();
-        pluginsDirPath.ifPresent(effectiveShipFiles::add);
+        pluginsDir.map(file -> new Path(file.toURI())).ifPresent(effectiveShipFiles::add);
     }
 
     ContainerLaunchContext setupApplicationMasterContainer(
@@ -1769,6 +1780,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         return config.get(YarnConfigOptions.CLASSPATH_INCLUDE_USER_JAR);
     }
 
+    // todo FLINK-20681 复用 isArchiveOnlyIncludedInShipArchiveFiles
     private static boolean isUsrLibDirIncludedInShipFiles(
             List<Path> shipFiles, YarnConfiguration yarnConfig) {
         return shipFiles.stream()
@@ -1789,7 +1801,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
                                     }
                                     return fileName;
                                 }))
-                .filter(name -> name != null)
+                .filter(Objects::nonNull)
                 .noneMatch(name -> name.equals(DEFAULT_FLINK_USR_LIB_DIR));
     }
 
