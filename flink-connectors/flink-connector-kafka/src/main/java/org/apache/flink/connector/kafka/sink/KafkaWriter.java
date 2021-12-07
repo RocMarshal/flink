@@ -62,7 +62,7 @@ import static org.apache.flink.util.Preconditions.checkState;
 /**
  * This class is responsible to write records in a Kafka topic and to handle the different delivery
  * {@link DeliveryGuarantee}s.
- *
+ * 此类负责在Kafka主题中写入记录，并处理不同的{@link DeliveryGuarantee}
  * @param <IN> The type of the input elements.
  */
 class KafkaWriter<IN> implements SinkWriter<IN, KafkaCommittable, KafkaWriterState> {

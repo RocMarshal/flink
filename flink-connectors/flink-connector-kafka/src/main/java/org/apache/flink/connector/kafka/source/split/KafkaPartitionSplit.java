@@ -29,6 +29,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+/**
+ * kafka 分区切片 topic + partition + start-offset + stopping-offset
+ */
 /** A {@link SourceSplit} for a Kafka partition. */
 public class KafkaPartitionSplit implements SourceSplit {
     public static final long NO_STOPPING_OFFSET = Long.MIN_VALUE;
@@ -45,6 +48,9 @@ public class KafkaPartitionSplit implements SourceSplit {
     public static final Set<Long> VALID_STOPPING_OFFSET_MARKERS =
             new HashSet<>(Arrays.asList(LATEST_OFFSET, COMMITTED_OFFSET, NO_STOPPING_OFFSET));
 
+    /**
+     * kafka 分区切片 topic + partition + start-offset + stopping-offset
+     */
     private final TopicPartition tp;
     private final long startingOffset;
     private final long stoppingOffset;

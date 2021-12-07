@@ -37,6 +37,7 @@ import java.util.Properties;
 import static org.apache.flink.util.Preconditions.checkState;
 
 /**
+ * 公开私有字段以允许从给定状态恢复生产的 {@link KafkaProducer}。使用了反射机制
  * A {@link KafkaProducer} that exposes private fields to allow resume producing from a given state.
  */
 class FlinkKafkaInternalProducer<K, V> extends KafkaProducer<K, V> {

@@ -33,6 +33,10 @@ import java.util.Set;
 import static org.apache.flink.connector.kafka.source.enumerator.subscriber.KafkaSubscriberUtils.getTopicMetadata;
 
 /**
+ * 固定主题列表的订阅者。订阅的主题必须存在于Kafka集群中，否则将引发异常。
+ */
+
+/**
  * A subscriber to a fixed list of topics. The subscribed topics must have existed in the Kafka
  * cluster, otherwise an exception will be thrown.
  */

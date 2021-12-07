@@ -28,6 +28,7 @@ import java.io.Serializable;
 /**
  * A serialization schema which defines how to convert a value of type {@code T} to {@link
  * ProducerRecord}.
+ * 一种序列化模式，定义如何将{@code T}类型的值转换为{@link ProducerRecord}。
  *
  * @param <T> the type of values being serialized
  */

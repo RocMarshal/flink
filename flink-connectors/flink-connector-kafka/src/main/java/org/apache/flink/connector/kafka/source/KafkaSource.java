@@ -84,12 +84,24 @@ public class KafkaSource<OUT>
     // Users can choose only one of the following ways to specify the topics to consume from.
     private final KafkaSubscriber subscriber;
     // Users can specify the starting / stopping offset initializer.
+    /**
+     * 设置 offset 开始和结束时的处理器
+     */
     private final OffsetsInitializer startingOffsetsInitializer;
     private final OffsetsInitializer stoppingOffsetsInitializer;
     // Boundedness
+    /**
+     * 是否为有界模式
+     */
     private final Boundedness boundedness;
+    /**
+     * 序列化器
+     */
     private final KafkaRecordDeserializationSchema<OUT> deserializationSchema;
     // The configurations.
+    /**
+     * kafka 消费者配置
+     */
     private final Properties props;
 
     KafkaSource(

@@ -22,6 +22,10 @@ import org.apache.kafka.common.TopicPartition;
 
 import java.util.Set;
 
+/**
+ * kafka source 记录 topic-partition 的集合状态
+ */
+
 /** The state of Kafka source enumerator. */
 public class KafkaSourceEnumState {
     private final Set<TopicPartition> assignedPartitions;

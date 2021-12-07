@@ -27,6 +27,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+/**
+ * KafkaPartitionSplit 序列化器
+ */
 
 /**
  * The {@link org.apache.flink.core.io.SimpleVersionedSerializer serializer} for {@link

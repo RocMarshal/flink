@@ -34,6 +34,10 @@ import java.util.Collection;
 import java.util.Map;
 
 /**
+ * 用户用于指定 {@link KafkaPartitionSplit} 的开始/停止偏移量的接口。
+ */
+
+/**
  * A interface for users to specify the starting / stopping offset of a {@link KafkaPartitionSplit}.
  *
  * @see ReaderHandledOffsetsInitializer

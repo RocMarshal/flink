@@ -32,6 +32,10 @@ import java.util.regex.Pattern;
 
 import static org.apache.flink.connector.kafka.source.enumerator.subscriber.KafkaSubscriberUtils.getAllTopicMetadata;
 
+/**
+ * 正则表达式主题模式的订阅者
+ */
+
 /** A subscriber to a topic pattern. */
 class TopicPatternSubscriber implements KafkaSubscriber {
     private static final long serialVersionUID = -7471048577725467797L;

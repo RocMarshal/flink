@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.Properties;
 
 /**
+ * 上下文提供帮助构建{@link org.apache.kafka.clients.producer.ProducerRecord}的信息。
+ *
  * Context providing information to assist constructing a {@link
  * org.apache.kafka.clients.producer.ProducerRecord}.
  */

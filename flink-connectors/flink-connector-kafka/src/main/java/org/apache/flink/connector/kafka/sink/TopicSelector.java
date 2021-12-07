@@ -24,6 +24,7 @@ import java.util.function.Function;
 
 /**
  * Selects a topic for the incoming record.
+ * 为某一条消息选择topic
  *
  * @param <IN> type of the incoming record
  */

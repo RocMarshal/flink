@@ -21,6 +21,9 @@ import java.util.Objects;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
+/**
+ * writer 状态
+ */
 class KafkaWriterState {
     private final String transactionalIdPrefix;
 

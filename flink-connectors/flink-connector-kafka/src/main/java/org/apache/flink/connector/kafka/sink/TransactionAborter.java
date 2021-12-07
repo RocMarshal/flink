@@ -28,7 +28,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * Aborts lingering transactions on restart.
- *
+ * 重新启动时中止延迟的事务。
  * <p>Transactions are lingering if they are not tracked anywhere. For example, if a job is started
  * transactions are opened. A restart without checkpoint would not allow Flink to abort old
  * transactions. Since Kafka's transactions are sequential, newly produced data does not become

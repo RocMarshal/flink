@@ -32,6 +32,10 @@ import java.util.function.Function;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
 
+/**
+ * 序列化器封装
+ * @param <IN>
+ */
 class KafkaSerializerWrapper<IN> implements SerializationSchema<IN> {
     private final Class<? extends Serializer<? super IN>> serializerClass;
     private final Map<String, String> config;

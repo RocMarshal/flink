@@ -22,6 +22,7 @@ import org.apache.flink.annotation.PublicEvolving;
 import java.io.Serializable;
 
 /**
+ * FlinkKafka 分区器
  * A {@link FlinkKafkaPartitioner} wraps logic on how to partition records across partitions of
  * multiple Kafka topics.
  */

@@ -36,6 +36,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+ * 带版本信息的source enum state 序列化器
+ */
+
+/**
  * The {@link org.apache.flink.core.io.SimpleVersionedSerializer Serializer} for the enumerator
  * state of Kafka source.
  */

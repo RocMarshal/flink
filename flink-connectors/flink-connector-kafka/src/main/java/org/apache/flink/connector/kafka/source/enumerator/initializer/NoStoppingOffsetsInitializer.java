@@ -28,6 +28,10 @@ import java.util.Collections;
 import java.util.Map;
 
 /**
+ * 用来记录无界流截止位点的初始化器
+ */
+
+/**
  * An implementation of {@link OffsetsInitializer} which does not initialize anything.
  *
  * <p>This class is used as the default stopping offsets initializer for unbounded Kafka sources.

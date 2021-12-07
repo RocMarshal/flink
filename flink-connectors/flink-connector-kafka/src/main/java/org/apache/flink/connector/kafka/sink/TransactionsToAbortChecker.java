@@ -22,6 +22,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 事务处理中断检查器
+ */
 class TransactionsToAbortChecker {
 
     private static final int MINIMUM_CHECKPOINT_OFFSET = 1;

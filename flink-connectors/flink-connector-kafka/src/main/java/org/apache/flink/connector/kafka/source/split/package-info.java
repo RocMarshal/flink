@@ -16,27 +16,8 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.kafka.source.enumerator.initializer;
-
-import org.apache.flink.annotation.Internal;
-
-import java.util.Properties;
-/**
- * 校验org.apache.flink.connector.kafka.source.KafkaSource 位点初始化器的校验器
- */
+package org.apache.flink.connector.kafka.source.split;
 
 /**
- * Interface for validating {@link OffsetsInitializer} with properties from {@link
- * org.apache.flink.connector.kafka.source.KafkaSource}.
+ * 按照 kafka partition 分片描述类型，状态，以及序列化器的包
  */
-@Internal
-public interface OffsetsInitializerValidator {
-
-    /**
-     * Validate offsets initializer with properties of Kafka source.
-     *
-     * @param kafkaSourceProperties Properties of Kafka source
-     * @throws IllegalStateException if validation fails
-     */
-    void validate(Properties kafkaSourceProperties) throws IllegalStateException;
-}

@@ -55,6 +55,10 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
+/**
+ * Kafka源的枚举器类 , 包含 KafkaConsumer 实例
+ */
+
 /** The enumerator class for Kafka source. */
 @Internal
 public class KafkaSourceEnumerator
@@ -81,6 +85,7 @@ public class KafkaSourceEnumerator
     private final String consumerGroupId;
 
     // Lazily instantiated or mutable fields.
+    // 为了确认位点相关操作使用
     private KafkaConsumer<byte[], byte[]> consumer;
     private AdminClient adminClient;
 

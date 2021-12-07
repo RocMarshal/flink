@@ -18,6 +18,9 @@
 
 package org.apache.flink.connector.kafka.source.split;
 
+/**
+ * kafka 分区切片的消费状态 topic + partition + start-offset + stopping-offset + current-offset
+ */
 /** This class extends KafkaPartitionSplit to track a mutable current offset. */
 public class KafkaPartitionSplitState extends KafkaPartitionSplit {
 

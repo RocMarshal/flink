@@ -35,6 +35,10 @@ import java.util.Properties;
 import static org.apache.flink.util.Preconditions.checkState;
 
 /**
+ * {@link OffsetsInitializer}的一种实现，它根据用户指定的偏移量初始化分区的偏移量。
+ */
+
+/**
  * An implementation of {@link OffsetsInitializer} which initializes the offsets of the partition
  * according to the user specified offsets.
  *

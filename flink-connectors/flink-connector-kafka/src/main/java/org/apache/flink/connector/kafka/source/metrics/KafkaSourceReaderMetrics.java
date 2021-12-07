@@ -41,6 +41,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
+/**
+ * 主要用来管理 kafka source reader 监控相关的信息
+ */
 
 /**
  * A collection class for handling metrics in {@link KafkaSourceReader}.

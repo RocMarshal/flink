@@ -41,6 +41,7 @@ import static org.apache.flink.util.ExceptionUtils.firstOrSuppressed;
 
 /**
  * Committer implementation for {@link KafkaSink}
+ * 提交器
  *
  * <p>The committer is responsible to finalize the Kafka transactions by committing them.
  */

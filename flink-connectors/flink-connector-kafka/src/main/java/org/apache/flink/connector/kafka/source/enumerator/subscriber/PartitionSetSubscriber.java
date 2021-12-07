@@ -49,6 +49,9 @@ class PartitionSetSubscriber implements KafkaSubscriber {
                         .collect(Collectors.toSet());
 
         LOG.debug("Fetching descriptions for topics: {}", topicNames);
+        /**
+         * TopicDescription 存储一组分区信息
+         */
         final Map<String, TopicDescription> topicMetadata =
                 getTopicMetadata(adminClient, topicNames);
 

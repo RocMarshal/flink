@@ -23,6 +23,9 @@ import org.apache.kafka.clients.admin.TopicDescription;
 
 import java.util.Map;
 import java.util.Set;
+/**
+ * 获取metadata相关的util
+ */
 
 /** The base implementations of {@link KafkaSubscriber}. */
 class KafkaSubscriberUtils {

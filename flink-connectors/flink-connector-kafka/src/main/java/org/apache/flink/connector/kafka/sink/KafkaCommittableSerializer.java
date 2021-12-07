@@ -25,6 +25,9 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
+/**
+ * Kafka committable 信息对象带版本号的序列化器
+ */
 class KafkaCommittableSerializer implements SimpleVersionedSerializer<KafkaCommittable> {
 
     @Override

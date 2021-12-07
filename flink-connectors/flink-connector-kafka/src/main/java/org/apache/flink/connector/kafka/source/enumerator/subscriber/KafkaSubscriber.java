@@ -25,6 +25,9 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+/**
+ * Kafka consumer允许从主题中使用几种不同的方式，包括：
+ */
 
 /**
  * Kafka consumer allows a few different ways to consume from the topics, including:

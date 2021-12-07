@@ -25,6 +25,10 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
+/**
+ * state 序列化器
+ */
+
 /** A serializer used to serialize {@link KafkaWriterState}. */
 class KafkaWriterStateSerializer implements SimpleVersionedSerializer<KafkaWriterState> {
 

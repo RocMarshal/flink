@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
+ * 封装了一次事务提交的所需信息和引用
  * This class holds the necessary information to construct a new {@link FlinkKafkaInternalProducer}
  * to commit transactions in {@link KafkaCommitter}.
  */
