@@ -92,11 +92,11 @@ public class RabbitMQConnectionConfig implements Serializable {
             Integer requestedFrameMax,
             Integer requestedHeartbeat,
             Integer prefetchCount) {
-        Preconditions.checkNotNull(host, "host can not be null");
-        Preconditions.checkNotNull(port, "port can not be null");
-        Preconditions.checkNotNull(virtualHost, "virtualHost can not be null");
-        Preconditions.checkNotNull(username, "username can not be null");
-        Preconditions.checkNotNull(password, "password can not be null");
+        Preconditions.checkNotNull(host, "host can not be null.");
+        Preconditions.checkNotNull(port, "port can not be null.");
+        Preconditions.checkNotNull(virtualHost, "virtualHost can not be null.");
+        Preconditions.checkNotNull(username, "username can not be null.");
+        Preconditions.checkNotNull(password, "password can not be null.");
         this.host = host;
         this.port = port;
         this.virtualHost = virtualHost;
@@ -134,7 +134,7 @@ public class RabbitMQConnectionConfig implements Serializable {
             Integer requestedFrameMax,
             Integer requestedHeartbeat,
             Integer prefetchCount) {
-        Preconditions.checkNotNull(uri, "Uri can not be null");
+        Preconditions.checkNotNull(uri, "Uri can not be null.");
         this.uri = uri;
 
         this.networkRecoveryInterval = networkRecoveryInterval;
@@ -167,9 +167,9 @@ public class RabbitMQConnectionConfig implements Serializable {
     }
 
     /**
-     * Retrieve the user name.
+     * Retrieve the username.
      *
-     * @return the AMQP user name to use when connecting to the broker
+     * @return the AMQP username to use when connecting to the broker
      */
     public String getUsername() {
         return username;
@@ -279,7 +279,7 @@ public class RabbitMQConnectionConfig implements Serializable {
             try {
                 factory.setUri(this.uri);
             } catch (URISyntaxException e) {
-                LOG.error("Failed to parse uri", e);
+                LOG.error("Failed to parse uri.", e);
                 throw e;
             } catch (KeyManagementException e) {
                 // this should never happen
@@ -378,9 +378,9 @@ public class RabbitMQConnectionConfig implements Serializable {
         }
 
         /**
-         * Set the user name.
+         * Set the username.
          *
-         * @param username the AMQP user name to use when connecting to the broker
+         * @param username the AMQP username to use when connecting to the broker
          * @return the Builder
          */
         public Builder setUserName(String username) {

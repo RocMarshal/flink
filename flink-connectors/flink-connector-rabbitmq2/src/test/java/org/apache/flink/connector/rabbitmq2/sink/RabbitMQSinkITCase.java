@@ -49,7 +49,7 @@ public class RabbitMQSinkITCase extends RabbitMQBaseTest {
         shouldFail = new AtomicBoolean(true);
     }
 
-    private class GeneratorFailureSource implements SourceFunction<String> {
+    private static class GeneratorFailureSource implements SourceFunction<String> {
 
         private final BlockingQueue<String> messagesToSend;
         private int failAtNthMessage;
@@ -65,7 +65,7 @@ public class RabbitMQSinkITCase extends RabbitMQBaseTest {
             while (true) {
                 if (failAtNthMessage == 0 && shouldFail.get()) {
                     shouldFail.set(false);
-                    throw new Exception("Supposed to Fail");
+                    throw new Exception("Supposed to Fail.");
                 }
                 failAtNthMessage -= 1;
                 String message = messagesToSend.take();

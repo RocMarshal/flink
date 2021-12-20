@@ -140,7 +140,7 @@ public class RabbitMQSinkWriterAtLeastOnce<T> extends RabbitMQSinkWriterBase<T> 
         return (sequenceNumber, multiple) -> {
             RabbitMQSinkMessageWrapper<T> message = outstandingConfirms.get(sequenceNumber);
             LOG.error(
-                    "Message with body {} has been nack-ed. Sequence number: {}, multiple: {}",
+                    "Message with body {} has been nack-ed. Sequence number: {}, multiple: {}.",
                     message.getMessage(),
                     sequenceNumber,
                     multiple);

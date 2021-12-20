@@ -117,7 +117,7 @@ public abstract class RabbitMQSinkWriterBase<T>
 
     @Override
     public void close() throws Exception {
-        LOG.info("Close Sink Writer");
+        LOG.info("Close Sink Writer.");
         rmqSinkConnection.close();
     }
 

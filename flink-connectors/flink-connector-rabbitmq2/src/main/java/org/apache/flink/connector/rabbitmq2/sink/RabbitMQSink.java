@@ -112,12 +112,12 @@ public class RabbitMQSink<T> implements Sink<T, Void, RabbitMQSinkWriterState<T>
         Preconditions.checkState(
                 verifyPublishOptions(),
                 "If consistency mode is stronger than at-most-once and publish options are defined"
-                        + "then publish options need a deserialization schema");
+                        + " then publish options need a deserialization schema.");
         this.publishOptions = publishOptions;
     }
 
     private boolean verifyPublishOptions() {
-        // If at-most-once, doesnt matter if publish options are provided (no state in writer)
+        // If at-most-once, doesn't matter if publish options are provided (no state in writer)
         if (consistencyMode == ConsistencyMode.AT_MOST_ONCE) {
             return true;
         }

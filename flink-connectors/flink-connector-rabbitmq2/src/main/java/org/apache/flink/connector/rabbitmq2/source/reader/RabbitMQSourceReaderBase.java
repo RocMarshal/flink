@@ -75,7 +75,7 @@ public abstract class RabbitMQSourceReaderBase<T> implements SourceReader<T, Rab
 
     @Override
     public void start() {
-        LOG.info("Starting source reader and send split request");
+        LOG.info("Starting source reader and send split request.");
         sourceReaderContext.sendSplitRequest();
     }
 
@@ -85,7 +85,7 @@ public abstract class RabbitMQSourceReaderBase<T> implements SourceReader<T, Rab
         setupConnection();
         setupChannel();
         LOG.info(
-                "RabbitMQ Connection was successful: Waiting for messages from the queue. To exit press CTRL+C");
+                "RabbitMQ Connection was successful: Waiting for messages from the queue. To exit press CTRL+C.");
     }
 
     private ConnectionFactory setupConnectionFactory() throws Exception {
@@ -219,7 +219,7 @@ public abstract class RabbitMQSourceReaderBase<T> implements SourceReader<T, Rab
 
     @Override
     public void close() throws Exception {
-        LOG.info("Close source reader");
+        LOG.info("Close source reader.");
         if (getSplit() == null) {
             return;
         }

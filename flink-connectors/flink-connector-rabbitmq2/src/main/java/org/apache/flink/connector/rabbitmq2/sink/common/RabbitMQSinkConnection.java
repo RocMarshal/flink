@@ -68,7 +68,7 @@ public class RabbitMQSinkConnection<T> {
      * @throws Exception that might occur when setting up the connection and channel.
      */
     public void setupRabbitMQ() throws Exception {
-        LOG.info("Setup RabbitMQ");
+        LOG.info("Setup RabbitMQ.");
         this.rmqConnection = setupConnection(connectionConfig);
         this.rmqChannel = setupChannel(rmqConnection, queueName, returnListener);
     }

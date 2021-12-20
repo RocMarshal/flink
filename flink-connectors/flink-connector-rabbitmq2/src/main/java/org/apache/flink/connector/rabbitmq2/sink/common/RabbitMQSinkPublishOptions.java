@@ -39,36 +39,36 @@ public interface RabbitMQSinkPublishOptions<IN> extends java.io.Serializable {
     /**
      * Compute the message's routing key from the data.
      *
-     * @param a The data used by the sink
+     * @param data The data used by the sink
      * @return The routing key of the message null will raise a NullPointerException
      */
-    String computeRoutingKey(IN a);
+    String computeRoutingKey(IN data);
 
     /**
      * Compute the message's properties from the data.
      *
-     * @param a The data used by the sink
+     * @param data The data used by the sink
      * @return The message's properties (can be null)
      */
-    BasicProperties computeProperties(IN a);
+    BasicProperties computeProperties(IN data);
 
     /**
      * Compute the exchange from the data.
      *
-     * @param a The data used by the sink
+     * @param data The data used by the sink
      * @return The exchange to publish the message to null will raise a NullPointerException
      */
-    String computeExchange(IN a);
+    String computeExchange(IN data);
 
     /**
      * Compute the mandatory flag passed to method {@link
      * com.rabbitmq.client.Channel#basicPublish(String, String, boolean, boolean, BasicProperties,
      * byte[])}. A {@link SerializableReturnListener} is mandatory if this flag can be true.
      *
-     * @param a The data used by the sink
+     * @param data The data used by the sink
      * @return The mandatory flag
      */
-    default boolean computeMandatory(IN a) {
+    default boolean computeMandatory(IN data) {
         return false;
     }
 
@@ -77,10 +77,10 @@ public interface RabbitMQSinkPublishOptions<IN> extends java.io.Serializable {
      * com.rabbitmq.client.Channel#basicPublish(String, String, boolean, boolean, BasicProperties,
      * byte[])}. A {@link SerializableReturnListener} is mandatory if this flag can be true.
      *
-     * @param a The data used by the sink
+     * @param data The data used by the sink
      * @return The mandatory flag
      */
-    default boolean computeImmediate(IN a) {
+    default boolean computeImmediate(IN data) {
         return false;
     }
 
