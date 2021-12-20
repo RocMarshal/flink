@@ -32,7 +32,6 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.util.Preconditions;
-
 import org.apache.flink.util.concurrent.ExecutorThreadFactory;
 
 import org.slf4j.Logger;
@@ -69,7 +68,7 @@ public abstract class AbstractClickHouseOutputFormat extends RichOutputFormat<Ro
     public void configure(Configuration parameters) {}
 
     public void scheduledFlush(long intervalMillis, String executorName) {
-        Preconditions.checkArgument(intervalMillis > 0, "flush interval must be greater than 0");
+        Preconditions.checkArgument(intervalMillis > 0, "Flush interval must be positive number with long type.");
         scheduler = new ScheduledThreadPoolExecutor(1, new ExecutorThreadFactory(executorName));
         scheduledFuture =
                 scheduler.scheduleWithFixedDelay(
@@ -130,8 +129,7 @@ public abstract class AbstractClickHouseOutputFormat extends RichOutputFormat<Ro
     /** Builder for {@link ClickHouseBatchOutputFormat} and {@link ClickHouseShardOutputFormat}. */
     public static class Builder {
 
-        private static final Logger LOG =
-                LoggerFactory.getLogger(Builder.class);
+        private static final Logger LOG = LoggerFactory.getLogger(Builder.class);
 
         private DataType[] fieldDataTypes;
 
@@ -148,8 +146,7 @@ public abstract class AbstractClickHouseOutputFormat extends RichOutputFormat<Ro
             return this;
         }
 
-        public Builder withFieldDataTypes(
-                DataType[] fieldDataTypes) {
+        public Builder withFieldDataTypes(DataType[] fieldDataTypes) {
             this.fieldDataTypes = fieldDataTypes;
             return this;
         }

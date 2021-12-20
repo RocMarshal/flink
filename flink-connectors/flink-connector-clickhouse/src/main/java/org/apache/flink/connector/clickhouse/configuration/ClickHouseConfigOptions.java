@@ -48,7 +48,7 @@ public class ClickHouseConfigOptions {
             ConfigOptions.key("database-name")
                     .stringType()
                     .defaultValue("default")
-                    .withDescription("The ClickHouse database name. Default to `default`.");
+                    .withDescription("The ClickHouse database name with default value `default`.");
 
     public static final ConfigOption<String> DEFAULT_DATABASE =
             ConfigOptions.key("database-name")

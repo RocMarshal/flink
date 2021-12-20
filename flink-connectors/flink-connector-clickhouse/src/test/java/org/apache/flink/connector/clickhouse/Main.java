@@ -1,9 +1,9 @@
 package org.apache.flink.connector.clickhouse;
 
-import org.apache.flink.shaded.guava30.com.google.common.collect.Lists;
-
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
+
+import org.apache.flink.shaded.guava30.com.google.common.collect.Lists;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -17,7 +17,6 @@ import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.utility.DockerImageName;
 
 public class Main {
-
 
     public static final Logger LOG = LoggerFactory.getLogger(Main.class);
 
@@ -71,13 +70,16 @@ public class Main {
                     .column("col_varbinary", DataTypes.BYTES())
                     .primaryKeyNamed("PRIMARY", Lists.newArrayList("pid"))
                     .build();
-    private static final DockerImageName DEFAULT_IMAGE_NAME = DockerImageName.parse("yandex/clickhouse-server:18.10.3");
-    public static final ClickHouseContainer CLICKHOUSE_CONTAINER = (ClickHouseContainer) new ClickHouseContainer(DEFAULT_IMAGE_NAME).withLogConsumer(new Slf4jLogConsumer(LOG));
+    private static final DockerImageName DEFAULT_IMAGE_NAME =
+            DockerImageName.parse("yandex/clickhouse-server:18.10.3");
+    public static final ClickHouseContainer CLICKHOUSE_CONTAINER =
+            (ClickHouseContainer)
+                    new ClickHouseContainer(DEFAULT_IMAGE_NAME)
+                            .withLogConsumer(new Slf4jLogConsumer(LOG));
 
     protected static String baseUrl;
 
-    @Rule
-    public ExpectedException exception = ExpectedException.none();
+    @Rule public ExpectedException exception = ExpectedException.none();
 
     @BeforeClass
     public static void launchContainer() {
@@ -86,7 +88,8 @@ public class Main {
                 CLICKHOUSE_CONTAINER
                         .getJdbcUrl()
                         .substring(0, CLICKHOUSE_CONTAINER.getJdbcUrl().lastIndexOf("/"));
-//        catalog = new MySQLCatalog(TEST_CATALOG_NAME, TEST_DB, TEST_USERNAME, TEST_PWD, baseUrl);
+        //        catalog = new MySQLCatalog(TEST_CATALOG_NAME, TEST_DB, TEST_USERNAME, TEST_PWD,
+        // baseUrl);
     }
 
     @AfterClass

@@ -30,7 +30,7 @@ public class ClickHouseUtil {
             database = database != null ? database : "";
             return "jdbc:" + (new URIBuilder(url)).setPath("/" + database).build().toString();
         } catch (Exception e) {
-            throw new IllegalStateException(String.format("Cannot parse url: %s", url), e);
+            throw new IllegalStateException(String.format("Cannot parse url: %s.", url), e);
         }
     }
 }

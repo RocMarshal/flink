@@ -93,8 +93,7 @@ public class ClickHouseRowConverter implements Serializable {
         }
     }
 
-    protected DeserializationConverter createToInternalConverter(
-            LogicalType type) {
+    protected DeserializationConverter createToInternalConverter(LogicalType type) {
         switch (type.getTypeRoot()) {
             case NULL:
                 return val -> null;
@@ -143,8 +142,7 @@ public class ClickHouseRowConverter implements Serializable {
         }
     }
 
-    protected SerializationConverter createToExternalConverter(
-            LogicalType type) {
+    protected SerializationConverter createToExternalConverter(LogicalType type) {
         switch (type.getTypeRoot()) {
             case BOOLEAN:
                 return (val, index, statement) ->

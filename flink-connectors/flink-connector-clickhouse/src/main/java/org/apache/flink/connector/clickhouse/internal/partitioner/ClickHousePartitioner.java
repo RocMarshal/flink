@@ -22,8 +22,6 @@ import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.RowData.FieldGetter;
 
-import java.io.Serializable;
-
 /** ClickHouse data partitioner interface. */
 public interface ClickHousePartitioner extends Partitioner<RowData> {
 
