@@ -25,8 +25,6 @@ import org.apache.flink.shaded.guava30.com.google.common.collect.Lists;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.rules.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.MySQLContainer;
@@ -118,7 +116,6 @@ public class MySQLCatalogTestBase {
 
     protected static String baseUrl;
 
-    @Rule public ExpectedException exception = ExpectedException.none();
     protected static MySQLCatalog catalog;
 
     @BeforeClass
