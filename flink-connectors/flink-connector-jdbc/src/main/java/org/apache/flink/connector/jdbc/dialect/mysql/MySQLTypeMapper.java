@@ -110,13 +110,18 @@ public class MySQLTypeMapper implements JdbcDialectTypeMapper {
         switch (mysqlType) {
             case MYSQL_BIT:
                 return DataTypes.BOOLEAN();
+            /**
+             * todo roc Flink supports BINARY and VARBINARY, can we do this more fine-grained?
+             */
             case MYSQL_TINYBLOB:
             case MYSQL_MEDIUMBLOB:
             case MYSQL_BLOB:
             case MYSQL_LONGBLOB:
-            case MYSQL_VARBINARY:
-            case MYSQL_BINARY:
                 return DataTypes.BYTES();
+            case MYSQL_VARBINARY:
+                return DataTypes.VARBINARY(precision);
+            case MYSQL_BINARY:
+                return DataTypes.BINARY(precision);
             case MYSQL_TINYINT:
                 return DataTypes.TINYINT();
             case MYSQL_TINYINT_UNSIGNED:
@@ -150,10 +155,12 @@ public class MySQLTypeMapper implements JdbcDialectTypeMapper {
                 LOG.warn("{} will probably cause value overflow.", MYSQL_DOUBLE_UNSIGNED);
                 return DataTypes.DOUBLE();
             case MYSQL_CHAR:
+                return DataTypes.CHAR(precision);
             case MYSQL_VARCHAR:
             case MYSQL_TINYTEXT:
             case MYSQL_MEDIUMTEXT:
             case MYSQL_TEXT:
+                return DataTypes.VARCHAR(precision);
             case MYSQL_JSON:
                 return DataTypes.STRING();
             case MYSQL_LONGTEXT:
