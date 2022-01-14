@@ -54,16 +54,16 @@ public class RabbitMQConnectionConfig implements Serializable {
     private String password;
     private String uri;
 
-    private Integer networkRecoveryInterval;
-    private Boolean automaticRecovery;
-    private Boolean topologyRecovery;
+    private final Integer networkRecoveryInterval;
+    private final Boolean automaticRecovery;
+    private final Boolean topologyRecovery;
 
-    private Integer connectionTimeout;
-    private Integer requestedChannelMax;
-    private Integer requestedFrameMax;
-    private Integer requestedHeartbeat;
+    private final Integer connectionTimeout;
+    private final Integer requestedChannelMax;
+    private final Integer requestedFrameMax;
+    private final Integer requestedHeartbeat;
 
-    private Integer prefetchCount;
+    private final Integer prefetchCount;
 
     /**
      * @param host host name

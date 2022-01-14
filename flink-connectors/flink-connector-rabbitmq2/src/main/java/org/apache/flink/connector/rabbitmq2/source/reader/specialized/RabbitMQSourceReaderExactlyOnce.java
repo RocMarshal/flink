@@ -63,6 +63,7 @@ public class RabbitMQSourceReaderExactlyOnce<T> extends RabbitMQSourceReaderBase
     private final List<RabbitMQSourceMessageWrapper<T>>
             polledAndUnacknowledgedMessagesSinceLastCheckpoint;
 
+    //todo  校验逻辑是否正确
     // All message in polledAndUnacknowledgedMessagesSinceLastCheckpoint will move to hear when
     // a new checkpoint is created and therefore the messages can be mapped to it. This mapping is
     // necessary to ensure we acknowledge only message which belong to a completed checkpoint.
@@ -109,7 +110,7 @@ public class RabbitMQSourceReaderExactlyOnce<T> extends RabbitMQSourceReaderBase
 
         if (correlationIds.add(correlationId)) {
             // Handle the message only if the correlation id hasn't been seen before.
-            // The message will follow the normal process and be acknowledge when it got polled.
+            // The message will follow the normal process and be acknowledged when it got polled.
             super.handleMessageReceivedCallback(consumerTag, delivery);
         } else {
             // Otherwise, store the new delivery-tag for later acknowledgments. The correlation id

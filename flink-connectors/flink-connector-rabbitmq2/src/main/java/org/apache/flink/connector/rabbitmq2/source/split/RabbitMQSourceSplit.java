@@ -30,8 +30,8 @@ import static java.util.Objects.requireNonNull;
 /**
  * This split is passed by the {@link RabbitMQSourceEnumerator} to the SourceReader. It contains the
  * configuration for the connection and the name of the queue to connect to. In case of exactly-once
- * the correlation ids for deduplication of messages might contain data. They are fIt might contain
- * data ife single reader fails and a new reader needs to be * created.
+ * the correlation ids for deduplication of messages might contain data. They are fit might contain
+ * data if single reader fails and a new reader needs to be created.
  */
 public class RabbitMQSourceSplit implements SourceSplit {
 
@@ -53,7 +53,7 @@ public class RabbitMQSourceSplit implements SourceSplit {
     }
 
     /**
-     * Create a copy of the the split.
+     * Create a copy of the split.
      *
      * @return RabbitMQSourceSplit which is a copy of this split.
      */
