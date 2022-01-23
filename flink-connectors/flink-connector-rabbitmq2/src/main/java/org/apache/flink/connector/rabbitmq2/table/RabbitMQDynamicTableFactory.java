@@ -27,7 +27,8 @@ import org.apache.flink.table.factories.DynamicTableSourceFactory;
 
 import java.util.Set;
 
-public class RabbitMQDynamicTableFactory implements DynamicTableSourceFactory, DynamicTableSinkFactory {
+public class RabbitMQDynamicTableFactory
+        implements DynamicTableSourceFactory, DynamicTableSinkFactory {
     @Override
     public DynamicTableSource createDynamicTableSource(Context context) {
         return null;

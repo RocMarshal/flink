@@ -28,6 +28,7 @@ import java.io.Serializable;
 import java.net.URISyntaxException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
@@ -54,16 +55,60 @@ public class RabbitMQConnectionConfig implements Serializable {
     private String password;
     private String uri;
 
-    private Integer networkRecoveryInterval;
-    private Boolean automaticRecovery;
-    private Boolean topologyRecovery;
+    private final Integer networkRecoveryInterval;
+    private final Boolean automaticRecovery;
+    private final Boolean topologyRecovery;
 
-    private Integer connectionTimeout;
-    private Integer requestedChannelMax;
-    private Integer requestedFrameMax;
-    private Integer requestedHeartbeat;
+    private final Integer connectionTimeout;
+    private final Integer requestedChannelMax;
+    private final Integer requestedFrameMax;
+    private final Integer requestedHeartbeat;
 
-    private Integer prefetchCount;
+    private final Integer prefetchCount;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final RabbitMQConnectionConfig that = (RabbitMQConnectionConfig) o;
+        return Objects.equals(host, that.host)
+                && Objects.equals(port, that.port)
+                && Objects.equals(virtualHost, that.virtualHost)
+                && Objects.equals(username, that.username)
+                && Objects.equals(password, that.password)
+                && Objects.equals(uri, that.uri)
+                && Objects.equals(networkRecoveryInterval, that.networkRecoveryInterval)
+                && Objects.equals(automaticRecovery, that.automaticRecovery)
+                && Objects.equals(topologyRecovery, that.topologyRecovery)
+                && Objects.equals(connectionTimeout, that.connectionTimeout)
+                && Objects.equals(requestedChannelMax, that.requestedChannelMax)
+                && Objects.equals(requestedFrameMax, that.requestedFrameMax)
+                && Objects.equals(requestedHeartbeat, that.requestedHeartbeat)
+                && Objects.equals(prefetchCount, that.prefetchCount);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                host,
+                port,
+                virtualHost,
+                username,
+                password,
+                uri,
+                networkRecoveryInterval,
+                automaticRecovery,
+                topologyRecovery,
+                connectionTimeout,
+                requestedChannelMax,
+                requestedFrameMax,
+                requestedHeartbeat,
+                prefetchCount);
+    }
 
     /**
      * @param host host name

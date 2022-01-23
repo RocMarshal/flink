@@ -18,9 +18,9 @@
 
 package org.apache.flink.connector.rabbitmq2.source.reader.specialized;
 
-import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.connector.rabbitmq2.source.reader.RabbitMQSourceReaderBase;
+import org.apache.flink.connector.rabbitmq2.source.reader.deserialization.RabbitMQDeserializationSchema;
 
 /**
  * The RabbitMQSourceReaderAtMostOnce provides at-most-once guarantee. Messages are automatically
@@ -34,7 +34,7 @@ public class RabbitMQSourceReaderAtMostOnce<T> extends RabbitMQSourceReaderBase<
 
     public RabbitMQSourceReaderAtMostOnce(
             SourceReaderContext sourceReaderContext,
-            DeserializationSchema<T> deliveryDeserializer) {
+            RabbitMQDeserializationSchema<T> deliveryDeserializer) {
         super(sourceReaderContext, deliveryDeserializer);
     }
 

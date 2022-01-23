@@ -23,6 +23,7 @@ import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.rabbitmq2.sink.RabbitMQSink;
 import org.apache.flink.connector.rabbitmq2.source.RabbitMQSource;
+import org.apache.flink.connector.rabbitmq2.source.reader.deserialization.RabbitMQDeserializationSchemaWrapper;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -126,7 +127,9 @@ public abstract class RabbitMQBaseTest {
                 RabbitMQSource.<String>builder()
                         .setConnectionConfig(connectionConfig)
                         .setQueueName(queueName)
-                        .setDeserializationSchema(new SimpleStringSchema())
+                        .setDeserializationSchema(
+                                new RabbitMQDeserializationSchemaWrapper<>(
+                                        new SimpleStringSchema()))
                         .setConsistencyMode(consistencyMode)
                         .build();
 

@@ -18,11 +18,11 @@
 
 package org.apache.flink.connector.rabbitmq2.source.reader.specialized;
 
-import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.connector.rabbitmq2.source.common.RabbitMQSourceMessageWrapper;
 import org.apache.flink.connector.rabbitmq2.source.reader.RabbitMQSourceReaderBase;
+import org.apache.flink.connector.rabbitmq2.source.reader.deserialization.RabbitMQDeserializationSchema;
 import org.apache.flink.connector.rabbitmq2.source.split.RabbitMQSourceSplit;
 import org.apache.flink.util.Preconditions;
 
@@ -76,7 +76,7 @@ public class RabbitMQSourceReaderExactlyOnce<T> extends RabbitMQSourceReaderBase
 
     public RabbitMQSourceReaderExactlyOnce(
             SourceReaderContext sourceReaderContext,
-            DeserializationSchema<T> deliveryDeserializer) {
+            RabbitMQDeserializationSchema<T> deliveryDeserializer) {
         super(sourceReaderContext, deliveryDeserializer);
         this.polledAndUnacknowledgedMessagesSinceLastCheckpoint =
                 Collections.synchronizedList(new ArrayList<>());
@@ -96,7 +96,7 @@ public class RabbitMQSourceReaderExactlyOnce<T> extends RabbitMQSourceReaderBase
 
     @Override
     protected void handleMessageReceivedCallback(String consumerTag, Delivery delivery)
-            throws IOException {
+            throws Exception {
         AMQP.BasicProperties properties = delivery.getProperties();
         String correlationId = properties.getCorrelationId();
         Preconditions.checkNotNull(

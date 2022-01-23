@@ -18,11 +18,11 @@
 
 package org.apache.flink.connector.rabbitmq2.source.reader.specialized;
 
-import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.connector.rabbitmq2.source.common.RabbitMQSourceMessageWrapper;
 import org.apache.flink.connector.rabbitmq2.source.reader.RabbitMQSourceReaderBase;
+import org.apache.flink.connector.rabbitmq2.source.reader.deserialization.RabbitMQDeserializationSchema;
 import org.apache.flink.connector.rabbitmq2.source.split.RabbitMQSourceSplit;
 
 import java.io.IOException;
@@ -58,7 +58,7 @@ public class RabbitMQSourceReaderAtLeastOnce<T> extends RabbitMQSourceReaderBase
 
     public RabbitMQSourceReaderAtLeastOnce(
             SourceReaderContext sourceReaderContext,
-            DeserializationSchema<T> deliveryDeserializer) {
+            RabbitMQDeserializationSchema<T> deliveryDeserializer) {
         super(sourceReaderContext, deliveryDeserializer);
         this.polledAndUnacknowledgedMessageIds = Collections.synchronizedList(new ArrayList<>());
         this.polledAndUnacknowledgedMessageIdsPerCheckpoint = new LinkedBlockingQueue<>();

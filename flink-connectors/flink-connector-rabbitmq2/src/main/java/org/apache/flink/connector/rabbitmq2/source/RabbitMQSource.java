@@ -33,6 +33,7 @@ import org.apache.flink.connector.rabbitmq2.source.enumerator.RabbitMQSourceEnum
 import org.apache.flink.connector.rabbitmq2.source.enumerator.RabbitMQSourceEnumStateSerializer;
 import org.apache.flink.connector.rabbitmq2.source.enumerator.RabbitMQSourceEnumerator;
 import org.apache.flink.connector.rabbitmq2.source.reader.RabbitMQSourceReaderBase;
+import org.apache.flink.connector.rabbitmq2.source.reader.deserialization.RabbitMQDeserializationSchema;
 import org.apache.flink.connector.rabbitmq2.source.reader.specialized.RabbitMQSourceReaderAtLeastOnce;
 import org.apache.flink.connector.rabbitmq2.source.reader.specialized.RabbitMQSourceReaderAtMostOnce;
 import org.apache.flink.connector.rabbitmq2.source.reader.specialized.RabbitMQSourceReaderExactlyOnce;
@@ -97,13 +98,13 @@ public class RabbitMQSource<T>
 
     private final RabbitMQConnectionConfig connectionConfig;
     private final String queueName;
-    private final DeserializationSchema<T> deserializationSchema;
+    private final RabbitMQDeserializationSchema<T> deserializationSchema;
     private final ConsistencyMode consistencyMode;
 
     private RabbitMQSource(
             RabbitMQConnectionConfig connectionConfig,
             String queueName,
-            DeserializationSchema<T> deserializationSchema,
+            RabbitMQDeserializationSchema<T> deserializationSchema,
             ConsistencyMode consistencyMode) {
         this.connectionConfig = requireNonNull(connectionConfig);
         this.queueName = requireNonNull(queueName);
@@ -244,7 +245,7 @@ public class RabbitMQSource<T>
         // Name of the queue to consume from.
         private String queueName;
         // The deserializer for the messages of RabbitMQ.
-        private DeserializationSchema<T> deserializationSchema;
+        private RabbitMQDeserializationSchema<T> deserializationSchema;
         // The consistency mode for the source.
         private ConsistencyMode consistencyMode;
 
@@ -290,7 +291,7 @@ public class RabbitMQSource<T>
          * @see DeserializationSchema
          */
         public RabbitMQSourceBuilder<T> setDeserializationSchema(
-                DeserializationSchema<T> deserializationSchema) {
+                RabbitMQDeserializationSchema<T> deserializationSchema) {
             this.deserializationSchema = deserializationSchema;
             return this;
         }

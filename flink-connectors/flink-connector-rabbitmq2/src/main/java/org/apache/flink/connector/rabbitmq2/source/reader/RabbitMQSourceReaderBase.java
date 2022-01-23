@@ -18,12 +18,12 @@
 
 package org.apache.flink.connector.rabbitmq2.source.reader;
 
-import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.connector.rabbitmq2.source.common.RabbitMQSourceMessageWrapper;
 import org.apache.flink.connector.rabbitmq2.source.enumerator.RabbitMQSourceEnumerator;
+import org.apache.flink.connector.rabbitmq2.source.reader.deserialization.RabbitMQDeserializationSchema;
 import org.apache.flink.connector.rabbitmq2.source.split.RabbitMQSourceSplit;
 import org.apache.flink.core.io.InputStatus;
 
@@ -61,13 +61,13 @@ public abstract class RabbitMQSourceReaderBase<T> implements SourceReader<T, Rab
 
     private final SourceReaderContext sourceReaderContext;
     // The deserialization schema for the messages of RabbitMQ.
-    private final DeserializationSchema<T> deliveryDeserializer;
+    private final RabbitMQDeserializationSchema<T> deliveryDeserializer;
     // The collector keeps the messages received from RabbitMQ.
     private final RabbitMQCollector<T> collector;
 
     public RabbitMQSourceReaderBase(
             SourceReaderContext sourceReaderContext,
-            DeserializationSchema<T> deliveryDeserializer) {
+            RabbitMQDeserializationSchema<T> deliveryDeserializer) {
         this.sourceReaderContext = requireNonNull(sourceReaderContext);
         this.deliveryDeserializer = requireNonNull(deliveryDeserializer);
         this.collector = new RabbitMQCollector<>();
@@ -109,13 +109,12 @@ public abstract class RabbitMQSourceReaderBase<T> implements SourceReader<T, Rab
      * @throws IOException if something fails during deserialization.
      */
     protected void handleMessageReceivedCallback(String consumerTag, Delivery delivery)
-            throws IOException {
+            throws Exception {
 
         AMQP.BasicProperties properties = delivery.getProperties();
-        byte[] body = delivery.getBody();
         Envelope envelope = delivery.getEnvelope();
         collector.setMessageIdentifiers(properties.getCorrelationId(), envelope.getDeliveryTag());
-        deliveryDeserializer.deserialize(body, collector);
+        deliveryDeserializer.deserialize(delivery, collector);
     }
 
     protected void setupChannel() throws IOException {
@@ -128,7 +127,14 @@ public abstract class RabbitMQSourceReaderBase<T> implements SourceReader<T, Rab
             rmqChannel.basicQos(getSplit().getConnectionConfig().getPrefetchCount().get(), false);
         }
 
-        final DeliverCallback deliverCallback = this::handleMessageReceivedCallback;
+        final DeliverCallback deliverCallback =
+                (consumerTag1, delivery) -> {
+                    try {
+                        handleMessageReceivedCallback(consumerTag1, delivery);
+                    } catch (Exception e) {
+                        LOG.error("Error in handleMessageReceivedCallback.", e);
+                    }
+                };
         rmqChannel.basicConsume(
                 split.getQueueName(), isAutoAck(), deliverCallback, consumerTag -> {});
     }
