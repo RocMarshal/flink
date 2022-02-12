@@ -20,12 +20,17 @@ package org.apache.flink.connector.jdbc.catalog;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.table.catalog.CatalogBaseTable;
 import org.apache.flink.table.catalog.CatalogDatabase;
 import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.catalog.exceptions.CatalogException;
 import org.apache.flink.table.catalog.exceptions.DatabaseNotExistException;
 import org.apache.flink.table.catalog.exceptions.TableNotExistException;
+import org.apache.flink.table.factories.CatalogFactory;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -33,51 +38,23 @@ import java.util.List;
 @PublicEvolving
 public class JdbcCatalog extends AbstractJdbcCatalog {
 
+    private static final Logger LOG = LoggerFactory.getLogger(JdbcCatalog.class);
+
     private final AbstractJdbcCatalog internal;
 
-    /**
-     * Creates a JdbcCatalog.
-     *
-     * @deprecated please use {@link JdbcCatalog#JdbcCatalog(ClassLoader, String, String, String,
-     *     String, String)} instead.
-     */
-    public JdbcCatalog(
-            String catalogName,
-            String defaultDatabase,
-            String username,
-            String pwd,
-            String baseUrl) {
-        this(
-                Thread.currentThread().getContextClassLoader(),
-                catalogName,
-                defaultDatabase,
-                username,
-                pwd,
-                baseUrl);
-    }
-
-    /**
-     * Creates a JdbcCatalog.
-     *
-     * @param userClassLoader the classloader used to load JDBC driver
-     * @param catalogName the registered catalog name
-     * @param defaultDatabase the default database name
-     * @param username the username used to connect the database
-     * @param pwd the password used to connect the database
-     * @param baseUrl the base URL of the database, e.g. jdbc:mysql://localhost:3306
-     */
-    public JdbcCatalog(
-            ClassLoader userClassLoader,
-            String catalogName,
-            String defaultDatabase,
-            String username,
-            String pwd,
-            String baseUrl) {
-        super(userClassLoader, catalogName, defaultDatabase, username, pwd, baseUrl);
+    public JdbcCatalog(CatalogFactory.Context context, ReadableConfig config) {
+        super(Thread.currentThread().getContextClassLoader(), context, config);
 
         internal =
                 JdbcCatalogUtils.createCatalog(
-                        userClassLoader, catalogName, defaultDatabase, username, pwd, baseUrl);
+                        Thread.currentThread().getContextClassLoader(), context, config);
+    }
+
+    public JdbcCatalog(
+            ClassLoader classLoader, CatalogFactory.Context context, ReadableConfig config) {
+        super(classLoader, context, config);
+
+        internal = JdbcCatalogUtils.createCatalog(classLoader, context, config);
     }
 
     // ------ databases -----

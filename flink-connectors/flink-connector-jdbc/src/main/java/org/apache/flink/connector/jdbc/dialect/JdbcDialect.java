@@ -19,8 +19,11 @@
 package org.apache.flink.connector.jdbc.dialect;
 
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.configuration.ReadableConfig;
+import org.apache.flink.connector.jdbc.catalog.AbstractJdbcCatalog;
 import org.apache.flink.connector.jdbc.converter.JdbcRowConverter;
 import org.apache.flink.table.api.ValidationException;
+import org.apache.flink.table.factories.CatalogFactory;
 import org.apache.flink.table.types.logical.RowType;
 
 import java.io.Serializable;
@@ -154,4 +157,12 @@ public interface JdbcDialect extends Serializable {
     default String appendDefaultUrlProperties(String url) {
         return url;
     }
+
+    /**
+     * Constructs a catalog.
+     *
+     * @return A catalog based on the current SQL dialect.
+     */
+    AbstractJdbcCatalog createCatalog(
+            ClassLoader classLoader, CatalogFactory.Context context, ReadableConfig config);
 }

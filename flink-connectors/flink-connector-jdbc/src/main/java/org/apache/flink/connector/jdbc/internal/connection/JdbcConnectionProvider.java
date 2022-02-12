@@ -18,15 +18,36 @@
 package org.apache.flink.connector.jdbc.internal.connection;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.connector.jdbc.xa.XaFacade;
 
 import javax.annotation.Nullable;
 
+import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
 
 /** JDBC connection provider. */
 @Internal
-public interface JdbcConnectionProvider {
+public interface JdbcConnectionProvider extends Serializable {
+
+    default Collection<Connection> getOrCreateShardConnections(
+            String remoteCluster, String remoteDataBase) throws SQLException {
+        return Collections.emptyList();
+    }
+
+    Connection getOrCreateShardConnection(String url, String database) throws SQLException;
+
+    default List<String> getShardUrls(String remoteCluster) throws SQLException {
+        return new ArrayList<>();
+    }
+
+    void closeConnections();
+
     /**
      * Get existing connection.
      *
@@ -34,6 +55,16 @@ public interface JdbcConnectionProvider {
      */
     @Nullable
     Connection getConnection();
+
+    /**
+     * Get existing connection properties.
+     *
+     * @return existing connection properties
+     */
+    @Nullable
+    default Properties getProperties() {
+        return new Properties();
+    }
 
     /**
      * Check whether possible existing connection is valid or not through {@link
@@ -64,4 +95,14 @@ public interface JdbcConnectionProvider {
      * @throws ClassNotFoundException driver class not found
      */
     Connection reestablishConnection() throws SQLException, ClassNotFoundException;
+
+    /**
+     * Convert the current connection provider into a xa-connection provider.
+     *
+     * @return XaFacade.
+     */
+    default XaFacade convertXaConnection() {
+        throw new UnsupportedOperationException(
+                "The current implementation doesn't support the method.");
+    }
 }

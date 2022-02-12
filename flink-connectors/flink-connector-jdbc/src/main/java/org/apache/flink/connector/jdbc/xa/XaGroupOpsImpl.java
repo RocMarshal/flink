@@ -19,6 +19,7 @@ package org.apache.flink.connector.jdbc.xa;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.functions.RuntimeContext;
+import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.connector.jdbc.xa.XaFacade.TransientXaException;
 
 import org.slf4j.Logger;
@@ -31,8 +32,9 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
+/** XaGroupOpsImpl. */
 @Internal
-class XaGroupOpsImpl implements XaGroupOps {
+public class XaGroupOpsImpl implements XaGroupOps {
 
     private static final long serialVersionUID = 1L;
 
@@ -40,7 +42,7 @@ class XaGroupOpsImpl implements XaGroupOps {
 
     private final XaFacade xaFacade;
 
-    XaGroupOpsImpl(XaFacade xaFacade) {
+    public XaGroupOpsImpl(XaFacade xaFacade) {
         this.xaFacade = xaFacade;
     }
 
@@ -115,6 +117,25 @@ class XaGroupOpsImpl implements XaGroupOps {
             if (xidGenerator.belongsToSubtask(xid, runtimeContext)) {
                 try {
                     xaFacade.rollback(xid);
+                } catch (Exception e) {
+                    LOG.info("unable to rollback recovered transaction, xid={}", xid, e);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void recoverAndRollback(Sink.InitContext initContext, XidGenerator xidGenerator) {
+        Collection<Xid> recovered = xaFacade.recover();
+        if (recovered.isEmpty()) {
+            return;
+        }
+        LOG.warn("rollback {} recovered transactions", recovered.size());
+        for (Xid xid : recovered) {
+            if (xidGenerator.belongsToSubtask(xid, initContext)) {
+                try {
+                    xaFacade.rollback(xid);
+                    LOG.debug("rollback:______{}", xid);
                 } catch (Exception e) {
                     LOG.info("unable to rollback recovered transaction, xid={}", xid, e);
                 }

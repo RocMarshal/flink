@@ -17,7 +17,10 @@
 
 package org.apache.flink.streaming.runtime.operators.sink;
 
+import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.eventtime.TimestampAssigner;
+import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.operators.MailboxExecutor;
 import org.apache.flink.api.common.serialization.SerializationSchema.InitializationContext;
 import org.apache.flink.api.common.state.ListState;
@@ -327,6 +330,16 @@ class SinkWriterOperator<InputT, CommT> extends AbstractStreamOperator<Committab
         }
 
         @Override
+        public JobID getJobId() {
+            return runtimeContext.getJobId();
+        }
+
+        @Override
+        public ExecutionConfig getExecutionConfig() {
+            return runtimeContext.getExecutionConfig();
+        }
+
+        @Override
         public int getNumberOfParallelSubtasks() {
             return runtimeContext.getNumberOfParallelSubtasks();
         }
@@ -345,6 +358,10 @@ class SinkWriterOperator<InputT, CommT> extends AbstractStreamOperator<Committab
         @Override
         public int getSubtaskId() {
             return runtimeContext.getIndexOfThisSubtask();
+        }
+
+        public RuntimeContext getRuntimeContext() {
+            return runtimeContext;
         }
 
         @Override

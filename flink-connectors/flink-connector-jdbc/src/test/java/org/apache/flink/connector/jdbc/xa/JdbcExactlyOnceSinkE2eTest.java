@@ -218,6 +218,7 @@ public class JdbcExactlyOnceSinkE2eTest extends JdbcTestBase {
                                 JdbcExecutionOptions.builder().withMaxRetries(0).build(),
                                 JdbcExactlyOnceOptions.builder()
                                         .withTransactionPerConnection(true)
+                                        .withRecoveredAndRollback(true)
                                         .build(),
                                 this.dbEnv.getDataSourceSupplier()));
 
@@ -471,7 +472,7 @@ public class JdbcExactlyOnceSinkE2eTest extends JdbcTestBase {
                                     new CountDownLatch(
                                             getRuntimeContext().getNumberOfParallelSubtasks()))
                     .countDown();
-            LOG.debug("Mapper will fail after {} records", remaining);
+            LOG.debug("OPEN Mapper will fail after {} records", remaining);
         }
 
         @Override
@@ -480,6 +481,7 @@ public class JdbcExactlyOnceSinkE2eTest extends JdbcTestBase {
                 LOG.debug("Mapper failing intentionally");
                 throw new TestException();
             }
+            LOG.debug("____Mapper failing after {} records", remaining);
             return value;
         }
     }

@@ -18,11 +18,15 @@
 
 package org.apache.flink.connector.jdbc.dialect.oracle;
 
+import org.apache.flink.configuration.ReadableConfig;
+import org.apache.flink.connector.jdbc.catalog.AbstractJdbcCatalog;
 import org.apache.flink.connector.jdbc.converter.JdbcRowConverter;
 import org.apache.flink.connector.jdbc.dialect.AbstractDialect;
 import org.apache.flink.connector.jdbc.internal.converter.OracleRowConverter;
+import org.apache.flink.table.factories.CatalogFactory;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.table.types.logical.RowType;
+import org.apache.flink.util.FlinkRuntimeException;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -158,5 +162,11 @@ class OracleDialect extends AbstractDialect {
                 LogicalTypeRoot.TIMESTAMP_WITHOUT_TIME_ZONE,
                 LogicalTypeRoot.TIMESTAMP_WITH_LOCAL_TIME_ZONE,
                 LogicalTypeRoot.ARRAY);
+    }
+
+    @Override
+    public AbstractJdbcCatalog createCatalog(
+            ClassLoader classLoader, CatalogFactory.Context context, ReadableConfig config) {
+        throw new FlinkRuntimeException("No implementations of OracleCatalog now.");
     }
 }

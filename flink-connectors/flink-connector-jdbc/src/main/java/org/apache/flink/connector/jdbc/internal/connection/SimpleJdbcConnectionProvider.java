@@ -23,6 +23,7 @@ import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.io.Serializable;
@@ -30,7 +31,9 @@ import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Properties;
 
 /** Simple JDBC connection provider. */
@@ -65,6 +68,34 @@ public class SimpleJdbcConnectionProvider implements JdbcConnectionProvider, Ser
     @Override
     public Connection getConnection() {
         return connection;
+    }
+
+    @Override
+    public Collection<Connection> getOrCreateShardConnections(
+            String remoteCluster, String remoteDataBase) throws SQLException {
+        return null;
+    }
+
+    @Override
+    public Connection getOrCreateShardConnection(String url, String database) throws SQLException {
+        return null;
+    }
+
+    @Override
+    public List<String> getShardUrls(String remoteCluster) throws SQLException {
+        return null;
+    }
+
+    @Override
+    public void closeConnections() {}
+
+    @Nullable
+    @Override
+    public Properties getProperties() {
+        Properties info = jdbcOptions.getExtendProps();
+        jdbcOptions.getUsername().ifPresent(user -> info.setProperty("user", user));
+        jdbcOptions.getPassword().ifPresent(password -> info.setProperty("password", password));
+        return info;
     }
 
     @Override
@@ -115,10 +146,7 @@ public class SimpleJdbcConnectionProvider implements JdbcConnectionProvider, Ser
                             jdbcOptions.getPassword().orElse(null));
         } else {
             Driver driver = getLoadedDriver();
-            Properties info = new Properties();
-            jdbcOptions.getUsername().ifPresent(user -> info.setProperty("user", user));
-            jdbcOptions.getPassword().ifPresent(password -> info.setProperty("password", password));
-            connection = driver.connect(jdbcOptions.getDbURL(), info);
+            connection = driver.connect(jdbcOptions.getDbURL(), getProperties());
             if (connection == null) {
                 // Throw same exception as DriverManager.getConnection when no driver found to match
                 // caller expectation.

@@ -191,4 +191,16 @@ class SubtaskCommittableManager<CommT> {
                 subtaskId,
                 checkpointId);
     }
+
+    @Override
+    public String toString() {
+        return "SubtaskCommittableManager{" +
+                "requests=" + requests +
+                ", numExpectedCommittables=" + numExpectedCommittables +
+                ", checkpointId=" + checkpointId +
+                ", subtaskId=" + subtaskId +
+                ", numDrained=" + numDrained +
+                ", numFailed=" + numFailed +
+                '}';
+    }
 }

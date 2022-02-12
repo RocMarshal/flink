@@ -21,11 +21,13 @@ import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeutils.base.array.BytePrimitiveArraySerializer;
 import org.apache.flink.api.connector.sink2.Committer;
+import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.runtime.state.StateInitializationContext;
 import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.streaming.api.connector.sink2.CommittableMessage;
 import org.apache.flink.streaming.api.connector.sink2.CommittableWithLineage;
+import org.apache.flink.streaming.api.connector.sink2.WithPostCommitTopology;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.BoundedOneInput;
@@ -40,9 +42,15 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
 
+import org.apache.flink.util.Preconditions;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.OptionalLong;
 
 import static org.apache.flink.util.IOUtils.closeAll;
@@ -60,9 +68,11 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
         implements OneInputStreamOperator<CommittableMessage<CommT>, CommittableMessage<CommT>>,
                 BoundedOneInput {
 
+    public static final Logger LOGGER = LoggerFactory.getLogger(CommitterOperator.class);
+
     private static final long RETRY_DELAY = 1000;
     private final SimpleVersionedSerializer<CommT> committableSerializer;
-    private final Committer<CommT> committer;
+    private Committer<CommT> committer;
     private final boolean emitDownstream;
     private final boolean isBatchMode;
     private final boolean isCheckpointingEnabled;
@@ -79,6 +89,8 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
     /** The operator's state. */
     private ListState<CommittableCollector<CommT>> committableCollectorState;
 
+    private TwoPhaseCommittingSink<?, CommT> sink;
+
     public CommitterOperator(
             ProcessingTimeService processingTimeService,
             SimpleVersionedSerializer<CommT> committableSerializer,
@@ -94,6 +106,19 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
         this.committer = checkNotNull(committer);
     }
 
+    public CommitterOperator(
+            ProcessingTimeService processingTimeService,
+            TwoPhaseCommittingSink<?, CommT> sink,
+            boolean isBatchMode,
+            boolean isCheckpointingEnabled) {
+        this.emitDownstream = sink instanceof WithPostCommitTopology;
+        this.isBatchMode = isBatchMode;
+        this.sink = Preconditions.checkNotNull(sink);
+        this.isCheckpointingEnabled = isCheckpointingEnabled;
+        this.processingTimeService = checkNotNull(processingTimeService);
+        this.committableSerializer = checkNotNull(sink.getCommittableSerializer());
+    }
+
     @Override
     public void setup(
             StreamTask<?, ?> containingTask,
@@ -101,10 +126,19 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
             Output<StreamRecord<CommittableMessage<CommT>>> output) {
         super.setup(containingTask, config, output);
         committableCollector = CommittableCollector.of(getRuntimeContext());
+        try {
+            if (committer == null) {
+                Preconditions.checkNotNull(sink);
+                this.committer = sink.createCommitter(getRuntimeContext());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void initializeState(StateInitializationContext context) throws Exception {
+        LOGGER.error("{} start____ initializeState from {}", this.getClass().getSimpleName(), context.getRestoredCheckpointId());
         super.initializeState(context);
         committableCollectorState =
                 new SimpleVersionedListState<>(
@@ -114,19 +148,29 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
                                 committableSerializer,
                                 getRuntimeContext().getIndexOfThisSubtask(),
                                 getRuntimeContext().getNumberOfParallelSubtasks()));
+        LOGGER.error("{} during____ initializeState from {}, {}", this.getClass().getSimpleName(), context.getRestoredCheckpointId(), committableCollectorState.get());
         if (context.isRestored()) {
             committableCollectorState.get().forEach(cc -> committableCollector.merge(cc));
             lastCompletedCheckpointId = context.getRestoredCheckpointId().getAsLong();
             // try to re-commit recovered transactions as quickly as possible
+            LOGGER.error("isRestored() {} during____ initializeState from {}, {}", this.getClass().getSimpleName(), context.getRestoredCheckpointId(), committableCollectorState.get());
+
             commitAndEmitCheckpoints();
         }
+        LOGGER.error("{} end____ initializeState from {}", this.getClass().getSimpleName(), context.getRestoredCheckpointId());
     }
 
     @Override
     public void snapshotState(StateSnapshotContext context) throws Exception {
+        LOGGER.error("{} start____ snapshotState, {}", this.getClass().getSimpleName(), context.getCheckpointId());
         super.snapshotState(context);
         // It is important to copy the collector to not mutate the state.
-        committableCollectorState.update(Collections.singletonList(committableCollector.copy()));
+        List<CommittableCollector<CommT>> committableCollectors = Collections.singletonList(
+                committableCollector.copy());
+
+        committableCollectorState.update(committableCollectors);
+
+        LOGGER.error("{} end____{} snapshotState, committableCollectorState {}", this.getClass().getSimpleName(), context.getCheckpointId(), committableCollectors);
     }
 
     @Override
@@ -140,6 +184,7 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
 
     @Override
     public void notifyCheckpointComplete(long checkpointId) throws Exception {
+        LOGGER.error("{} start____ notifyCheckpointComplete, chk {}", this.getClass().getSimpleName(), checkpointId);
         super.notifyCheckpointComplete(checkpointId);
         if (endInput) {
             // This is the final checkpoint, all committables should be committed
@@ -148,12 +193,15 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
             lastCompletedCheckpointId = Math.max(lastCompletedCheckpointId, checkpointId);
         }
         commitAndEmitCheckpoints();
+        LOGGER.error("{} end____ notifyCheckpointComplete, chk {}", this.getClass().getSimpleName(), checkpointId);
     }
 
     private void commitAndEmitCheckpoints() throws IOException, InterruptedException {
+        Collection<? extends CheckpointCommittableManager<CommT>> checkpointCommittablesUpTo = committableCollector.getCheckpointCommittablesUpTo(
+                lastCompletedCheckpointId);
+        LOGGER.error("start______ commitAndEmitCheckpoints {}", checkpointCommittablesUpTo);
         do {
-            for (CheckpointCommittableManager<CommT> manager :
-                    committableCollector.getCheckpointCommittablesUpTo(lastCompletedCheckpointId)) {
+            for (CheckpointCommittableManager<CommT> manager :checkpointCommittablesUpTo) {
                 // wait for all committables of the current manager before submission
                 boolean fullyReceived =
                         !endInput && manager.getCheckpointId() == lastCompletedCheckpointId;

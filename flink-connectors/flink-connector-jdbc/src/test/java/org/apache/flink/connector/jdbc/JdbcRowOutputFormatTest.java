@@ -18,6 +18,7 @@
 
 package org.apache.flink.connector.jdbc;
 
+import org.apache.flink.connector.jdbc.internal.JdbcRowOutputFormat;
 import org.apache.flink.types.Row;
 
 import org.junit.After;

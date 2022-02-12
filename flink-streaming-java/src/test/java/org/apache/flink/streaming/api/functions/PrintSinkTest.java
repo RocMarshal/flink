@@ -17,6 +17,8 @@
 
 package org.apache.flink.streaming.api.functions;
 
+import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.operators.MailboxExecutor;
 import org.apache.flink.api.common.operators.ProcessingTimeService;
 import org.apache.flink.api.common.serialization.SerializationSchema;
@@ -169,6 +171,16 @@ class PrintSinkTest {
         @Override
         public UserCodeClassLoader getUserCodeClassLoader() {
             return SimpleUserCodeClassLoader.create(PrintSinkTest.class.getClassLoader());
+        }
+
+        @Override
+        public JobID getJobId() {
+            return JobID.generate();
+        }
+
+        @Override
+        public ExecutionConfig getExecutionConfig() {
+            return new ExecutionConfig();
         }
 
         @Override

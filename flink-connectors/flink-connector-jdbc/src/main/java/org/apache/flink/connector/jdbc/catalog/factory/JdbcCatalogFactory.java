@@ -69,12 +69,6 @@ public class JdbcCatalogFactory implements CatalogFactory {
                 FactoryUtil.createCatalogFactoryHelper(this, context);
         helper.validate();
 
-        return new JdbcCatalog(
-                context.getClassLoader(),
-                context.getName(),
-                helper.getOptions().get(DEFAULT_DATABASE),
-                helper.getOptions().get(USERNAME),
-                helper.getOptions().get(PASSWORD),
-                helper.getOptions().get(BASE_URL));
+        return new JdbcCatalog(context.getClassLoader(), context, helper.getOptions());
     }
 }

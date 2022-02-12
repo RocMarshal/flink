@@ -18,10 +18,13 @@
 
 package org.apache.flink.connector.jdbc.catalog.factory;
 
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.connector.jdbc.catalog.JdbcCatalog;
 import org.apache.flink.connector.jdbc.catalog.PostgresCatalog;
 import org.apache.flink.table.catalog.Catalog;
 import org.apache.flink.table.catalog.CommonCatalogOptions;
+import org.apache.flink.table.factories.CatalogFactory;
 import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.util.DockerImageVersions;
 
@@ -38,6 +41,10 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.BASE_URL;
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.DEFAULT_DATABASE;
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.PASSWORD;
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.USERNAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Test for {@link JdbcCatalogFactory}. */
@@ -69,14 +76,39 @@ public class JdbcCatalogFactoryTest {
         // jdbc:postgresql://localhost:50807/
         baseUrl = jdbcUrl.substring(0, jdbcUrl.lastIndexOf("/"));
 
+        CatalogFactory.Context context =
+                new CatalogFactory.Context() {
+                    @Override
+                    public String getName() {
+                        return TEST_CATALOG_NAME;
+                    }
+
+                    @Override
+                    public Map<String, String> getOptions() {
+                        return new HashMap<>();
+                    }
+
+                    @Override
+                    public ReadableConfig getConfiguration() {
+                        Configuration cfg = new Configuration();
+                        cfg.set(USERNAME, TEST_USERNAME);
+                        cfg.set(PASSWORD, TEST_PWD);
+                        cfg.set(BASE_URL, baseUrl);
+                        cfg.set(DEFAULT_DATABASE, PostgresCatalog.DEFAULT_DATABASE);
+                        return cfg;
+                    }
+
+                    @Override
+                    public ClassLoader getClassLoader() {
+                        return Thread.currentThread().getContextClassLoader();
+                    }
+                };
+
         catalog =
                 new JdbcCatalog(
                         Thread.currentThread().getContextClassLoader(),
-                        TEST_CATALOG_NAME,
-                        PostgresCatalog.DEFAULT_DATABASE,
-                        TEST_USERNAME,
-                        TEST_PWD,
-                        baseUrl);
+                        context,
+                        context.getConfiguration());
     }
 
     @Test

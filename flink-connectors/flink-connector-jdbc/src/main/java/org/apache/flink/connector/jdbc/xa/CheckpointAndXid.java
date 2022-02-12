@@ -20,6 +20,7 @@ package org.apache.flink.connector.jdbc.xa;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.util.Preconditions;
 
+import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.transaction.xa.Xid;
 
@@ -33,7 +34,7 @@ import java.util.Objects;
 @Internal
 public final class CheckpointAndXid {
     final long checkpointId;
-    final Xid xid;
+    final @Nonnull Xid xid;
     final int attempts;
     final boolean restored;
 
@@ -48,20 +49,32 @@ public final class CheckpointAndXid {
         this.restored = restored;
     }
 
+    public long getCheckpointId() {
+        return checkpointId;
+    }
+
+    public int getAttempts() {
+        return attempts;
+    }
+
+    public boolean isRestored() {
+        return restored;
+    }
+
     @Override
     public String toString() {
         return String.format("checkpointId=%d, xid=%s, restored=%s", checkpointId, xid, restored);
     }
 
-    CheckpointAndXid asRestored() {
+    public CheckpointAndXid asRestored() {
         return restored ? this : new CheckpointAndXid(checkpointId, xid, attempts, true);
     }
 
-    static CheckpointAndXid createRestored(long checkpointId, int attempts, Xid xid) {
+    public static CheckpointAndXid createRestored(long checkpointId, int attempts, Xid xid) {
         return new CheckpointAndXid(checkpointId, xid, attempts, true);
     }
 
-    static CheckpointAndXid createNew(long checkpointId, Xid xid) {
+    public static CheckpointAndXid createNew(long checkpointId, Xid xid) {
         return new CheckpointAndXid(checkpointId, xid, 0, false);
     }
 

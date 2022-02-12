@@ -19,6 +19,7 @@ package org.apache.flink.connector.jdbc.xa;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.functions.RuntimeContext;
+import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.util.FlinkRuntimeException;
 
 import javax.transaction.xa.Xid;
@@ -29,8 +30,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+/** XaGroupOps. */
 @Internal
-interface XaGroupOps extends Serializable {
+public interface XaGroupOps extends Serializable {
 
     GroupXaOperationResult<CheckpointAndXid> commit(
             List<CheckpointAndXid> xids, boolean allowOutOfOrderCommits, int maxCommitAttempts);
@@ -39,6 +41,9 @@ interface XaGroupOps extends Serializable {
 
     void recoverAndRollback(RuntimeContext runtimeContext, XidGenerator xidGenerator);
 
+    void recoverAndRollback(Sink.InitContext initContext, XidGenerator xidGenerator);
+
+    /** GroupXaOperationResult. */
     class GroupXaOperationResult<T> {
         private final List<T> succeeded = new ArrayList<>();
         private final List<T> failed = new ArrayList<>();
@@ -46,18 +51,18 @@ interface XaGroupOps extends Serializable {
         private Optional<Exception> failure = Optional.empty();
         private Optional<Exception> transientFailure = Optional.empty();
 
-        void failedTransiently(T x, XaFacade.TransientXaException e) {
+        public void failedTransiently(T x, XaFacade.TransientXaException e) {
             toRetry.add(x);
             transientFailure =
                     getTransientFailure().isPresent() ? getTransientFailure() : Optional.of(e);
         }
 
-        void failed(T x, Exception e) {
+        public void failed(T x, Exception e) {
             failed.add(x);
             failure = failure.isPresent() ? failure : Optional.of(e);
         }
 
-        void succeeded(T x) {
+        public void succeeded(T x) {
             succeeded.add(x);
         }
 
@@ -71,7 +76,7 @@ interface XaGroupOps extends Serializable {
             return succeeded.size() + failed.size() + toRetry.size();
         }
 
-        List<T> getForRetry() {
+        public List<T> getForRetry() {
             return toRetry;
         }
 

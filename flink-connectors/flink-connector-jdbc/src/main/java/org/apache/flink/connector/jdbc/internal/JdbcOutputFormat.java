@@ -369,15 +369,20 @@ public class JdbcOutputFormat<In, JdbcIn, JdbcExec extends JdbcBatchStatementExe
                 return new JdbcOutputFormat<>(
                         new SimpleJdbcConnectionProvider(options),
                         executionOptionsBuilder.build(),
-                        ctx ->
-                                createSimpleRowExecutor(
+                        new StatementExecutorFactory<JdbcBatchStatementExecutor<Row>>() {
+                            @Override
+                            public JdbcBatchStatementExecutor<Row> apply(RuntimeContext ctx) {
+                                return createSimpleRowExecutor(
                                         sql,
                                         dml.getFieldTypes(),
-                                        ctx.getExecutionConfig().isObjectReuseEnabled()),
-                        tuple2 -> {
-                            Preconditions.checkArgument(tuple2.f0);
-                            return tuple2.f1;
-                        });
+                                        ctx.getExecutionConfig().isObjectReuseEnabled());
+                            }
+                        },
+                        (RecordExtractor<Tuple2<Boolean, Row>, Row>)
+                                tuple2 -> {
+                                    Preconditions.checkArgument(tuple2.f0);
+                                    return tuple2.f1;
+                                });
             }
         }
     }

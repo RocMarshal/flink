@@ -18,8 +18,11 @@
 
 package org.apache.flink.connector.jdbc.catalog;
 
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
+import org.apache.flink.table.factories.CatalogFactory;
 
 import org.apache.flink.shaded.guava30.com.google.common.collect.Lists;
 
@@ -36,6 +39,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.BASE_URL;
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.DEFAULT_DATABASE;
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.PASSWORD;
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.USERNAME;
 
 /** Test base for {@link MySqlCatalog}. */
 public class MySqlCatalogTestBase {
@@ -126,17 +134,43 @@ public class MySqlCatalogTestBase {
                             .withLogConsumer(new Slf4jLogConsumer(LOG));
             container.start();
             MYSQL_CONTAINERS.put(dockerImageName, container);
+            CatalogFactory.Context context =
+                    new CatalogFactory.Context() {
+                        @Override
+                        public String getName() {
+                            return TEST_CATALOG_NAME;
+                        }
+
+                        @Override
+                        public Map<String, String> getOptions() {
+                            return new HashMap<>();
+                        }
+
+                        @Override
+                        public ReadableConfig getConfiguration() {
+                            Configuration cfg = new Configuration();
+                            cfg.set(USERNAME, TEST_USERNAME);
+                            cfg.set(PASSWORD, TEST_PWD);
+                            cfg.set(
+                                    BASE_URL,
+                                    container
+                                            .getJdbcUrl()
+                                            .substring(0, container.getJdbcUrl().lastIndexOf("/")));
+                            cfg.set(DEFAULT_DATABASE, TEST_DB);
+                            return cfg;
+                        }
+
+                        @Override
+                        public ClassLoader getClassLoader() {
+                            return Thread.currentThread().getContextClassLoader();
+                        }
+                    };
             CATALOGS.put(
                     dockerImageName,
                     new MySqlCatalog(
                             Thread.currentThread().getContextClassLoader(),
-                            TEST_CATALOG_NAME,
-                            TEST_DB,
-                            TEST_USERNAME,
-                            TEST_PWD,
-                            container
-                                    .getJdbcUrl()
-                                    .substring(0, container.getJdbcUrl().lastIndexOf("/"))));
+                            context,
+                            context.getConfiguration()));
         }
     }
 

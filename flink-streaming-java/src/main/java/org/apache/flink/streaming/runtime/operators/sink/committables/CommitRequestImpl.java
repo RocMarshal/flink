@@ -96,7 +96,7 @@ public class CommitRequestImpl<CommT> implements Committer.CommitRequest<CommT> 
         state = CommitRequestState.COMMITTED;
     }
 
-    void setSelected() {
+    public void setSelected() {
         state = CommitRequestState.RECEIVED;
     }
 
@@ -108,5 +108,14 @@ public class CommitRequestImpl<CommT> implements Committer.CommitRequest<CommT> 
 
     CommitRequestImpl<CommT> copy() {
         return new CommitRequestImpl<>(committable, numRetries, state);
+    }
+
+    @Override
+    public String toString() {
+        return "CommitRequestImpl{" +
+                "committable=" + committable +
+                ", numRetries=" + numRetries +
+                ", state=" + state +
+                '}';
     }
 }

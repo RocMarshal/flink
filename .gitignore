@@ -22,6 +22,8 @@ tmp
 *.log
 *.pyc
 .DS_Store
+.idea
+.idea-old
 build-target
 **/dependency-reduced-pom.xml
 flink-runtime-web/web-dashboard/node/

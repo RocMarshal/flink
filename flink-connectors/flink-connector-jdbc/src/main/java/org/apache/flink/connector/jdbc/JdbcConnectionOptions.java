@@ -18,12 +18,18 @@
 package org.apache.flink.connector.jdbc;
 
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.connector.base.DeliveryGuarantee;
+import org.apache.flink.connector.jdbc.internal.options.JdbcConnectorOptions;
 import org.apache.flink.util.Preconditions;
+import org.apache.flink.util.function.SerializableSupplier;
 
 import javax.annotation.Nullable;
+import javax.sql.XADataSource;
 
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 
 /** JDBC connection options. */
 @PublicEvolving
@@ -36,19 +42,57 @@ public class JdbcConnectionOptions implements Serializable {
     protected final int connectionCheckTimeoutSeconds;
     @Nullable protected final String username;
     @Nullable protected final String password;
+    @Nullable protected final Properties extendProps;
+    @Nullable protected Boolean autoCommit;
+
+    protected final SerializableSupplier<XADataSource> xaDataSourceSupplier;
+
+    public JdbcConnectorOptions convertJdbcConnectorOptions() {
+        throw new UnsupportedOperationException();
+    }
+
+    public SerializableSupplier<XADataSource> getXaDatasourceSupplier() {
+        return this.xaDataSourceSupplier;
+    }
+
+    public Boolean getAutoCommit() {
+        return autoCommit;
+    }
 
     protected JdbcConnectionOptions(
             String url,
             @Nullable String driverName,
             @Nullable String username,
             @Nullable String password,
-            int connectionCheckTimeoutSeconds) {
+            int connectionCheckTimeoutSeconds,
+            @Nullable Boolean autoCommit,
+            @Nullable Properties extendProps,
+            @Nullable SerializableSupplier<XADataSource> xaDataSourceSupplier) {
         Preconditions.checkArgument(connectionCheckTimeoutSeconds > 0);
-        this.url = Preconditions.checkNotNull(url, "jdbc url is empty");
+        if (xaDataSourceSupplier == null) {
+            this.url = Preconditions.checkNotNull(url, "jdbc url is empty");
+        } else {
+            this.url = null;
+        }
+
         this.driverName = driverName;
         this.username = username;
         this.password = password;
         this.connectionCheckTimeoutSeconds = connectionCheckTimeoutSeconds;
+        this.autoCommit = autoCommit;
+        this.extendProps = extendProps;
+        this.xaDataSourceSupplier = xaDataSourceSupplier;
+    }
+
+    public void checkSemantic(DeliveryGuarantee deliveryGuarantee) {
+        if (DeliveryGuarantee.EXACTLY_ONCE == deliveryGuarantee) {
+            Preconditions.checkArgument(
+                    Objects.nonNull(xaDataSourceSupplier), "Must give a xa datasource supplier.");
+        }
+    }
+
+    public Properties getExtendProps() {
+        return extendProps == null ? new Properties() : extendProps;
     }
 
     public String getDbURL() {
@@ -80,8 +124,24 @@ public class JdbcConnectionOptions implements Serializable {
         private String password;
         private int connectionCheckTimeoutSeconds = 60;
 
+        private Boolean autoCommit;
+
+        protected Properties extendProps;
+
+        protected SerializableSupplier<XADataSource> xaDatasourceSupplier;
+
         public JdbcConnectionOptionsBuilder withUrl(String url) {
             this.url = url;
+            return this;
+        }
+
+        public JdbcConnectionOptionsBuilder withAutoCommit(Boolean autoCommit) {
+            this.autoCommit = autoCommit;
+            return this;
+        }
+
+        public JdbcConnectionOptionsBuilder withExtendProps(Properties extendProps) {
+            this.extendProps = Preconditions.checkNotNull(extendProps, "extendProps");
             return this;
         }
 
@@ -100,6 +160,12 @@ public class JdbcConnectionOptions implements Serializable {
             return this;
         }
 
+        public JdbcConnectionOptionsBuilder withXaDatasourceSupplier(
+                SerializableSupplier<XADataSource> xaDatasourceSupplier) {
+            this.xaDatasourceSupplier = xaDatasourceSupplier;
+            return this;
+        }
+
         /**
          * Set the maximum timeout between retries, default is 60 seconds.
          *
@@ -114,7 +180,14 @@ public class JdbcConnectionOptions implements Serializable {
 
         public JdbcConnectionOptions build() {
             return new JdbcConnectionOptions(
-                    url, driverName, username, password, connectionCheckTimeoutSeconds);
+                    url,
+                    driverName,
+                    username,
+                    password,
+                    connectionCheckTimeoutSeconds,
+                    autoCommit,
+                    extendProps,
+                    xaDatasourceSupplier);
         }
     }
 }

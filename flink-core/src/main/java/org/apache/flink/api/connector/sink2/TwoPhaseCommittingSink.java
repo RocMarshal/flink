@@ -19,6 +19,7 @@
 package org.apache.flink.api.connector.sink2;
 
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.connector.sink2.StatefulSink.StatefulSinkWriter;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 
@@ -59,6 +60,10 @@ public interface TwoPhaseCommittingSink<InputT, CommT> extends Sink<InputT> {
      * @throws IOException for any failure during creation.
      */
     Committer<CommT> createCommitter() throws IOException;
+
+    default Committer<CommT> createCommitter(RuntimeContext runtimeContext) throws IOException {
+        throw new UnsupportedOperationException();
+    }
 
     /** Returns the serializer of the committable type. */
     SimpleVersionedSerializer<CommT> getCommittableSerializer();

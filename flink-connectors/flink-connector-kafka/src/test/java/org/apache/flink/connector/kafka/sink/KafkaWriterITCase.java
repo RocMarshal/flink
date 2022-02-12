@@ -17,6 +17,8 @@
 
 package org.apache.flink.connector.kafka.sink;
 
+import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.operators.MailboxExecutor;
 import org.apache.flink.api.common.operators.ProcessingTimeService;
 import org.apache.flink.api.common.serialization.SerializationSchema;
@@ -450,8 +452,18 @@ public class KafkaWriterITCase {
         }
 
         @Override
+        public JobID getJobId() {
+            return JobID.generate();
+        }
+
+        @Override
         public UserCodeClassLoader getUserCodeClassLoader() {
             throw new UnsupportedOperationException("Not implemented.");
+        }
+
+        @Override
+        public ExecutionConfig getExecutionConfig() {
+            return new ExecutionConfig();
         }
 
         @Override

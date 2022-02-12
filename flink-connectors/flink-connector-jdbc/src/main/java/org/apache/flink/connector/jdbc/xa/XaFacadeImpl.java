@@ -64,7 +64,7 @@ import static javax.transaction.xa.XAResource.TMSTARTRSCAN;
 /** Default {@link XaFacade} implementation. */
 @NotThreadSafe
 @Internal
-class XaFacadeImpl implements XaFacade {
+public class XaFacadeImpl implements XaFacade {
 
     private static final long serialVersionUID = 1L;
 
@@ -115,9 +115,13 @@ class XaFacadeImpl implements XaFacade {
         if (connection != null) {
             connection.close(); // close connection - likely a wrapper
             connection = null;
+            LOG.error("+++++ connectin Close");
         }
         try {
-            xaConnection.close(); // close likely a pooled AND the underlying connection
+            if (xaConnection != null) {
+                xaConnection.close(); // close likely a pooled AND the underlying connection
+                LOG.error("+++++ xaConnection Close");
+            }
         } catch (SQLException e) {
             // Some databases (e.g. MySQL) rollback changes on normal client disconnect which
             // causes an exception if an XA transaction was prepared. Note that resources are
@@ -127,10 +131,18 @@ class XaFacadeImpl implements XaFacade {
             // disassociates the connection (and that call works because it has a check for XA)
             // and rollback() is not called.
             // In either case, not closing the XA connection here leads to the resource leak.
-            LOG.warn("unable to close XA connection", e);
+            LOG.error("+++++unable to close XA connection", e);
         }
         xaResource = null;
     }
+
+    @Override
+    public Connection getOrCreateShardConnection(String url, String database) throws SQLException {
+        return null;
+    }
+
+    @Override
+    public void closeConnections() {}
 
     @Override
     public Connection getConnection() {
@@ -262,6 +274,11 @@ class XaFacadeImpl implements XaFacade {
         return xaResource != null;
     }
 
+    @Override
+    public XaFacade convertXaConnection() {
+        return this;
+    }
+
     private List<Xid> recover(int flags) throws XAException {
         return Arrays.asList(xaResource.recover(flags));
     }
@@ -277,7 +294,9 @@ class XaFacadeImpl implements XaFacade {
             if (HEUR_ERR_CODES.contains(e.errorCode)) {
                 cmd.xid.ifPresent(this::forget);
             }
-            return cmd.recover.apply(e).orElseThrow(() -> wrapException(cmd.name, cmd.xid, e));
+            return cmd.recover.apply(e).orElseThrow(
+                    () -> wrapException(cmd.name, cmd.xid, e)
+            );
         } catch (FlinkRuntimeException e) {
             throw e;
         } catch (Exception e) {

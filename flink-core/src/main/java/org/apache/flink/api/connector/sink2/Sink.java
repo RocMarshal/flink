@@ -20,6 +20,9 @@ package org.apache.flink.api.connector.sink2;
 
 import org.apache.flink.annotation.Experimental;
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.operators.MailboxExecutor;
 import org.apache.flink.api.common.operators.ProcessingTimeService;
 import org.apache.flink.api.common.serialization.SerializationSchema;
@@ -73,6 +76,19 @@ public interface Sink<InputT> extends Serializable {
         UserCodeClassLoader getUserCodeClassLoader();
 
         /**
+         * The ID of the current job. Note that Job ID can change in particular upon manual restart.
+         * The returned ID should NOT be used for any job management tasks.
+         */
+        JobID getJobId();
+
+        /**
+         * Gets the {@link ExecutionConfig}.
+         *
+         * @see ExecutionConfig
+         */
+        ExecutionConfig getExecutionConfig();
+
+        /**
          * Returns the mailbox executor that allows to execute {@link Runnable}s inside the task
          * thread in between record processing.
          *
@@ -91,6 +107,10 @@ public interface Sink<InputT> extends Serializable {
 
         /** @return The id of task where the writer is. */
         int getSubtaskId();
+
+        default RuntimeContext getRuntimeContext() {
+            throw new UnsupportedOperationException();
+        }
 
         /** @return The number of parallel Sink tasks. */
         int getNumberOfParallelSubtasks();

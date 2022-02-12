@@ -18,6 +18,9 @@
 
 package org.apache.flink.connector.jdbc.catalog;
 
+import org.apache.flink.configuration.ReadableConfig;
+import org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions;
+import org.apache.flink.connector.jdbc.table.JdbcConnectorOptions;
 import org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory;
 import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.ValidationException;
@@ -47,6 +50,7 @@ import org.apache.flink.table.catalog.exceptions.TablePartitionedException;
 import org.apache.flink.table.catalog.stats.CatalogColumnStatistics;
 import org.apache.flink.table.catalog.stats.CatalogTableStatistics;
 import org.apache.flink.table.expressions.Expression;
+import org.apache.flink.table.factories.CatalogFactory.Context;
 import org.apache.flink.table.factories.Factory;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.util.Preconditions;
@@ -73,11 +77,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 
-import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.PASSWORD;
-import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.TABLE_NAME;
-import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.URL;
-import static org.apache.flink.connector.jdbc.table.JdbcConnectorOptions.USERNAME;
-import static org.apache.flink.connector.jdbc.table.JdbcDynamicTableFactory.IDENTIFIER;
 import static org.apache.flink.table.factories.FactoryUtil.CONNECTOR;
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -93,27 +92,26 @@ public abstract class AbstractJdbcCatalog extends AbstractCatalog {
     protected final String baseUrl;
     protected final String defaultUrl;
 
-    public AbstractJdbcCatalog(
-            ClassLoader userClassLoader,
-            String catalogName,
-            String defaultDatabase,
-            String username,
-            String pwd,
-            String baseUrl) {
-        super(catalogName, defaultDatabase);
+    protected final Context context;
 
-        checkNotNull(userClassLoader);
+    protected final ReadableConfig config;
+
+    public AbstractJdbcCatalog(ClassLoader classLoader, Context context, ReadableConfig config) {
+        super(context.getName(), config.get(JdbcCatalogFactoryOptions.DEFAULT_DATABASE));
+        this.config = config;
+        this.context = context;
+        this.username = config.get(JdbcConnectorOptions.USERNAME);
+        this.pwd = config.get(JdbcConnectorOptions.PASSWORD);
+        String tmpBaseUrl = config.get(JdbcCatalogFactoryOptions.BASE_URL);
         checkArgument(!StringUtils.isNullOrWhitespaceOnly(username));
         checkArgument(!StringUtils.isNullOrWhitespaceOnly(pwd));
-        checkArgument(!StringUtils.isNullOrWhitespaceOnly(baseUrl));
+        checkArgument(!StringUtils.isNullOrWhitespaceOnly(tmpBaseUrl));
 
-        JdbcCatalogUtils.validateJdbcUrl(baseUrl);
+        JdbcCatalogUtils.validateJdbcUrl(tmpBaseUrl);
+        this.userClassLoader = checkNotNull(classLoader);
 
-        this.userClassLoader = userClassLoader;
-        this.username = username;
-        this.pwd = pwd;
-        this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-        this.defaultUrl = this.baseUrl + defaultDatabase;
+        this.baseUrl = tmpBaseUrl.endsWith("/") ? tmpBaseUrl : tmpBaseUrl + "/";
+        this.defaultUrl = this.baseUrl + config.get(JdbcCatalogFactoryOptions.DEFAULT_DATABASE);
     }
 
     @Override
@@ -122,7 +120,7 @@ public abstract class AbstractJdbcCatalog extends AbstractCatalog {
         try (TemporaryClassLoaderContext ignored =
                 TemporaryClassLoaderContext.of(userClassLoader)) {
             // test connection, fail early if we cannot connect to database
-            try (Connection conn = DriverManager.getConnection(defaultUrl, username, pwd)) {
+            try (Connection conn = getConnection(config)) {
             } catch (SQLException e) {
                 throw new ValidationException(
                         String.format("Failed connecting to %s via JDBC.", defaultUrl), e);
@@ -279,12 +277,12 @@ public abstract class AbstractJdbcCatalog extends AbstractCatalog {
                     pk -> schemaBuilder.primaryKeyNamed(pk.getName(), pk.getColumns()));
             Schema tableSchema = schemaBuilder.build();
 
-            Map<String, String> props = new HashMap<>();
-            props.put(CONNECTOR.key(), IDENTIFIER);
-            props.put(URL.key(), dbUrl);
-            props.put(USERNAME.key(), username);
-            props.put(PASSWORD.key(), pwd);
-            props.put(TABLE_NAME.key(), getSchemaTableName(tablePath));
+            Map<String, String> props = new HashMap<>(context.getOptions());
+            props.put(CONNECTOR.key(), JdbcCatalogFactoryOptions.IDENTIFIER);
+            props.put(JdbcConnectorOptions.URL.key(), dbUrl);
+            props.put(JdbcConnectorOptions.USERNAME.key(), username);
+            props.put(JdbcConnectorOptions.PASSWORD.key(), pwd);
+            props.put(JdbcConnectorOptions.TABLE_NAME.key(), getSchemaTableName(tablePath));
             return CatalogTable.of(tableSchema, null, Lists.newArrayList(), props);
         } catch (Exception e) {
             throw new CatalogException(
@@ -537,5 +535,9 @@ public abstract class AbstractJdbcCatalog extends AbstractCatalog {
 
     protected String getSchemaTableName(ObjectPath tablePath) {
         throw new UnsupportedOperationException();
+    }
+
+    public Connection getConnection(ReadableConfig readableConfig) throws SQLException {
+        return DriverManager.getConnection(defaultUrl, username, pwd);
     }
 }

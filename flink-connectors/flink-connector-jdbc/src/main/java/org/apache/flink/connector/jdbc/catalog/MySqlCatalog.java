@@ -19,11 +19,13 @@
 package org.apache.flink.connector.jdbc.catalog;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.connector.jdbc.dialect.JdbcDialectTypeMapper;
 import org.apache.flink.connector.jdbc.dialect.mysql.MySqlTypeMapper;
 import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.catalog.exceptions.CatalogException;
 import org.apache.flink.table.catalog.exceptions.DatabaseNotExistException;
+import org.apache.flink.table.factories.CatalogFactory;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.TemporaryClassLoaderContext;
@@ -61,13 +63,8 @@ public class MySqlCatalog extends AbstractJdbcCatalog {
             };
 
     public MySqlCatalog(
-            ClassLoader userClassLoader,
-            String catalogName,
-            String defaultDatabase,
-            String username,
-            String pwd,
-            String baseUrl) {
-        super(userClassLoader, catalogName, defaultDatabase, username, pwd, baseUrl);
+            ClassLoader userClassLoader, CatalogFactory.Context context, ReadableConfig config) {
+        super(userClassLoader, context, config);
 
         String driverVersion =
                 Preconditions.checkNotNull(getDriverVersion(), "Driver version must not be null.");

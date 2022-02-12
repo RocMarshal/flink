@@ -45,12 +45,13 @@ import static org.apache.flink.util.Preconditions.checkState;
  * XA resource after each xa_start call is made (and associates it with the xid to commit later).
  */
 @Internal
-class XaFacadePoolingImpl implements XaFacade {
+public class XaFacadePoolingImpl implements XaFacade {
     private static final long serialVersionUID = 1L;
 
+    /** FacadeSupplier. */
     public interface FacadeSupplier extends Serializable, Supplier<XaFacade> {}
 
-    private static final transient Logger LOG = LoggerFactory.getLogger(XaFacadePoolingImpl.class);
+    private static final Logger LOG = LoggerFactory.getLogger(XaFacadePoolingImpl.class);
     private final FacadeSupplier facadeSupplier;
     private transient XaFacade active;
     private transient Map<Xid, XaFacade> mappedToXids;
@@ -65,6 +66,11 @@ class XaFacadePoolingImpl implements XaFacade {
         checkState(active == null);
         pooled = new LinkedList<>();
         mappedToXids = new HashMap<>();
+    }
+
+    @Override
+    public XaFacade convertXaConnection() {
+        return this;
     }
 
     @Override
@@ -132,6 +138,14 @@ class XaFacadePoolingImpl implements XaFacade {
             active.close();
         }
     }
+
+    @Override
+    public Connection getOrCreateShardConnection(String url, String database) throws SQLException {
+        return null;
+    }
+
+    @Override
+    public void closeConnections() {}
 
     @Nullable
     @Override

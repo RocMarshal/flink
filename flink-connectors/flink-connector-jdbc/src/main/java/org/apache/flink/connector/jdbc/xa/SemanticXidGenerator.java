@@ -20,6 +20,7 @@ package org.apache.flink.connector.jdbc.xa;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.functions.RuntimeContext;
+import org.apache.flink.api.connector.sink2.Sink;
 
 import javax.transaction.xa.Xid;
 
@@ -42,7 +43,7 @@ import java.util.Arrays;
  * collide).
  */
 @Internal
-class SemanticXidGenerator implements XidGenerator {
+public class SemanticXidGenerator implements XidGenerator {
 
     private static final long serialVersionUID = 1L;
 
@@ -73,6 +74,17 @@ class SemanticXidGenerator implements XidGenerator {
     }
 
     @Override
+    public Xid generateXid(Sink.InitContext initContext, long checkpointId) {
+        byte[] jobIdBytes = initContext.getJobId().getBytes();
+        System.arraycopy(jobIdBytes, 0, gtridBuffer, 0, JobID.SIZE);
+
+        writeNumber(initContext.getSubtaskId(), Integer.BYTES, gtridBuffer, JobID.SIZE);
+        writeNumber(checkpointId, Long.BYTES, gtridBuffer, JobID.SIZE + Integer.BYTES);
+        // relying on arrays copying inside XidImpl constructor
+        return new XidImpl(FORMAT_ID, gtridBuffer, bqualBuffer);
+    }
+
+    @Override
     public boolean belongsToSubtask(Xid xid, RuntimeContext ctx) {
         if (xid.getFormatId() != FORMAT_ID) {
             return false;
@@ -85,6 +97,21 @@ class SemanticXidGenerator implements XidGenerator {
         byte[] jobIdBytes = new byte[JobID.SIZE];
         System.arraycopy(xid.getGlobalTransactionId(), 0, jobIdBytes, 0, JobID.SIZE);
         return Arrays.equals(jobIdBytes, ctx.getJobId().getBytes());
+    }
+
+    @Override
+    public boolean belongsToSubtask(Xid xid, Sink.InitContext initContext) {
+        if (xid.getFormatId() != FORMAT_ID) {
+            return false;
+        }
+        int subtaskIndex = readNumber(xid.getGlobalTransactionId(), JobID.SIZE, Integer.BYTES);
+        if (subtaskIndex != initContext.getSubtaskId()
+                && subtaskIndex <= initContext.getNumberOfParallelSubtasks() - 1) {
+            return false;
+        }
+        byte[] jobIdBytes = new byte[JobID.SIZE];
+        System.arraycopy(xid.getGlobalTransactionId(), 0, jobIdBytes, 0, JobID.SIZE);
+        return Arrays.equals(jobIdBytes, initContext.getJobId().getBytes());
     }
 
     private static int readNumber(byte[] bytes, int offset, int numBytes) {

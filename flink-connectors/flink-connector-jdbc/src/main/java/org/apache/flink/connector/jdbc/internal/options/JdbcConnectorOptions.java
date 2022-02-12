@@ -22,11 +22,14 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.connector.jdbc.JdbcConnectionOptions;
 import org.apache.flink.connector.jdbc.dialect.JdbcDialect;
 import org.apache.flink.connector.jdbc.dialect.JdbcDialectLoader;
+import org.apache.flink.util.function.SerializableSupplier;
 
 import javax.annotation.Nullable;
+import javax.sql.XADataSource;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -40,6 +43,11 @@ public class JdbcConnectorOptions extends JdbcConnectionOptions {
     private final JdbcDialect dialect;
     private final @Nullable Integer parallelism;
 
+    @Override
+    public JdbcConnectorOptions convertJdbcConnectorOptions() {
+        return this;
+    }
+
     private JdbcConnectorOptions(
             String dbURL,
             String tableName,
@@ -48,8 +56,19 @@ public class JdbcConnectorOptions extends JdbcConnectionOptions {
             @Nullable String password,
             JdbcDialect dialect,
             @Nullable Integer parallelism,
-            int connectionCheckTimeoutSeconds) {
-        super(dbURL, driverName, username, password, connectionCheckTimeoutSeconds);
+            int connectionCheckTimeoutSeconds,
+            Boolean autoCommit,
+            @Nullable Properties extendProps,
+            @Nullable SerializableSupplier<XADataSource> xaDataSourceSupplier) {
+        super(
+                dbURL,
+                driverName,
+                username,
+                password,
+                connectionCheckTimeoutSeconds,
+                autoCommit,
+                extendProps,
+                xaDataSourceSupplier);
         this.tableName = tableName;
         this.dialect = dialect;
         this.parallelism = parallelism;
@@ -84,7 +103,8 @@ public class JdbcConnectorOptions extends JdbcConnectionOptions {
                             dialect.getClass().getName(), options.dialect.getClass().getName())
                     && Objects.equals(parallelism, options.parallelism)
                     && Objects.equals(
-                            connectionCheckTimeoutSeconds, options.connectionCheckTimeoutSeconds);
+                            connectionCheckTimeoutSeconds, options.connectionCheckTimeoutSeconds)
+                    && Objects.equals(extendProps, options.extendProps);
         } else {
             return false;
         }
@@ -100,7 +120,8 @@ public class JdbcConnectorOptions extends JdbcConnectionOptions {
                 password,
                 dialect.getClass().getName(),
                 parallelism,
-                connectionCheckTimeoutSeconds);
+                connectionCheckTimeoutSeconds,
+                extendProps);
     }
 
     /** Builder of {@link JdbcConnectorOptions}. */
@@ -114,6 +135,10 @@ public class JdbcConnectorOptions extends JdbcConnectionOptions {
         private JdbcDialect dialect;
         private Integer parallelism;
         private int connectionCheckTimeoutSeconds = 60;
+        private Boolean autoCommit;
+        private Properties extendProps;
+
+        private SerializableSupplier<XADataSource> xaDataSourceSupplier;
 
         /**
          * optional, specifies the classloader to use in the planner for load the class in user jar.
@@ -125,6 +150,18 @@ public class JdbcConnectorOptions extends JdbcConnectionOptions {
          */
         public Builder setClassLoader(ClassLoader classLoader) {
             this.classLoader = classLoader;
+            return this;
+        }
+
+        /** optional. */
+        public Builder setExtendProps(Properties extendProps) {
+            this.extendProps = extendProps;
+            return this;
+        }
+
+        /** optional. */
+        public Builder setAutoCommit(Boolean autoCommit) {
+            this.autoCommit = autoCommit;
             return this;
         }
 
@@ -181,7 +218,27 @@ public class JdbcConnectorOptions extends JdbcConnectionOptions {
             return this;
         }
 
+        public Builder setXaDataSourceSupplier(
+                SerializableSupplier<XADataSource> xaDataSourceSupplier) {
+            this.xaDataSourceSupplier = xaDataSourceSupplier;
+            return this;
+        }
+
         public JdbcConnectorOptions build() {
+            if (xaDataSourceSupplier != null) {
+                return new JdbcConnectorOptions(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        parallelism,
+                        connectionCheckTimeoutSeconds,
+                        autoCommit,
+                        extendProps,
+                        xaDataSourceSupplier);
+            }
             checkNotNull(dbURL, "No dbURL supplied.");
             checkNotNull(tableName, "No tableName supplied.");
             if (this.dialect == null) {
@@ -205,7 +262,10 @@ public class JdbcConnectorOptions extends JdbcConnectionOptions {
                     password,
                     dialect,
                     parallelism,
-                    connectionCheckTimeoutSeconds);
+                    connectionCheckTimeoutSeconds,
+                    autoCommit,
+                    extendProps,
+                    xaDataSourceSupplier);
         }
     }
 }

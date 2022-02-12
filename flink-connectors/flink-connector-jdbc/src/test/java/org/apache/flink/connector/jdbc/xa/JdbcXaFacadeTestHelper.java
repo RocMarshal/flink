@@ -35,7 +35,7 @@ import java.util.stream.IntStream;
 import static org.apache.flink.connector.jdbc.JdbcTestFixture.TEST_DATA;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class JdbcXaFacadeTestHelper implements AutoCloseable {
+public class JdbcXaFacadeTestHelper implements AutoCloseable {
     private final String table;
     private final String dbUrl;
     private final String user;
@@ -75,7 +75,7 @@ class JdbcXaFacadeTestHelper implements AutoCloseable {
         return getInsertedIds(dbUrl, user, pass, table);
     }
 
-    static List<Integer> getInsertedIds(String dbUrl, String user, String pass, String table)
+    public static List<Integer> getInsertedIds(String dbUrl, String user, String pass, String table)
             throws SQLException {
         List<Integer> dbContents = new ArrayList<>();
         try (Connection connection = DriverManager.getConnection(dbUrl, user, pass)) {

@@ -18,11 +18,15 @@
 
 package org.apache.flink.connector.jdbc.dialect.derby;
 
+import org.apache.flink.configuration.ReadableConfig;
+import org.apache.flink.connector.jdbc.catalog.AbstractJdbcCatalog;
 import org.apache.flink.connector.jdbc.converter.JdbcRowConverter;
 import org.apache.flink.connector.jdbc.dialect.AbstractDialect;
 import org.apache.flink.connector.jdbc.internal.converter.DerbyRowConverter;
+import org.apache.flink.table.factories.CatalogFactory;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.table.types.logical.RowType;
+import org.apache.flink.util.FlinkRuntimeException;
 
 import java.util.EnumSet;
 import java.util.Optional;
@@ -106,5 +110,11 @@ class DerbyDialect extends AbstractDialect {
                 LogicalTypeRoot.DATE,
                 LogicalTypeRoot.TIME_WITHOUT_TIME_ZONE,
                 LogicalTypeRoot.TIMESTAMP_WITHOUT_TIME_ZONE);
+    }
+
+    @Override
+    public AbstractJdbcCatalog createCatalog(
+            ClassLoader classLoader, CatalogFactory.Context context, ReadableConfig config) {
+        throw new FlinkRuntimeException("No implementations of DerbyCatalog now.");
     }
 }

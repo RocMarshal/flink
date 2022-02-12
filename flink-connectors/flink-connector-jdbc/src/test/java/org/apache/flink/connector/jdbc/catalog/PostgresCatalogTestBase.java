@@ -18,8 +18,11 @@
 
 package org.apache.flink.connector.jdbc.catalog;
 
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
+import org.apache.flink.table.factories.CatalogFactory;
 import org.apache.flink.table.types.logical.DecimalType;
 import org.apache.flink.util.DockerImageVersions;
 
@@ -37,6 +40,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.BASE_URL;
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.DEFAULT_DATABASE;
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.PASSWORD;
+import static org.apache.flink.connector.jdbc.catalog.factory.JdbcCatalogFactoryOptions.USERNAME;
 
 /** Test base for {@link PostgresCatalog}. */
 public class PostgresCatalogTestBase {
@@ -80,14 +90,39 @@ public class PostgresCatalogTestBase {
         // jdbc:postgresql://localhost:50807/
         baseUrl = jdbcUrl.substring(0, jdbcUrl.lastIndexOf("/"));
 
+        CatalogFactory.Context context =
+                new CatalogFactory.Context() {
+                    @Override
+                    public String getName() {
+                        return TEST_CATALOG_NAME;
+                    }
+
+                    @Override
+                    public Map<String, String> getOptions() {
+                        return new HashMap<>();
+                    }
+
+                    @Override
+                    public ReadableConfig getConfiguration() {
+                        Configuration cfg = new Configuration();
+                        cfg.set(USERNAME, TEST_USERNAME);
+                        cfg.set(PASSWORD, TEST_PWD);
+                        cfg.set(BASE_URL, baseUrl);
+                        cfg.set(DEFAULT_DATABASE, PostgresCatalog.DEFAULT_DATABASE);
+                        return cfg;
+                    }
+
+                    @Override
+                    public ClassLoader getClassLoader() {
+                        return Thread.currentThread().getContextClassLoader();
+                    }
+                };
+
         catalog =
                 new PostgresCatalog(
                         Thread.currentThread().getContextClassLoader(),
-                        TEST_CATALOG_NAME,
-                        PostgresCatalog.DEFAULT_DATABASE,
-                        TEST_USERNAME,
-                        TEST_PWD,
-                        baseUrl);
+                        context,
+                        context.getConfiguration());
 
         // create test database and schema
         createSchema(TEST_DB, TEST_SCHEMA);

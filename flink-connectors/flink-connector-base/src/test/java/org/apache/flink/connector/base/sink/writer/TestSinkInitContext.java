@@ -17,6 +17,8 @@
 
 package org.apache.flink.connector.base.sink.writer;
 
+import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.operators.MailboxExecutor;
 import org.apache.flink.api.common.operators.ProcessingTimeService;
 import org.apache.flink.api.common.serialization.SerializationSchema;
@@ -85,8 +87,18 @@ public class TestSinkInitContext implements Sink.InitContext {
     }
 
     @Override
+    public JobID getJobId() {
+        return JobID.generate();
+    }
+
+    @Override
     public UserCodeClassLoader getUserCodeClassLoader() {
         return null;
+    }
+
+    @Override
+    public ExecutionConfig getExecutionConfig() {
+        return new ExecutionConfig();
     }
 
     @Override
