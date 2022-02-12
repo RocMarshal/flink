@@ -23,6 +23,7 @@ import javax.annotation.Nullable;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Properties;
 
 /** JDBC connection provider. */
 @Internal
@@ -34,6 +35,16 @@ public interface JdbcConnectionProvider {
      */
     @Nullable
     Connection getConnection();
+
+    /**
+     * Get existing connection properties.
+     *
+     * @return existing connection properties
+     */
+    @Nullable
+    default Properties getProperties() {
+        return new Properties();
+    }
 
     /**
      * Check whether possible existing connection is valid or not through {@link
