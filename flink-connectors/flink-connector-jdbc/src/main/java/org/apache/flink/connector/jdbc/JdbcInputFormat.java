@@ -118,6 +118,8 @@ public class JdbcInputFormat extends RichInputFormat<Row, InputSplit>
     protected int fetchSize;
     // Boolean to distinguish between default value and explicitly set autoCommit mode.
     protected Boolean autoCommit;
+    private int index;
+    private int sc;
 
     protected boolean hasNext;
     protected Object[][] parameterValues;
@@ -188,6 +190,8 @@ public class JdbcInputFormat extends RichInputFormat<Row, InputSplit>
      */
     @Override
     public void open(InputSplit inputSplit) throws IOException {
+        index = getRuntimeContext().getIndexOfThisSubtask();
+        sc = inputSplit.getSplitNumber();
         try {
             if (inputSplit != null && parameterValues != null) {
                 for (int i = 0; i < parameterValues[inputSplit.getSplitNumber()].length; i++) {
@@ -290,6 +294,7 @@ public class JdbcInputFormat extends RichInputFormat<Row, InputSplit>
             }
             // update hasNext after we've read the record
             hasNext = resultSet.next();
+            System.out.println("index: " + index + ", " + "sc: " + sc + ": " + reuse);
             return reuse;
         } catch (SQLException se) {
             throw new IOException("Couldn't read data - " + se.getMessage(), se);

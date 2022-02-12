@@ -32,6 +32,8 @@ import org.apache.flink.connector.jdbc.internal.connection.SimpleJdbcConnectionP
 import org.apache.flink.connector.jdbc.internal.executor.JdbcBatchStatementExecutor;
 import org.apache.flink.connector.jdbc.internal.options.JdbcConnectorOptions;
 import org.apache.flink.connector.jdbc.split.JdbcNumericBetweenParametersProvider;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
 import org.apache.flink.types.Row;
 
 import org.junit.After;
@@ -39,6 +41,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -180,9 +183,6 @@ public class JdbcFullTest extends JdbcDataTestBase {
         try (Connection conn = DriverManager.getConnection(getDbMetadata().getUrl());
                 Statement stat = conn.createStatement()) {
             stat.execute("DELETE FROM " + OUTPUT_TABLE);
-
-            stat.close();
-            conn.close();
         }
     }
 
@@ -192,5 +192,53 @@ public class JdbcFullTest extends JdbcDataTestBase {
                 (st, record) -> setRecordToStatement(st, fieldTypes, record);
         return JdbcBatchStatementExecutor.simple(
                 sql, builder, objectReuse ? Row::copy : Function.identity());
+    }
+
+    @Test
+    public void testgggSet() throws Exception {
+        ExecutionEnvironment environment = ExecutionEnvironment.getExecutionEnvironment();
+        JdbcInputFormat.JdbcInputFormatBuilder inputBuilder =
+                JdbcInputFormat.buildJdbcInputFormat()
+                        .setDrivername(getDbMetadata().getDriverClass())
+                        .setDBUrl(getDbMetadata().getUrl())
+                        .setQuery(SELECT_ALL_BOOKS)
+                        .setRowTypeInfo(ROW_TYPE_INFO);
+        // use a "splittable" query to exploit parallelism
+        inputBuilder =
+                inputBuilder
+                        .setQuery(SELECT_ALL_BOOKS_SPLIT_BY_ID)
+                        .setParametersProvider(
+                                () ->
+                                        new Serializable[][] {
+                                            {1001, 1002}, {1004, 1005}, {1007, 1009}
+                                        });
+        environment.setParallelism(2);
+        DataSet<Row> source = environment.createInput(inputBuilder.finish());
+
+        source.collect();
+    }
+
+    @Test
+    public void testgggStream() throws Exception {
+        StreamExecutionEnvironment environment =
+                StreamExecutionEnvironment.getExecutionEnvironment();
+        JdbcInputFormat.JdbcInputFormatBuilder inputBuilder =
+                JdbcInputFormat.buildJdbcInputFormat()
+                        .setDrivername(getDbMetadata().getDriverClass())
+                        .setDBUrl(getDbMetadata().getUrl())
+                        .setQuery(SELECT_ALL_BOOKS)
+                        .setRowTypeInfo(ROW_TYPE_INFO);
+        inputBuilder =
+                inputBuilder
+                        .setQuery(SELECT_ALL_BOOKS_SPLIT_BY_ID)
+                        .setParametersProvider(
+                                () ->
+                                        new Serializable[][] {
+                                            {1001, 1002}, {1004, 1005}, {1007, 1009}
+                                        });
+        environment.setParallelism(2);
+        environment.createInput(inputBuilder.finish()).addSink(new DiscardingSink<>());
+
+        environment.execute();
     }
 }
