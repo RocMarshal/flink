@@ -121,7 +121,7 @@ public class RabbitMQSink<T> implements Sink<T, Void, RabbitMQSinkWriterState<T>
         if (consistencyMode == ConsistencyMode.AT_MOST_ONCE || publishOptions == null) {
             return true;
         }
-        
+
         // If we are at-least or exactly-once and publish options are set, we need a deserialization
         // schema to recover the original messages from the state to recompute publish options.
         return publishOptions.getDeserializationSchema().isPresent();
@@ -157,7 +157,7 @@ public class RabbitMQSink<T> implements Sink<T, Void, RabbitMQSinkWriterState<T>
             sinkWriter.recoverFromStates(states);
             return sinkWriter;
         } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 

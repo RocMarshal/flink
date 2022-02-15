@@ -186,13 +186,13 @@ public abstract class RabbitMQSourceReaderBase<T> implements SourceReader<T, Rab
             return;
         }
         if (list.size() != 1) {
-            throw new RuntimeException("The number of added splits should be exaclty one.");
+            throw new RuntimeException("The number of added splits should be exactly one.");
         }
         split = list.get(0);
         try {
             setupRabbitMQ();
         } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 
