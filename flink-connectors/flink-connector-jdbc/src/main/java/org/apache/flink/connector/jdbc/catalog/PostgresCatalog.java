@@ -70,7 +70,7 @@ public class PostgresCatalog extends AbstractJdbcCatalog {
 
     private final JdbcDialectTypeMapper dialectTypeMapper;
 
-    protected PostgresCatalog(
+    public PostgresCatalog(
             String catalogName,
             String defaultDatabase,
             String username,
