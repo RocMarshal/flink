@@ -18,6 +18,8 @@
 
 package org.apache.flink.connector.jdbc.catalog;
 
+import org.apache.commons.lang3.StringUtils;
+
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.connector.jdbc.dialect.JdbcDialectTypeMapper;
 import org.apache.flink.connector.jdbc.dialect.oracle.OracleTypeMapper;
@@ -25,9 +27,14 @@ import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.catalog.exceptions.CatalogException;
 import org.apache.flink.table.catalog.exceptions.DatabaseNotExistException;
 
+import org.apache.flink.table.types.DataType;
+import org.apache.flink.util.Preconditions;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -60,16 +67,61 @@ public class OracleCatalog extends AbstractJdbcCatalog {
 
     @Override
     public List<String> listDatabases() throws CatalogException {
-        return null;
+        return extractColumnValuesBySQL(
+                defaultUrl,
+                "",
+                1,
+                dbName -> !builtinDatabases.contains(dbName));
     }
 
     @Override
     public List<String> listTables(String databaseName) throws DatabaseNotExistException, CatalogException {
-        return null;
+        Preconditions.checkState(
+                StringUtils.isNotBlank(databaseName), "Database name must not be blank.");
+        if (!databaseExists(databaseName)) {
+            throw new DatabaseNotExistException(getName(), databaseName);
+        }
+
+        return extractColumnValuesBySQL(
+                baseUrl + databaseName,
+                "",
+                1,
+                null,
+                databaseName);
     }
 
     @Override
     public boolean tableExists(ObjectPath tablePath) throws CatalogException {
-        return false;
+        return !extractColumnValuesBySQL(
+                baseUrl,
+                "SELECT TABLE_NAME FROM information_schema.`TABLES` "
+                        + "WHERE TABLE_SCHEMA=? and TABLE_NAME=?",
+                1,
+                null,
+                tablePath.getDatabaseName(),
+                tablePath.getObjectName())
+                .isEmpty();
+    }
+
+    /** Converts Oracle type to Flink {@link DataType}. */
+    @Override
+    protected DataType fromJDBCType(ObjectPath tablePath, ResultSetMetaData metadata, int colIndex)
+            throws SQLException {
+        return dialectTypeMapper.mapping(tablePath, metadata, colIndex);
+    }
+
+    @Override
+    protected String getTableName(ObjectPath tablePath) {
+        return tablePath.getObjectName();
+    }
+
+    @Override
+    protected String getSchemaName(ObjectPath tablePath) {
+        return null;
+    }
+
+    @Override
+    protected String getSchemaTableName(ObjectPath tablePath) {
+        return tablePath.getObjectName();
     }
 }
