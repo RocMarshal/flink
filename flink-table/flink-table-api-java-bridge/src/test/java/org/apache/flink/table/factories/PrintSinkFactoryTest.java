@@ -37,7 +37,7 @@ import static org.apache.flink.table.factories.utils.FactoryMocks.createTableSin
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Tests for {@link PrintTableSinkFactory}. */
-public class PrintSinkFactoryTest {
+class PrintSinkFactoryTest {
 
     private static final ResolvedSchema SCHEMA =
             ResolvedSchema.of(
@@ -46,7 +46,7 @@ public class PrintSinkFactoryTest {
                     Column.physical("f2", DataTypes.BIGINT()));
 
     @Test
-    public void testPrint() {
+    void testPrint() {
         Map<String, String> properties = new HashMap<>();
         properties.put("connector", "print");
         properties.put(PrintConnectorOptions.PRINT_IDENTIFIER.key(), "my_print");
