@@ -31,14 +31,11 @@ import org.apache.flink.shaded.guava30.com.google.common.collect.ImmutableList;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.assertj.core.api.Assertions;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.rnorth.ducttape.ratelimits.RateLimiter;
 import org.rnorth.ducttape.ratelimits.RateLimiterBuilder;
 import org.slf4j.Logger;
@@ -67,6 +64,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** End-to-end test for Kinesis Streams Table API Sink using Kinesalite. */
 public class KinesisStreamsTableApiIT {
@@ -82,14 +80,13 @@ public class KinesisStreamsTableApiIT {
     private final Path sqlConnectorKinesisJar = TestUtils.getResource(".*kinesis-streams.jar");
     private static final Network network = Network.newNetwork();
 
-    @ClassRule public static final Timeout TIMEOUT = new Timeout(10, TimeUnit.MINUTES);
-
-    @ClassRule
+    @RegisterExtension
     public static final KinesaliteContainer KINESALITE =
             new KinesaliteContainer(DockerImageName.parse(DockerImageVersions.KINESALITE))
                     .withNetwork(network)
                     .withNetworkAliases(INTER_CONTAINER_KINESALITE_ALIAS);
 
+    @RegisterExtension
     public static final FlinkContainers FLINK =
             FlinkContainers.builder()
                     .setEnvironmentVariable("AWS_CBOR_DISABLE", "1")
@@ -101,17 +98,7 @@ public class KinesisStreamsTableApiIT {
                     .dependsOn(KINESALITE)
                     .build();
 
-    @BeforeClass
-    public static void setupFlink() throws Exception {
-        FLINK.start();
-    }
-
-    @AfterClass
-    public static void stopFlink() {
-        FLINK.stop();
-    }
-
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         System.setProperty(SdkSystemSetting.CBOR_ENABLED.property(), "false");
         httpClient = KINESALITE.buildSdkAsyncHttpClient();
@@ -119,13 +106,14 @@ public class KinesisStreamsTableApiIT {
         prepareStream(ORDERS_STREAM);
     }
 
-    @After
+    @AfterEach
     public void teardown() {
         System.clearProperty(SdkSystemSetting.CBOR_ENABLED.property());
         AWSGeneralUtil.closeResources(httpClient, kinesisClient);
     }
 
     @Test
+    @Timeout(value = 10, unit = TimeUnit.MINUTES)
     public void testTableApiSourceAndSink() throws Exception {
         executeSqlStatements(readSqlFile("send-orders.sql"));
         List<Order> expected =
@@ -137,7 +125,7 @@ public class KinesisStreamsTableApiIT {
                         new Order("E", 18));
         // result order is not guaranteed
         List<Order> result = readAllOrdersFromKinesis();
-        Assertions.assertThat(result).containsAll(expected);
+        assertThat(result).containsAll(expected);
     }
 
     private void prepareStream(String streamName) throws Exception {

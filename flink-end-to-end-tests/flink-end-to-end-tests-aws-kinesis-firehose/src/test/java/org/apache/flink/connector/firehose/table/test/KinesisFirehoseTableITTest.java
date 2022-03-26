@@ -24,19 +24,16 @@ import org.apache.flink.tests.util.TestUtils;
 import org.apache.flink.tests.util.flink.SQLJobSubmission;
 import org.apache.flink.tests.util.flink.container.FlinkContainers;
 import org.apache.flink.util.DockerImageVersions;
-import org.apache.flink.util.TestLogger;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.assertj.core.api.Assertions;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
@@ -69,7 +66,7 @@ import static org.apache.flink.connector.firehose.sink.testutils.KinesisFirehose
 import static org.apache.flink.connector.firehose.sink.testutils.KinesisFirehoseTestUtils.createFirehoseClient;
 
 /** End to End test for Kinesis Firehose Table sink API. */
-public class KinesisFirehoseTableITTest extends TestLogger {
+class KinesisFirehoseTableITTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(KinesisFirehoseTableITTest.class);
 
@@ -88,15 +85,14 @@ public class KinesisFirehoseTableITTest extends TestLogger {
     private static final int NUM_ELEMENTS = 5;
     private static final Network network = Network.newNetwork();
 
-    @ClassRule public static final Timeout TIMEOUT = new Timeout(10, TimeUnit.MINUTES);
-
-    @ClassRule
-    public static LocalstackContainer mockFirehoseContainer =
+    @RegisterExtension
+    static final LocalstackContainer mockFirehoseContainer =
             new LocalstackContainer(DockerImageName.parse(DockerImageVersions.LOCALSTACK))
                     .withNetwork(network)
                     .withNetworkAliases("localstack");
 
-    public static final FlinkContainers FLINK =
+    @RegisterExtension
+    static final FlinkContainers FLINK =
             FlinkContainers.builder()
                     .setEnvironmentVariable("AWS_CBOR_DISABLE", "1")
                     .setEnvironmentVariable(
@@ -107,8 +103,8 @@ public class KinesisFirehoseTableITTest extends TestLogger {
                     .dependsOn(mockFirehoseContainer)
                     .build();
 
-    @Before
-    public void setup() throws Exception {
+    @BeforeEach
+    void setup() throws Exception {
         System.setProperty(SdkSystemSetting.CBOR_ENABLED.property(), "false");
 
         httpClient = createHttpClient(mockFirehoseContainer.getEndpoint());
@@ -129,18 +125,8 @@ public class KinesisFirehoseTableITTest extends TestLogger {
         LOG.info("Done setting up the localstack.");
     }
 
-    @BeforeClass
-    public static void setupFlink() throws Exception {
-        FLINK.start();
-    }
-
-    @AfterClass
-    public static void stopFlink() {
-        FLINK.stop();
-    }
-
-    @After
-    public void teardown() {
+    @AfterEach
+    void teardown() {
         System.clearProperty(SdkSystemSetting.CBOR_ENABLED.property());
 
         s3AsyncClient.close();
@@ -150,7 +136,8 @@ public class KinesisFirehoseTableITTest extends TestLogger {
     }
 
     @Test
-    public void testTableApiSink() throws Exception {
+    @Timeout(value = 10, unit = TimeUnit.MINUTES)
+    void testTableApiSink() throws Exception {
         List<Order> orderList = getTestOrders();
 
         executeSqlStatements(readSqlFile("send-orders.sql"));

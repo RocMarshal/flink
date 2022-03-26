@@ -48,7 +48,7 @@ public class PubsubHelper {
 
     private static final Logger LOG = LoggerFactory.getLogger(PubsubHelper.class);
 
-    private TransportChannelProvider channelProvider;
+    private final TransportChannelProvider channelProvider;
 
     private TopicAdminClient topicClient;
     private SubscriptionAdminClient subscriptionAdminClient;

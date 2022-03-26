@@ -19,33 +19,32 @@
 
 package org.apache.flink.batch.tests.util;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** Tests for {@link FileBasedOneShotLatch}. */
-public class FileBasedOneShotLatchTest {
-
-    @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+class FileBasedOneShotLatchTest {
 
     private FileBasedOneShotLatch latch;
 
     private File latchFile;
 
-    @Before
-    public void setUp() {
-        latchFile = new File(temporaryFolder.getRoot(), "latchFile");
+    @BeforeEach
+    void setUp(@TempDir File temporaryFolder) throws IOException {
+        latchFile = new File(temporaryFolder, "latchFile");
         latch = new FileBasedOneShotLatch(latchFile.toPath());
+        latchFile.createNewFile();
     }
 
     @Test
-    public void awaitReturnsWhenFileIsCreated() throws Exception {
+    void awaitReturnsWhenFileIsCreated() throws Exception {
         final AtomicBoolean awaitCompleted = new AtomicBoolean();
         final Thread thread =
                 new Thread(
@@ -58,23 +57,19 @@ public class FileBasedOneShotLatchTest {
                             }
                         });
         thread.start();
-
-        latchFile.createNewFile();
         thread.join();
 
-        assertTrue(awaitCompleted.get());
+        assertThat(awaitCompleted).isTrue();
     }
 
     @Test
-    public void subsequentAwaitDoesNotBlock() throws Exception {
-        latchFile.createNewFile();
+    void subsequentAwaitDoesNotBlock() throws Exception {
         latch.await();
         latch.await();
     }
 
     @Test
-    public void subsequentAwaitDoesNotBlockEvenIfLatchFileIsDeleted() throws Exception {
-        latchFile.createNewFile();
+    void subsequentAwaitDoesNotBlockEvenIfLatchFileIsDeleted() throws Exception {
         latch.await();
 
         latchFile.delete();
@@ -82,8 +77,7 @@ public class FileBasedOneShotLatchTest {
     }
 
     @Test
-    public void doesNotBlockIfFileExistsPriorToCreatingLatch() throws Exception {
-        latchFile.createNewFile();
+    void doesNotBlockIfFileExistsPriorToCreatingLatch() throws Exception {
 
         final FileBasedOneShotLatch latch = new FileBasedOneShotLatch(latchFile.toPath());
         latch.await();

@@ -29,40 +29,40 @@ import org.apache.flink.streaming.connectors.gcp.pubsub.emulator.PubsubHelper;
 
 import com.google.pubsub.v1.ReceivedMessage;
 import org.apache.commons.lang3.StringUtils;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** Test of the PubSub SINK with the Google PubSub emulator. */
-public class EmulatedPubSubSinkTest extends GCloudUnitTestBase {
+class EmulatedPubSubSinkTest extends GCloudUnitTestBase {
     private static final String PROJECT_NAME = "FLProject";
     private static final String TOPIC_NAME = "FLTopic";
     private static final String SUBSCRIPTION_NAME = "FLSubscription";
 
     private static PubsubHelper pubsubHelper;
 
-    @BeforeClass
-    public static void setUp() throws Exception {
+    @BeforeAll
+    static void setUp() throws Exception {
         pubsubHelper = getPubsubHelper();
         pubsubHelper.createTopic(PROJECT_NAME, TOPIC_NAME);
         pubsubHelper.createSubscription(PROJECT_NAME, SUBSCRIPTION_NAME, PROJECT_NAME, TOPIC_NAME);
     }
 
-    @AfterClass
-    public static void tearDown() throws Exception {
+    @AfterAll
+    static void tearDown() throws Exception {
         pubsubHelper.deleteSubscription(PROJECT_NAME, SUBSCRIPTION_NAME);
         pubsubHelper.deleteTopic(PROJECT_NAME, TOPIC_NAME);
     }
 
     @Test
-    public void testFlinkSink() throws Exception {
+    void testFlinkSink() throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(4);
 
@@ -96,19 +96,19 @@ public class EmulatedPubSubSinkTest extends GCloudUnitTestBase {
         List<ReceivedMessage> receivedMessages =
                 pubsubHelper.pullMessages(PROJECT_NAME, SUBSCRIPTION_NAME, 100);
 
-        assertEquals("Wrong number of elements", input.size(), receivedMessages.size());
+        assertThat(receivedMessages).as("Wrong number of elements").hasSameSizeAs(input);
 
         // Check output strings
         List<String> output = new ArrayList<>();
         receivedMessages.forEach(msg -> output.add(msg.getMessage().getData().toStringUtf8()));
 
         for (String test : input) {
-            assertTrue("Missing " + test, output.contains(StringUtils.reverse(test)));
+            assertThat(output).as("Missing " + test).contains(StringUtils.reverse(test));
         }
     }
 
-    @Test(expected = Exception.class)
-    public void testPubSubSinkThrowsExceptionOnFailure() throws Exception {
+    @Test
+    void testPubSubSinkThrowsExceptionOnFailure() throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.enableCheckpointing(100);
         env.setParallelism(1);
@@ -131,7 +131,7 @@ public class EmulatedPubSubSinkTest extends GCloudUnitTestBase {
                 .name("PubSub sink");
 
         // Run
-        env.execute();
+        assertThatThrownBy(env::execute).isInstanceOf(Exception.class);
     }
 
     private static class SingleInputSourceFunction implements SourceFunction<String> {

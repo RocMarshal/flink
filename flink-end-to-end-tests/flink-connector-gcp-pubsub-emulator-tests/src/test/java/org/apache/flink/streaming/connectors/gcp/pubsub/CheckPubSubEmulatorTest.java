@@ -25,9 +25,9 @@ import com.google.cloud.pubsub.v1.Subscriber;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.ReceivedMessage;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,10 +36,10 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** Tests to ensure the docker image with PubSub is working correctly. */
-public class CheckPubSubEmulatorTest extends GCloudUnitTestBase {
+class CheckPubSubEmulatorTest extends GCloudUnitTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(CheckPubSubEmulatorTest.class);
 
@@ -49,21 +49,21 @@ public class CheckPubSubEmulatorTest extends GCloudUnitTestBase {
 
     private static PubsubHelper pubsubHelper;
 
-    @BeforeClass
-    public static void setUp() throws Exception {
+    @BeforeAll
+    static void setUp() throws Exception {
         pubsubHelper = getPubsubHelper();
         pubsubHelper.createTopic(PROJECT_NAME, TOPIC_NAME);
         pubsubHelper.createSubscription(PROJECT_NAME, SUBSCRIPTION_NAME, PROJECT_NAME, TOPIC_NAME);
     }
 
-    @AfterClass
-    public static void tearDown() throws Exception {
+    @AfterAll
+    static void tearDown() throws Exception {
         pubsubHelper.deleteSubscription(PROJECT_NAME, SUBSCRIPTION_NAME);
         pubsubHelper.deleteTopic(PROJECT_NAME, TOPIC_NAME);
     }
 
     @Test
-    public void testPull() throws Exception {
+    void testPull() throws Exception {
         Publisher publisher = pubsubHelper.createPublisher(PROJECT_NAME, TOPIC_NAME);
         publisher
                 .publish(
@@ -75,15 +75,22 @@ public class CheckPubSubEmulatorTest extends GCloudUnitTestBase {
         List<ReceivedMessage> receivedMessages =
                 pubsubHelper.pullMessages(PROJECT_NAME, SUBSCRIPTION_NAME, 1);
 
-        assertEquals(1, receivedMessages.size());
-        assertEquals(
-                "Hello World PULL", receivedMessages.get(0).getMessage().getData().toStringUtf8());
+        assertThat(receivedMessages)
+                .hasSize(1)
+                .matches(
+                        receivedMessage ->
+                                receivedMessages
+                                        .get(0)
+                                        .getMessage()
+                                        .getData()
+                                        .toStringUtf8()
+                                        .equals("Hello World PULL"));
 
         publisher.shutdown();
     }
 
     @Test
-    public void testPub() throws Exception {
+    void testPub() throws Exception {
         List<PubsubMessage> receivedMessages = new ArrayList<>();
         Subscriber subscriber =
                 pubsubHelper.subscribeToSubscription(
@@ -107,8 +114,15 @@ public class CheckPubSubEmulatorTest extends GCloudUnitTestBase {
 
         waitUntil(() -> receivedMessages.size() > 0);
 
-        assertEquals(1, receivedMessages.size());
-        assertEquals("Hello World", receivedMessages.get(0).getData().toStringUtf8());
+        assertThat(receivedMessages)
+                .hasSize(1)
+                .matches(
+                        receivedMessage ->
+                                receivedMessages
+                                        .get(0)
+                                        .getData()
+                                        .toStringUtf8()
+                                        .equals("Hello World"));
 
         LOG.info("Received message. Shutting down ...");
 

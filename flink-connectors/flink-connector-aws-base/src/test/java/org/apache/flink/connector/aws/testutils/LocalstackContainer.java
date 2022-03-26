@@ -17,6 +17,9 @@
 
 package org.apache.flink.connector.aws.testutils;
 
+import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.rnorth.ducttape.ratelimits.RateLimiter;
 import org.rnorth.ducttape.ratelimits.RateLimiterBuilder;
 import org.rnorth.ducttape.unreliables.Unreliables;
@@ -36,7 +39,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * A class wrapping the Localstack container that provides mock implementations of many common AWS
  * services.
  */
-public class LocalstackContainer extends GenericContainer<LocalstackContainer> {
+public class LocalstackContainer extends GenericContainer<LocalstackContainer>
+        implements BeforeAllCallback, AfterAllCallback {
 
     private static final int CONTAINER_PORT = 4566;
 
@@ -48,6 +52,16 @@ public class LocalstackContainer extends GenericContainer<LocalstackContainer> {
 
     public String getEndpoint() {
         return String.format("https://%s:%s", getHost(), getMappedPort(CONTAINER_PORT));
+    }
+
+    @Override
+    public void afterAll(ExtensionContext context) throws Exception {
+        this.stop();
+    }
+
+    @Override
+    public void beforeAll(ExtensionContext context) throws Exception {
+        this.start();
     }
 
     private class ListBucketObjectsWaitStrategy extends AbstractWaitStrategy {

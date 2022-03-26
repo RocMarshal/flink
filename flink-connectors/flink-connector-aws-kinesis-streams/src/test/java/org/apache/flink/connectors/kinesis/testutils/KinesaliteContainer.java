@@ -19,6 +19,9 @@ package org.apache.flink.connectors.kinesis.testutils;
 
 import org.apache.flink.connector.aws.config.AWSConfigConstants;
 
+import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.rnorth.ducttape.ratelimits.RateLimiter;
 import org.rnorth.ducttape.ratelimits.RateLimiterBuilder;
 import org.rnorth.ducttape.unreliables.Unreliables;
@@ -50,7 +53,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * <p>Note that the more obvious localstack container with Kinesis took 1 minute to start vs 10
  * seconds of Kinesalite.
  */
-public class KinesaliteContainer extends GenericContainer<KinesaliteContainer> {
+public class KinesaliteContainer extends GenericContainer<KinesaliteContainer>
+        implements BeforeAllCallback, AfterAllCallback {
     private static final String ACCESS_KEY = "access key";
     private static final String SECRET_KEY = "secret key";
     private static final int PORT = 4567;
@@ -141,6 +145,16 @@ public class KinesaliteContainer extends GenericContainer<KinesaliteContainer> {
         config.setProperty(AWSConfigConstants.AWS_ACCESS_KEY_ID, getAccessKey());
         config.setProperty(AWSConfigConstants.AWS_SECRET_ACCESS_KEY, getSecretKey());
         return config;
+    }
+
+    @Override
+    public void afterAll(ExtensionContext context) throws Exception {
+        this.stop();
+    }
+
+    @Override
+    public void beforeAll(ExtensionContext context) throws Exception {
+        this.start();
     }
 
     private class ListStreamsWaitStrategy extends AbstractWaitStrategy {

@@ -21,39 +21,37 @@ package org.apache.flink.streaming.tests;
 import org.apache.flink.configuration.CheckpointingOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration;
-import org.apache.flink.test.util.MiniClusterWithClientResource;
+import org.apache.flink.test.junit5.MiniClusterExtension;
 import org.apache.flink.util.TestLogger;
 
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
 
 import static org.apache.flink.configuration.JobManagerOptions.EXECUTION_FAILOVER_STRATEGY;
 
 /** DataStreamAllroundTestProgram on MiniCluster for manual debugging purposes. */
-@Ignore("Test is already part of end-to-end tests. This is for manual debugging.")
-public class AllroundMiniClusterTest extends TestLogger {
+@Disabled("Test is already part of end-to-end tests. This is for manual debugging.")
+class AllroundMiniClusterTest extends TestLogger {
 
-    @BeforeClass
-    public static void beforeClass() {
+    @BeforeAll
+    static void beforeClass() {
         org.apache.log4j.PropertyConfigurator.configure(
                 AllroundMiniClusterTest.class.getClassLoader().getResource("log4j.properties"));
     }
 
-    @ClassRule
-    public static MiniClusterWithClientResource miniClusterResource =
-            new MiniClusterWithClientResource(
+    @RegisterExtension
+    static MiniClusterExtension miniClusterExtension =
+            new MiniClusterExtension(
                     new MiniClusterResourceConfiguration.Builder()
                             .setNumberTaskManagers(4)
                             .setNumberSlotsPerTaskManager(2)
                             .setConfiguration(createConfiguration())
                             .build());
-
-    @ClassRule public static TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     private static Configuration createConfiguration() {
         Configuration configuration = new Configuration();
@@ -63,8 +61,7 @@ public class AllroundMiniClusterTest extends TestLogger {
     }
 
     @Test
-    public void runTest() throws Exception {
-        File checkpointDir = temporaryFolder.newFolder();
+    void runTest(@TempDir File checkpointDir) throws Exception {
         DataStreamAllroundTestProgram.main(
                 new String[] {
                     "--environment.parallelism", "8",

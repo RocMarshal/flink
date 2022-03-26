@@ -31,9 +31,9 @@ import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.ReceivedMessage;
 import org.apache.commons.lang3.StringUtils;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,14 +44,12 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static org.apache.flink.streaming.connectors.gcp.pubsub.SimpleStringSchemaWithStopMarkerDetection.STOP_MARKER;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * This is a test using the emulator for a full topology that uses PubSub as both input and output.
  */
-public class EmulatedFullTopologyTest extends GCloudUnitTestBase {
+class EmulatedFullTopologyTest extends GCloudUnitTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(EmulatedFullTopologyTest.class);
 
@@ -65,10 +63,10 @@ public class EmulatedFullTopologyTest extends GCloudUnitTestBase {
 
     // ======================================================================================================
 
-    @BeforeClass
-    public static void setUp() throws Exception {
+    @BeforeAll
+    static void setUp() throws Exception {
         pubsubHelper = getPubsubHelper();
-        assertNotNull("Missing pubsubHelper.", pubsubHelper);
+        assertThat(pubsubHelper).as("Missing pubsubHelper.").isNotNull();
         pubsubHelper.createTopic(PROJECT_NAME, INPUT_TOPIC_NAME);
         pubsubHelper.createSubscription(
                 PROJECT_NAME, INPUT_SUBSCRIPTION_NAME, PROJECT_NAME, INPUT_TOPIC_NAME);
@@ -77,9 +75,9 @@ public class EmulatedFullTopologyTest extends GCloudUnitTestBase {
                 PROJECT_NAME, OUTPUT_SUBSCRIPTION_NAME, PROJECT_NAME, OUTPUT_TOPIC_NAME);
     }
 
-    @AfterClass
-    public static void tearDown() throws Exception {
-        assertNotNull("Missing pubsubHelper.", pubsubHelper);
+    @AfterAll
+    static void tearDown() throws Exception {
+        assertThat(pubsubHelper).as("Missing pubsubHelper.").isNotNull();
         pubsubHelper.deleteSubscription(PROJECT_NAME, INPUT_SUBSCRIPTION_NAME);
         pubsubHelper.deleteTopic(PROJECT_NAME, INPUT_TOPIC_NAME);
         pubsubHelper.deleteSubscription(PROJECT_NAME, OUTPUT_SUBSCRIPTION_NAME);
@@ -102,7 +100,7 @@ public class EmulatedFullTopologyTest extends GCloudUnitTestBase {
     //    In the real PubSub there are a lot of situations (mostly failure/retry) where this is not
     // true.
     @Test
-    public void testFullTopology() throws Exception {
+    void testFullTopology() throws Exception {
         // ===============================================================================
         // Step 0: The test data
         List<String> input =
@@ -204,7 +202,7 @@ public class EmulatedFullTopologyTest extends GCloudUnitTestBase {
         List<ReceivedMessage> receivedMessages =
                 pubsubHelper.pullMessages(PROJECT_NAME, OUTPUT_SUBSCRIPTION_NAME, 100);
 
-        assertEquals("Wrong number of elements", input.size(), receivedMessages.size());
+        assertThat(input).as("Wrong number of elements").hasSameSizeAs(receivedMessages);
 
         // Check output strings
         List<String> output = new ArrayList<>();
@@ -215,7 +213,7 @@ public class EmulatedFullTopologyTest extends GCloudUnitTestBase {
         for (String test : input) {
             String reversedTest = org.apache.commons.lang3.StringUtils.reverse(test);
             LOG.info("Checking if \"{}\" --> \"{}\" exists", test, reversedTest);
-            assertTrue("Missing " + test, output.contains(reversedTest));
+            assertThat(output).as("Missing " + test).contains(reversedTest);
         }
         // ===============================================================================
     }

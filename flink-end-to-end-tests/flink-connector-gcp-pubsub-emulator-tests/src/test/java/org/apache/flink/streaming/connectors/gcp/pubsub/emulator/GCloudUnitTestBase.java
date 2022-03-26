@@ -17,16 +17,14 @@
 
 package org.apache.flink.streaming.connectors.gcp.pubsub.emulator;
 
-import org.apache.flink.util.TestLogger;
-
 import com.google.api.gax.grpc.GrpcTransportChannel;
 import com.google.api.gax.rpc.FixedTransportChannelProvider;
 import com.google.api.gax.rpc.TransportChannelProvider;
 import com.spotify.docker.client.exceptions.DockerException;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 
 import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
@@ -39,14 +37,14 @@ import static org.apache.flink.streaming.connectors.gcp.pubsub.emulator.GCloudEm
  * The base class from which unit tests should inherit if they need to use the Google cloud
  * emulators.
  */
-public class GCloudUnitTestBase extends TestLogger implements Serializable {
-    @BeforeClass
+public class GCloudUnitTestBase implements Serializable {
+    @BeforeAll
     public static void launchGCloudEmulator() throws Exception {
         // Separated out into separate class so the entire test class to be serializable
         GCloudEmulatorManager.launchDocker();
     }
 
-    @AfterClass
+    @AfterAll
     public static void terminateGCloudEmulator() throws DockerException, InterruptedException {
         channel.shutdownNow();
         channel.awaitTermination(1, TimeUnit.MINUTES);
@@ -74,7 +72,7 @@ public class GCloudUnitTestBase extends TestLogger implements Serializable {
         return getDockerIpAddress() + ":" + getDockerPubSubPort();
     }
 
-    @AfterClass
+    @AfterAll
     public static void cleanupPubsubChannel() throws InterruptedException {
         if (channel != null) {
             channel.shutdownNow().awaitTermination(1, SECONDS);
