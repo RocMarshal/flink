@@ -24,19 +24,19 @@ import org.apache.flink.configuration.BlobServerOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MemorySize;
 import org.apache.flink.util.FlinkException;
-import org.apache.flink.util.TestLogger;
 import org.apache.flink.util.concurrent.FutureUtils;
 
-import org.hamcrest.collection.IsEmptyCollection;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import javax.annotation.Nullable;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -55,24 +55,20 @@ import static org.apache.flink.runtime.blob.BlobServerCleanupTest.checkFilesExis
 import static org.apache.flink.runtime.blob.BlobServerGetTest.get;
 import static org.apache.flink.runtime.blob.BlobServerPutTest.put;
 import static org.apache.flink.runtime.blob.BlobServerPutTest.verifyContents;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** A few tests for the cleanup of {@link PermanentBlobCache} and {@link TransientBlobCache}. */
-public class BlobCacheCleanupTest extends TestLogger {
+class BlobCacheCleanupTest {
 
     private final Random rnd = new Random();
-
-    @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     /**
      * Tests that {@link PermanentBlobCache} cleans up after calling {@link
      * PermanentBlobCache#releaseJob(JobID)}.
      */
     @Test
-    public void testPermanentBlobCleanup() throws IOException, InterruptedException {
+    void testPermanentBlobCleanup(@TempDir Path temporaryFolder)
+            throws IOException, InterruptedException {
 
         JobID jobId = new JobID();
         List<PermanentBlobKey> keys = new ArrayList<>();
@@ -85,15 +81,14 @@ public class BlobCacheCleanupTest extends TestLogger {
             Configuration config = new Configuration();
             config.setLong(BlobServerOptions.CLEANUP_INTERVAL, 1L);
 
-            server = new BlobServer(config, temporaryFolder.newFolder(), new VoidBlobStore());
+            File bsStorageDir = temporaryFolder.resolve("bsStorageDir").toFile();
+            bsStorageDir.mkdirs();
+            server = new BlobServer(config, bsStorageDir, new VoidBlobStore());
             server.start();
             InetSocketAddress serverAddress = new InetSocketAddress("localhost", server.getPort());
-            cache =
-                    new PermanentBlobCache(
-                            config,
-                            temporaryFolder.newFolder(),
-                            new VoidBlobStore(),
-                            serverAddress);
+            File pbcStorage = temporaryFolder.resolve("pbcStorage").toFile();
+            pbcStorage.mkdirs();
+            cache = new PermanentBlobCache(config, pbcStorage, new VoidBlobStore(), serverAddress);
 
             // upload blobs
             keys.add(server.putPermanent(jobId, buf));
@@ -119,14 +114,14 @@ public class BlobCacheCleanupTest extends TestLogger {
                 cache.getFile(jobId, key);
             }
 
-            assertEquals(2, checkFilesExist(jobId, keys, cache, true));
+            Assertions.assertThat(checkFilesExist(jobId, keys, cache, true)).isEqualTo(2);
             checkFileCountForJob(2, jobId, server);
             checkFileCountForJob(2, jobId, cache);
 
             // after releasing once, nothing should change
             cache.releaseJob(jobId);
 
-            assertEquals(2, checkFilesExist(jobId, keys, cache, true));
+            Assertions.assertThat(checkFilesExist(jobId, keys, cache, true)).isEqualTo(2);
             checkFileCountForJob(2, jobId, server);
             checkFileCountForJob(2, jobId, cache);
 
@@ -153,7 +148,7 @@ public class BlobCacheCleanupTest extends TestLogger {
      * when registering, releasing, and re-registering jobs.
      */
     @Test
-    public void testPermanentJobReferences() throws IOException {
+    void testPermanentJobReferences(@TempDir File temporaryFolder) throws IOException {
 
         JobID jobId = new JobID();
 
@@ -167,45 +162,43 @@ public class BlobCacheCleanupTest extends TestLogger {
 
         try (PermanentBlobCache cache =
                 new PermanentBlobCache(
-                        config, temporaryFolder.newFolder(), new VoidBlobStore(), serverAddress)) {
+                        config, temporaryFolder, new VoidBlobStore(), serverAddress)) {
 
             // register once
             cache.registerJob(jobId);
-            assertEquals(1, cache.getJobRefCounters().get(jobId).references);
-            assertEquals(-1, cache.getJobRefCounters().get(jobId).keepUntil);
+            Assertions.assertThat(cache.getJobRefCounters().get(jobId).references).isEqualTo(1);
+            Assertions.assertThat(cache.getJobRefCounters().get(jobId).keepUntil).isEqualTo(-1);
 
             // register a second time
             cache.registerJob(jobId);
-            assertEquals(2, cache.getJobRefCounters().get(jobId).references);
-            assertEquals(-1, cache.getJobRefCounters().get(jobId).keepUntil);
+            assertThat(cache.getJobRefCounters().get(jobId).references).isEqualTo(2);
+            assertThat(cache.getJobRefCounters().get(jobId).keepUntil).isEqualTo(-1);
 
             // release once
             cache.releaseJob(jobId);
-            assertEquals(1, cache.getJobRefCounters().get(jobId).references);
-            assertEquals(-1, cache.getJobRefCounters().get(jobId).keepUntil);
+            assertThat(cache.getJobRefCounters().get(jobId).references).isEqualTo(1);
+            assertThat(cache.getJobRefCounters().get(jobId).keepUntil).isEqualTo(-1);
 
             // release a second time
             long cleanupLowerBound =
                     System.currentTimeMillis() + config.getLong(BlobServerOptions.CLEANUP_INTERVAL);
             cache.releaseJob(jobId);
-            assertEquals(0, cache.getJobRefCounters().get(jobId).references);
-            assertThat(
-                    cache.getJobRefCounters().get(jobId).keepUntil,
-                    greaterThanOrEqualTo(cleanupLowerBound));
+            assertThat(cache.getJobRefCounters().get(jobId).references).isEqualTo(0);
+            assertThat(cache.getJobRefCounters().get(jobId).keepUntil)
+                    .isGreaterThanOrEqualTo(cleanupLowerBound);
 
             // register again
             cache.registerJob(jobId);
-            assertEquals(1, cache.getJobRefCounters().get(jobId).references);
-            assertEquals(-1, cache.getJobRefCounters().get(jobId).keepUntil);
+            assertThat(cache.getJobRefCounters().get(jobId).references).isEqualTo(1);
+            assertThat(cache.getJobRefCounters().get(jobId).keepUntil).isEqualTo(-1);
 
             // finally release the job
             cleanupLowerBound =
                     System.currentTimeMillis() + config.getLong(BlobServerOptions.CLEANUP_INTERVAL);
             cache.releaseJob(jobId);
-            assertEquals(0, cache.getJobRefCounters().get(jobId).references);
-            assertThat(
-                    cache.getJobRefCounters().get(jobId).keepUntil,
-                    greaterThanOrEqualTo(cleanupLowerBound));
+            assertThat(cache.getJobRefCounters().get(jobId).references).isEqualTo(0);
+            assertThat(cache.getJobRefCounters().get(jobId).keepUntil)
+                    .isGreaterThanOrEqualTo(cleanupLowerBound);
         }
     }
 
@@ -215,9 +208,10 @@ public class BlobCacheCleanupTest extends TestLogger {
      * cleaned up.
      */
     @Test
-    @Ignore(
+    @Disabled(
             "manual test due to stalling: ensures a BLOB is retained first and only deleted after the (long) timeout ")
-    public void testPermanentBlobDeferredCleanup() throws IOException, InterruptedException {
+    void testPermanentBlobDeferredCleanup(@TempDir Path temporaryFolder)
+            throws IOException, InterruptedException {
         // file should be deleted between 5 and 10s after last job release
         long cleanupInterval = 5L;
 
@@ -231,19 +225,18 @@ public class BlobCacheCleanupTest extends TestLogger {
         try {
             Configuration config = new Configuration();
             config.setLong(BlobServerOptions.CLEANUP_INTERVAL, cleanupInterval);
-
-            server = new BlobServer(config, temporaryFolder.newFolder(), new VoidBlobStore());
+            File bsStorageDir = temporaryFolder.resolve("bsStorageDir").toFile();
+            bsStorageDir.mkdirs();
+            server = new BlobServer(config, bsStorageDir, new VoidBlobStore());
             server.start();
             InetSocketAddress serverAddress = new InetSocketAddress("localhost", server.getPort());
             final BlobCacheSizeTracker tracker =
                     new BlobCacheSizeTracker(MemorySize.ofMebiBytes(100).getBytes());
+            File pbcStorage = temporaryFolder.resolve("pbcStorage").toFile();
+            pbcStorage.mkdirs();
             cache =
                     new PermanentBlobCache(
-                            config,
-                            temporaryFolder.newFolder(),
-                            new VoidBlobStore(),
-                            serverAddress,
-                            tracker);
+                            config, pbcStorage, new VoidBlobStore(), serverAddress, tracker);
 
             // upload blobs
             keys.add(server.putPermanent(jobId, buf));
@@ -271,7 +264,7 @@ public class BlobCacheCleanupTest extends TestLogger {
                 cache.readFile(jobId, key);
             }
 
-            assertEquals(2, checkFilesExist(jobId, keys, cache, true));
+            assertThat(checkFilesExist(jobId, keys, cache, true)).isEqualTo(2);
             checkFileCountForJob(2, jobId, server);
             checkFileCountForJob(2, jobId, cache);
             checkBlobCacheSizeTracker(tracker, jobId, 2);
@@ -279,7 +272,7 @@ public class BlobCacheCleanupTest extends TestLogger {
             // after releasing once, nothing should change
             cache.releaseJob(jobId);
 
-            assertEquals(2, checkFilesExist(jobId, keys, cache, true));
+            assertThat(checkFilesExist(jobId, keys, cache, true)).isEqualTo(2);
             checkFileCountForJob(2, jobId, server);
             checkFileCountForJob(2, jobId, cache);
             checkBlobCacheSizeTracker(tracker, jobId, 2);
@@ -288,12 +281,12 @@ public class BlobCacheCleanupTest extends TestLogger {
             cache.releaseJob(jobId);
 
             // files should still be accessible for now
-            assertEquals(2, checkFilesExist(jobId, keys, cache, true));
+            assertThat(checkFilesExist(jobId, keys, cache, true)).isEqualTo(2);
             checkFileCountForJob(2, jobId, cache);
 
             Thread.sleep(cleanupInterval / 5);
             // still accessible...
-            assertEquals(2, checkFilesExist(jobId, keys, cache, true));
+            assertThat(checkFilesExist(jobId, keys, cache, true)).isEqualTo(2);
             checkFileCountForJob(2, jobId, cache);
 
             Thread.sleep((cleanupInterval * 4) / 5);
@@ -317,20 +310,21 @@ public class BlobCacheCleanupTest extends TestLogger {
     }
 
     @Test
-    public void testTransientBlobNoJobCleanup() throws Exception {
-        testTransientBlobCleanup(null);
+    void testTransientBlobNoJobCleanup(@TempDir Path tempDir) throws Exception {
+        testTransientBlobCleanup(null, tempDir);
     }
 
     @Test
-    public void testTransientBlobForJobCleanup() throws Exception {
-        testTransientBlobCleanup(new JobID());
+    void testTransientBlobForJobCleanup(@TempDir Path tempDir) throws Exception {
+        testTransientBlobCleanup(new JobID(), tempDir);
     }
 
     /**
      * Tests that {@link TransientBlobCache} cleans up after a default TTL and keeps files which are
      * constantly accessed.
      */
-    private void testTransientBlobCleanup(@Nullable final JobID jobId) throws Exception {
+    private void testTransientBlobCleanup(@Nullable final JobID jobId, Path tempDir)
+            throws Exception {
 
         // 1s should be a safe-enough buffer to still check for existence after a BLOB's last access
         long cleanupInterval = 1L; // in seconds
@@ -349,12 +343,15 @@ public class BlobCacheCleanupTest extends TestLogger {
         long cleanupLowerBound;
 
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
-        try (BlobServer server =
-                        new BlobServer(config, temporaryFolder.newFolder(), new VoidBlobStore());
+        File bsStorage = tempDir.resolve("bsStorage").toFile();
+        bsStorage.mkdirs();
+        File pcsStorage = tempDir.resolve("pcsStorage").toFile();
+        pcsStorage.mkdirs();
+        try (BlobServer server = new BlobServer(config, bsStorage, new VoidBlobStore());
                 final BlobCacheService cache =
                         new BlobCacheService(
                                 config,
-                                temporaryFolder.newFolder(),
+                                pcsStorage,
                                 new VoidBlobStore(),
                                 new InetSocketAddress("localhost", server.getPort()))) {
             ConcurrentMap<Tuple2<JobID, TransientBlobKey>, Long> transientBlobExpiryTimes =
@@ -371,19 +368,18 @@ public class BlobCacheCleanupTest extends TestLogger {
             cleanupLowerBound = System.currentTimeMillis() + cleanupInterval;
             verifyContents(cache, jobId, key1, data);
             final Long key1ExpiryFirstAccess = transientBlobExpiryTimes.get(Tuple2.of(jobId, key1));
-            assertThat(key1ExpiryFirstAccess, greaterThanOrEqualTo(cleanupLowerBound));
-            assertNull(transientBlobExpiryTimes.get(Tuple2.of(jobId, key2)));
+            assertThat(key1ExpiryFirstAccess).isGreaterThanOrEqualTo(cleanupLowerBound);
+            assertThat(transientBlobExpiryTimes).doesNotContainKey(Tuple2.of(jobId, key2));
 
             // access key2, verify expiry times (delay at least 1ms to also verify key1 expiry is
             // unchanged)
             Thread.sleep(1);
             cleanupLowerBound = System.currentTimeMillis() + cleanupInterval;
             verifyContents(cache, jobId, key2, data2);
-            assertEquals(
-                    key1ExpiryFirstAccess, transientBlobExpiryTimes.get(Tuple2.of(jobId, key1)));
-            assertThat(
-                    transientBlobExpiryTimes.get(Tuple2.of(jobId, key2)),
-                    greaterThanOrEqualTo(cleanupLowerBound));
+            assertThat(transientBlobExpiryTimes)
+                    .containsEntry(Tuple2.of(jobId, key1), key1ExpiryFirstAccess);
+            assertThat(transientBlobExpiryTimes.get(Tuple2.of(jobId, key2)))
+                    .isGreaterThanOrEqualTo(cleanupLowerBound);
 
             // files are cached now for the given TTL - remove from server so that they are not
             // re-downloaded
@@ -429,7 +425,7 @@ public class BlobCacheCleanupTest extends TestLogger {
 
             verifyDeletedEventually(server, jobId, key1, key2);
         } finally {
-            assertThat(executorService.shutdownNow(), IsEmptyCollection.empty());
+            assertThat(executorService.shutdownNow()).isEmpty();
         }
     }
 
@@ -462,6 +458,6 @@ public class BlobCacheCleanupTest extends TestLogger {
 
     private static void checkBlobCacheSizeTracker(
             BlobCacheSizeTracker tracker, JobID jobId, int expected) {
-        assertEquals(tracker.getBlobKeysByJobId(jobId).size(), expected);
+        assertThat(expected).isEqualTo(tracker.getBlobKeysByJobId(jobId).size());
     }
 }
