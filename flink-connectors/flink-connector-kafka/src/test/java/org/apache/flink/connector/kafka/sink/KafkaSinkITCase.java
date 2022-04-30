@@ -56,6 +56,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.test.util.TestUtils;
 import org.apache.flink.testutils.junit.SharedObjects;
+import org.apache.flink.testutils.junit.SharedObjectsExtension;
 import org.apache.flink.testutils.junit.SharedReference;
 import org.apache.flink.util.DockerImageVersions;
 import org.apache.flink.util.TestLogger;
@@ -72,19 +73,22 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.junit.Test;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import javax.annotation.Nullable;
@@ -118,7 +122,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /** Tests for using KafkaSink writing to a Kafka cluster. */
-public class KafkaSinkITCase extends TestLogger {
+@Testcontainers
+public class KafkaSinkITCase {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSinkITCase.class);
     private static final String INTER_CONTAINER_KAFKA_ALIAS = "kafka";
@@ -133,18 +138,17 @@ public class KafkaSinkITCase extends TestLogger {
     private SharedReference<AtomicBoolean> failed;
     private SharedReference<AtomicLong> lastCheckpointedRecord;
 
-    @ClassRule
+    @Container
     public static final KafkaContainer KAFKA_CONTAINER =
             createKafkaContainer(KAFKA, LOG)
                     .withEmbeddedZookeeper()
                     .withNetwork(NETWORK)
                     .withNetworkAliases(INTER_CONTAINER_KAFKA_ALIAS);
 
-    @Rule public final SharedObjects sharedObjects = SharedObjects.create();
+    @RegisterExtension
+    final SharedObjectsExtension sharedObjects = SharedObjectsExtension.create();
 
-    @Rule public final TemporaryFolder temp = new TemporaryFolder();
-
-    @BeforeClass
+    @BeforeAll
     public static void setupAdmin() {
         Map<String, Object> properties = new HashMap<>();
         properties.put(
@@ -153,12 +157,12 @@ public class KafkaSinkITCase extends TestLogger {
         admin = AdminClient.create(properties);
     }
 
-    @AfterClass
+    @AfterAll
     public static void teardownAdmin() {
         admin.close();
     }
 
-    @Before
+    @BeforeEach
     public void setUp() throws ExecutionException, InterruptedException, TimeoutException {
         emittedRecordsCount = sharedObjects.add(new AtomicLong());
         emittedRecordsWithCheckpoint = sharedObjects.add(new AtomicLong());
@@ -168,7 +172,7 @@ public class KafkaSinkITCase extends TestLogger {
         createTestTopic(topic, 1, TOPIC_REPLICATION_FACTOR);
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws ExecutionException, InterruptedException, TimeoutException {
         deleteTestTopic(topic);
     }
@@ -256,12 +260,11 @@ public class KafkaSinkITCase extends TestLogger {
     }
 
     @Test
-    public void testAbortTransactionsOfPendingCheckpointsAfterFailure() throws Exception {
+    public void testAbortTransactionsOfPendingCheckpointsAfterFailure(@TempDir File checkpointDir) throws Exception {
         // Run a first job failing during the async phase of a checkpoint to leave some
         // lingering transactions
         final Configuration config = new Configuration();
         config.setString(StateBackendOptions.STATE_BACKEND, "filesystem");
-        final File checkpointDir = temp.newFolder();
         config.setString(
                 CheckpointingOptions.CHECKPOINTS_DIRECTORY, checkpointDir.toURI().toString());
         config.set(
@@ -306,7 +309,7 @@ public class KafkaSinkITCase extends TestLogger {
                     e.getCause().getCause().getMessage(),
                     containsString("Exceeded checkpoint tolerable failure"));
         }
-        assertTrue(deserializeValues(drainAllRecordsFromTopic(topic, true)).isEmpty());
+        org.assertj.core.api.Assertions.assertThat(deserializeValues(drainAllRecordsFromTopic(topic, true))).isEmpty();
 
         // Second job aborts all transactions from previous runs with higher parallelism
         config.set(CoreOptions.DEFAULT_PARALLELISM, 1);

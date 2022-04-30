@@ -18,7 +18,6 @@
 package org.apache.flink.connector.kafka.sink;
 
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
-import org.apache.flink.util.TestLogger;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.junit.jupiter.api.Test;
@@ -27,11 +26,10 @@ import java.util.Arrays;
 import java.util.Properties;
 import java.util.function.Consumer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** Tests for {@link KafkaSinkBuilder}. */
-public class KafkaSinkBuilderTest extends TestLogger {
+public class KafkaSinkBuilderTest {
 
     private static final String[] DEFAULT_KEYS =
             new String[] {
@@ -45,14 +43,16 @@ public class KafkaSinkBuilderTest extends TestLogger {
     public void testPropertyHandling() {
         validateProducerConfig(
                 getBasicBuilder(),
-                p -> {
-                    Arrays.stream(DEFAULT_KEYS).forEach(k -> assertTrue(k, p.containsKey(k)));
-                });
+                p -> Arrays.stream(DEFAULT_KEYS).forEach(k -> assertThat(p.containsKey(k))
+                        .as(k)
+                        .isTrue()));
 
         validateProducerConfig(
                 getBasicBuilder().setProperty("k1", "v1"),
                 p -> {
-                    Arrays.stream(DEFAULT_KEYS).forEach(k -> assertTrue(k, p.containsKey(k)));
+                    Arrays.stream(DEFAULT_KEYS).forEach(k -> assertThat(p.containsKey(k))
+                            .as(k)
+                            .isTrue());
                     p.containsKey("k1");
                 });
 
@@ -63,8 +63,10 @@ public class KafkaSinkBuilderTest extends TestLogger {
         validateProducerConfig(
                 getBasicBuilder().setKafkaProducerConfig(testConf),
                 p -> {
-                    Arrays.stream(DEFAULT_KEYS).forEach(k -> assertTrue(k, p.containsKey(k)));
-                    testConf.forEach((k, v) -> assertEquals(v, p.get(k)));
+                    Arrays.stream(DEFAULT_KEYS).forEach(k -> assertThat(p.containsKey(k))
+                            .as(k)
+                            .isTrue());
+                    testConf.forEach((k, v) -> assertThat(p.get(k)).isEqualTo(v));
                 });
 
         validateProducerConfig(
@@ -73,9 +75,10 @@ public class KafkaSinkBuilderTest extends TestLogger {
                         .setKafkaProducerConfig(testConf)
                         .setProperty("k2", "correct"),
                 p -> {
-                    Arrays.stream(DEFAULT_KEYS).forEach(k -> assertTrue(k, p.containsKey(k)));
-                    assertEquals("v1", p.get("k1"));
-                    assertEquals("correct", p.get("k2"));
+                    Arrays.stream(DEFAULT_KEYS).forEach(k -> assertThat(p.containsKey(k))
+                            .as(k)
+                            .isTrue());
+                    assertThat(p).containsEntry("k1", "v1").containsEntry("k2", "correct");
                 });
     }
 
