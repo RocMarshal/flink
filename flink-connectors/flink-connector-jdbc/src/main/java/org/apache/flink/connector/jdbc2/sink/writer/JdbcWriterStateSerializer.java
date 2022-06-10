@@ -18,4 +18,23 @@
 
 package org.apache.flink.connector.jdbc2.sink.writer;
 
-public class JdbcWriterStateSerializer {}
+import org.apache.flink.core.io.SimpleVersionedSerializer;
+
+import java.io.IOException;
+
+public class JdbcWriterStateSerializer  implements SimpleVersionedSerializer<JdbcWriterState> {
+    @Override
+    public int getVersion() {
+        return 0;
+    }
+
+    @Override
+    public byte[] serialize(JdbcWriterState obj) throws IOException {
+        return new byte[0];
+    }
+
+    @Override
+    public JdbcWriterState deserialize(int version, byte[] serialized) throws IOException {
+        return null;
+    }
+}

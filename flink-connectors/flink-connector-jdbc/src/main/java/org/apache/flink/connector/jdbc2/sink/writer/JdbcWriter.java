@@ -18,4 +18,44 @@
 
 package org.apache.flink.connector.jdbc2.sink.writer;
 
-public class JdbcWriter {}
+import org.apache.flink.api.common.eventtime.Watermark;
+import org.apache.flink.api.connector.sink2.StatefulSink;
+import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
+import org.apache.flink.connector.jdbc2.sink.commit.JdbcCommittable;
+
+import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
+
+public class JdbcWriter<IN> implements StatefulSink.StatefulSinkWriter<IN, JdbcWriterState>,
+        TwoPhaseCommittingSink.PrecommittingSinkWriter<IN, JdbcCommittable>{
+    @Override
+    public void write(IN element, Context context) throws IOException, InterruptedException {
+
+    }
+
+    @Override
+    public void flush(boolean endOfInput) throws IOException, InterruptedException {
+
+    }
+
+    @Override
+    public void writeWatermark(Watermark watermark) throws IOException, InterruptedException {
+        StatefulSink.StatefulSinkWriter.super.writeWatermark(watermark);
+    }
+
+    @Override
+    public List<JdbcWriterState> snapshotState(long checkpointId) throws IOException {
+        return null;
+    }
+
+    @Override
+    public Collection<JdbcCommittable> prepareCommit() throws IOException, InterruptedException {
+        return null;
+    }
+
+    @Override
+    public void close() throws Exception {
+
+    }
+}

@@ -18,4 +18,48 @@
 
 package org.apache.flink.connector.jdbc2.sink;
 
-public class JdbcSink {}
+import org.apache.flink.api.connector.sink2.Committer;
+import org.apache.flink.api.connector.sink2.StatefulSink;
+import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
+import org.apache.flink.connector.jdbc2.sink.commit.JdbcCommittable;
+import org.apache.flink.connector.jdbc2.sink.writer.JdbcWriter;
+import org.apache.flink.connector.jdbc2.sink.writer.JdbcWriterState;
+import org.apache.flink.core.io.SimpleVersionedSerializer;
+
+import java.io.IOException;
+import java.util.Collection;
+
+public class JdbcSink<IN> implements StatefulSink<IN, JdbcWriterState>,
+        TwoPhaseCommittingSink<IN, JdbcCommittable> {
+
+    @Override
+    public Committer<JdbcCommittable> createCommitter() throws IOException {
+        return null;
+    }
+
+    public static <IN> JdbcSinkBuilder<IN> builder() {
+        return new JdbcSinkBuilder<>();
+    }
+
+    @Override
+    public SimpleVersionedSerializer<JdbcCommittable> getCommittableSerializer() {
+        return null;
+    }
+
+    @Override
+    public JdbcWriter<IN> createWriter(InitContext context) throws IOException {
+        return null;
+    }
+
+    @Override
+    public StatefulSinkWriter<IN, JdbcWriterState> restoreWriter(
+            InitContext context,
+            Collection<JdbcWriterState> recoveredState) throws IOException {
+        return null;
+    }
+
+    @Override
+    public SimpleVersionedSerializer<JdbcWriterState> getWriterStateSerializer() {
+        return null;
+    }
+}

@@ -18,4 +18,23 @@
 
 package org.apache.flink.connector.jdbc2.sink.commit;
 
-public class JdbcCommittableSerializer {}
+import org.apache.flink.core.io.SimpleVersionedSerializer;
+
+import java.io.IOException;
+
+public class JdbcCommittableSerializer implements SimpleVersionedSerializer<JdbcCommittable> {
+    @Override
+    public int getVersion() {
+        return 1;
+    }
+
+    @Override
+    public byte[] serialize(JdbcCommittable obj) throws IOException {
+        return new byte[0];
+    }
+
+    @Override
+    public JdbcCommittable deserialize(int version, byte[] serialized) throws IOException {
+        return null;
+    }
+}

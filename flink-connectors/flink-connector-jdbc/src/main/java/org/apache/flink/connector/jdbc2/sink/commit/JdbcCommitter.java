@@ -18,4 +18,20 @@
 
 package org.apache.flink.connector.jdbc2.sink.commit;
 
-public class JdbcCommitter {}
+import org.apache.flink.api.connector.sink2.Committer;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.Collection;
+
+public class JdbcCommitter implements Committer<JdbcCommittable>, Closeable {
+    @Override
+    public void commit(Collection<CommitRequest<JdbcCommittable>> committables) throws IOException, InterruptedException {
+
+    }
+
+    @Override
+    public void close() throws IOException {
+
+    }
+}
