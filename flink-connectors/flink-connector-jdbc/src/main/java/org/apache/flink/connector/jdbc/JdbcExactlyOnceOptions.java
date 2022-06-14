@@ -18,6 +18,7 @@
 package org.apache.flink.connector.jdbc;
 
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.connector.jdbc.xa.XaFacade;
 import org.apache.flink.util.Preconditions;
 
 import java.io.Serializable;
