@@ -138,7 +138,6 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
 
     @Override
     public void initializeState(StateInitializationContext context) throws Exception {
-        LOGGER.error("{} start____ initializeState from {}", this.getClass().getSimpleName(), context.getRestoredCheckpointId());
         super.initializeState(context);
         committableCollectorState =
                 new SimpleVersionedListState<>(
@@ -148,29 +147,19 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
                                 committableSerializer,
                                 getRuntimeContext().getIndexOfThisSubtask(),
                                 getRuntimeContext().getNumberOfParallelSubtasks()));
-        LOGGER.error("{} during____ initializeState from {}, {}", this.getClass().getSimpleName(), context.getRestoredCheckpointId(), committableCollectorState.get());
         if (context.isRestored()) {
             committableCollectorState.get().forEach(cc -> committableCollector.merge(cc));
             lastCompletedCheckpointId = context.getRestoredCheckpointId().getAsLong();
             // try to re-commit recovered transactions as quickly as possible
-            LOGGER.error("isRestored() {} during____ initializeState from {}, {}", this.getClass().getSimpleName(), context.getRestoredCheckpointId(), committableCollectorState.get());
-
             commitAndEmitCheckpoints();
         }
-        LOGGER.error("{} end____ initializeState from {}", this.getClass().getSimpleName(), context.getRestoredCheckpointId());
     }
 
     @Override
     public void snapshotState(StateSnapshotContext context) throws Exception {
-        LOGGER.error("{} start____ snapshotState, {}", this.getClass().getSimpleName(), context.getCheckpointId());
         super.snapshotState(context);
         // It is important to copy the collector to not mutate the state.
-        List<CommittableCollector<CommT>> committableCollectors = Collections.singletonList(
-                committableCollector.copy());
-
-        committableCollectorState.update(committableCollectors);
-
-        LOGGER.error("{} end____{} snapshotState, committableCollectorState {}", this.getClass().getSimpleName(), context.getCheckpointId(), committableCollectors);
+        committableCollectorState.update(Collections.singletonList(committableCollector.copy()));
     }
 
     @Override
@@ -184,7 +173,6 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
 
     @Override
     public void notifyCheckpointComplete(long checkpointId) throws Exception {
-        LOGGER.error("{} start____ notifyCheckpointComplete, chk {}", this.getClass().getSimpleName(), checkpointId);
         super.notifyCheckpointComplete(checkpointId);
         if (endInput) {
             // This is the final checkpoint, all committables should be committed
@@ -193,15 +181,12 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
             lastCompletedCheckpointId = Math.max(lastCompletedCheckpointId, checkpointId);
         }
         commitAndEmitCheckpoints();
-        LOGGER.error("{} end____ notifyCheckpointComplete, chk {}", this.getClass().getSimpleName(), checkpointId);
     }
 
     private void commitAndEmitCheckpoints() throws IOException, InterruptedException {
-        Collection<? extends CheckpointCommittableManager<CommT>> checkpointCommittablesUpTo = committableCollector.getCheckpointCommittablesUpTo(
-                lastCompletedCheckpointId);
-        LOGGER.error("start______ commitAndEmitCheckpoints {}", checkpointCommittablesUpTo);
         do {
-            for (CheckpointCommittableManager<CommT> manager :checkpointCommittablesUpTo) {
+            for (CheckpointCommittableManager<CommT> manager :
+                    committableCollector.getCheckpointCommittablesUpTo(lastCompletedCheckpointId)) {
                 // wait for all committables of the current manager before submission
                 boolean fullyReceived =
                         !endInput && manager.getCheckpointId() == lastCompletedCheckpointId;

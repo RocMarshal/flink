@@ -1,12 +1,10 @@
-package org.apache.flink.connector.jdbc.sink.committer;
+package org.apache.flink.connector.jdbc.sinkxa.committer;
 
-import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.connector.sink2.Committer;
 import org.apache.flink.connector.base.DeliveryGuarantee;
-import org.apache.flink.connector.jdbc.sink.writer.JdbcWriterConfig;
+import org.apache.flink.connector.jdbc.sinkxa.writer.JdbcWriterConfig;
 import org.apache.flink.connector.jdbc.xa.CheckpointAndXid;
-import org.apache.flink.connector.jdbc.xa.SemanticXidGenerator;
 import org.apache.flink.connector.jdbc.xa.XaFacade;
 import org.apache.flink.connector.jdbc.xa.XaGroupOps;
 import org.apache.flink.connector.jdbc.xa.XaGroupOpsImpl;
@@ -17,13 +15,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import javax.transaction.xa.Xid;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Optional;
 
 /** JdbcCommitter. */
 public class JdbcCommitter implements Committer<JdbcCommittable>, Serializable {
@@ -55,9 +50,9 @@ public class JdbcCommitter implements Committer<JdbcCommittable>, Serializable {
             xaGroupOps = new XaGroupOpsImpl(xaFacade);
         }
         xidGenerator = XidGenerator.semanticXidGenerator();
-        if (jdbcWriterConfig.getJdbcExactlyOnceOptions().isDiscoverAndRollbackOnRecovery()) {
-            xaGroupOps.recoverAndRollback(runtimeContext, xidGenerator);
-        }
+//        if (jdbcWriterConfig.getJdbcExactlyOnceOptions().isDiscoverAndRollbackOnRecovery()) {
+//            xaGroupOps.recoverAndRollback(runtimeContext, xidGenerator);
+//        }
 
     }
 

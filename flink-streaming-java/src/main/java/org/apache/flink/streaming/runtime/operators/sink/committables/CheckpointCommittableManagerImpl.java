@@ -161,14 +161,4 @@ class CheckpointCommittableManagerImpl<CommT> implements CheckpointCommittableMa
                 numberOfSubtasks,
                 checkpointId);
     }
-
-    @Override
-    public String toString() {
-        return "CheckpointCommittableManagerImpl{" +
-                "subtasksCommittableManagers=" + subtasksCommittableManagers +
-                ", checkpointId=" + checkpointId +
-                ", subtaskId=" + subtaskId +
-                ", numberOfSubtasks=" + numberOfSubtasks +
-                '}';
-    }
 }

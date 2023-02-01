@@ -1,4 +1,4 @@
-package org.apache.flink.connector.jdbc.sink.writer;
+package org.apache.flink.connector.jdbc.sinkxa.writer;
 
 import java.io.Serializable;
 import java.util.function.Function;

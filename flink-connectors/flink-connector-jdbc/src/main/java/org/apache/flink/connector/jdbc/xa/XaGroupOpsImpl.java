@@ -115,6 +115,8 @@ public class XaGroupOpsImpl implements XaGroupOps {
         LOG.warn("rollback {} recovered transactions", recovered.size());
         for (Xid xid : recovered) {
             if (xidGenerator.belongsToSubtask(xid, runtimeContext)) {
+                LOG.error("Will rollback xid: {}",
+                        new XidImpl(xid.getFormatId(), xid.getGlobalTransactionId(), xid.getBranchQualifier()));
                 try {
                     xaFacade.rollback(xid);
                 } catch (Exception e) {

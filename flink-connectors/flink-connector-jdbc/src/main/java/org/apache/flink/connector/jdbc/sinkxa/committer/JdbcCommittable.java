@@ -1,13 +1,10 @@
-package org.apache.flink.connector.jdbc.sink.committer;
+package org.apache.flink.connector.jdbc.sinkxa.committer;
 
-import org.apache.flink.api.common.JobID;
 import org.apache.flink.connector.jdbc.xa.CheckpointAndXid;
 import org.apache.flink.connector.jdbc.xa.XaFacade;
-import org.apache.flink.connector.jdbc.xa.XaGroupOps;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.transaction.xa.Xid;
 
 import java.io.Serializable;
 import java.util.Objects;

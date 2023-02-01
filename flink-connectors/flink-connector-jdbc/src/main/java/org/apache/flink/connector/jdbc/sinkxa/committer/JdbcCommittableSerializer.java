@@ -1,4 +1,4 @@
-package org.apache.flink.connector.jdbc.sink.committer;
+package org.apache.flink.connector.jdbc.sinkxa.committer;
 
 import org.apache.flink.connector.jdbc.xa.CheckpointAndXid;
 import org.apache.flink.connector.jdbc.xa.XidImpl;

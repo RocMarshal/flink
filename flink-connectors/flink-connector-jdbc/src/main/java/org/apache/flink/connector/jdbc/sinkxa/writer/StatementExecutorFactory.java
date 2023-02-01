@@ -1,4 +1,4 @@
-package org.apache.flink.connector.jdbc.sink.writer;
+package org.apache.flink.connector.jdbc.sinkxa.writer;
 
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.connector.jdbc.internal.executor.JdbcBatchStatementExecutor;

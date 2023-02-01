@@ -240,13 +240,4 @@ public class CommittableCollector<CommT> {
                 this.checkpointCommittables.get(committable.getCheckpointId().orElse(EOI));
         return checkNotNull(committables, "Unknown checkpoint for %s", committable);
     }
-
-    @Override
-    public String toString() {
-        return "CommittableCollector{" +
-                "checkpointCommittables=" + checkpointCommittables +
-                ", subtaskId=" + subtaskId +
-                ", numberOfSubtasks=" + numberOfSubtasks +
-                '}';
-    }
 }
