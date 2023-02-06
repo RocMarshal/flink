@@ -230,6 +230,7 @@ public class JdbcExactlyOnceSinkE2eTest extends JdbcTestBase {
                         dbEnv.getContainer().getUsername(),
                         dbEnv.getContainer().getPassword(),
                         INPUT_TABLE);
+        // 搞清楚原理
         List<Integer> expectedIds =
                 IntStream.range(0, elementsPerSource * dbEnv.getParallelism())
                         .boxed()
@@ -464,7 +465,10 @@ public class JdbcExactlyOnceSinkE2eTest extends JdbcTestBase {
 
         @Override
         public void open(Configuration parameters) throws Exception {
+            // 设置距离失败还有多少个记录
             remaining = minElementsPerFailure + RANDOM.nextInt(maxElementsPerFailure);
+            // 不活跃的mapper<attemptNumber, CountDownLatch<Init with parallel>>
+            // 打开后即在对应的 attemp 下进行减一标记，此 mapper 已经成功（不活跃的状态减少一个）一个
             inactiveMappers
                     .computeIfAbsent(
                             getRuntimeContext().getAttemptNumber(),
@@ -478,10 +482,10 @@ public class JdbcExactlyOnceSinkE2eTest extends JdbcTestBase {
         @Override
         public TestEntry map(TestEntry value) throws Exception {
             if (--remaining <= 0) {
+                // 在消息阈值达到后，抛出异常
                 LOG.debug("Mapper failing intentionally");
                 throw new TestException();
             }
-            LOG.debug("____Mapper failing after {} records", remaining);
             return value;
         }
     }

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.jdbc.sink;
+package org.apache.flink.connector.jdbc.sinkxa;
 
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.state.ListState;
@@ -23,17 +23,9 @@ import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.connector.base.DeliveryGuarantee;
-import org.apache.flink.connector.jdbc.DbMetadata;
-import org.apache.flink.connector.jdbc.JdbcExactlyOnceOptions;
-import org.apache.flink.connector.jdbc.JdbcExecutionOptions;
-import org.apache.flink.connector.jdbc.JdbcITCase;
-import org.apache.flink.connector.jdbc.JdbcTestBaseJUnit5;
+import org.apache.flink.connector.jdbc.*;
 import org.apache.flink.connector.jdbc.JdbcTestFixture.TestEntry;
 import org.apache.flink.connector.jdbc.dialect.oracle.OracleContainer;
-import org.apache.flink.connector.jdbc.internal.options.JdbcConnectorOptions;
-import org.apache.flink.connector.jdbc.sinkxa.JdbcSink;
-import org.apache.flink.connector.jdbc.sinkxa.writer.JdbcWriterConfig;
 import org.apache.flink.connector.jdbc.xa.XaFacadeImpl;
 import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
@@ -45,23 +37,20 @@ import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
-import org.apache.flink.test.junit5.MiniClusterExtension;
-import org.apache.flink.testutils.junit.extensions.parameterized.Parameter;
-import org.apache.flink.testutils.junit.extensions.parameterized.ParameterizedTestExtension;
-import org.apache.flink.testutils.junit.extensions.parameterized.Parameters;
+import org.apache.flink.test.util.MiniClusterWithClientResource;
 import org.apache.flink.util.DockerImageVersions;
 import org.apache.flink.util.ExceptionUtils;
-import org.apache.flink.util.LogLevelExtension;
+import org.apache.flink.util.LogLevelRule;
 import org.apache.flink.util.function.SerializableSupplier;
 
 import com.mysql.cj.jdbc.MysqlXADataSource;
 import oracle.jdbc.xa.client.OracleXADataSource;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.postgresql.xa.PGXADataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +60,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 import javax.sql.XADataSource;
 
-import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -97,29 +85,32 @@ import static org.apache.flink.configuration.TaskManagerOptions.TASK_CANCELLATIO
 import static org.apache.flink.connector.jdbc.JdbcTestFixture.INPUT_TABLE;
 import static org.apache.flink.connector.jdbc.JdbcTestFixture.INSERT_TEMPLATE;
 import static org.apache.flink.connector.jdbc.xa.JdbcXaFacadeTestHelper.getInsertedIds;
+import static org.apache.flink.runtime.executiongraph.failover.flip1.FailoverStrategyFactoryLoader.FULL_RESTART_STRATEGY_NAME;
 import static org.apache.flink.streaming.api.environment.ExecutionCheckpointingOptions.CHECKPOINTING_TIMEOUT;
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkState;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.slf4j.event.Level.TRACE;
 
-/** A simple end-to-end test. */
-@ExtendWith(ParameterizedTestExtension.class)
-public class JdbcExactlyOnceSinkE2eTestJUnit5 extends JdbcTestBaseJUnit5 implements Serializable {
+/** A simple end-to-end test for. */
+@RunWith(Parameterized.class)
+public class JdbcExactlyOnceSinkE2eTest extends JdbcTestBase {
     private static final Random RANDOM = new Random(System.currentTimeMillis());
 
-    private static final Logger LOG = LoggerFactory.getLogger(JdbcExactlyOnceSinkE2eTestJUnit5.class);
+    private static final Logger LOG = LoggerFactory.getLogger(JdbcExactlyOnceSinkE2eTest.class);
 
     private static final long CHECKPOINT_TIMEOUT_MS = 20_000L;
     private static final long TASK_CANCELLATION_TIMEOUT_MS = 20_000L;
 
-    public static final int PARALLEL = 1;
-
     // todo: remove after fixing FLINK-22889
-    @RegisterExtension
-    public static LogLevelExtension logLevelExtension = new LogLevelExtension().set(JdbcExactlyOnceSinkE2eTestJUnit5.class, TRACE).set(XaFacadeImpl.class, TRACE).set(MySqlJdbcExactlyOnceSinkTestEnv.class, TRACE);
+    @ClassRule
+    public static final LogLevelRule TEST_LOG_LEVEL_RULE =
+            new LogLevelRule()
+                    .set(JdbcExactlyOnceSinkE2eTest.class, TRACE)
+                    .set(XaFacadeImpl.class, TRACE)
+                    .set(MySqlJdbcExactlyOnceSinkTestEnv.InnoDbStatusLogger.class, TRACE);
 
-    private interface JdbcExactlyOnceSinkTestEnv extends Serializable {
+    private interface JdbcExactlyOnceSinkTestEnv {
         void start();
 
         void stop();
@@ -131,27 +122,9 @@ public class JdbcExactlyOnceSinkE2eTestJUnit5 extends JdbcTestBaseJUnit5 impleme
         int getParallelism();
     }
 
-    @Parameter
-    public JdbcExactlyOnceSinkTestEnv dbEnv;
+    @Parameterized.Parameter public JdbcExactlyOnceSinkTestEnv dbEnv;
 
-    @RegisterExtension
-    @Order(value = 1)
-    public static MiniClusterExtension miniClusterExtension = new MiniClusterExtension(() -> {
-        Configuration configuration = new Configuration();
-        // single failover region to allow checkpointing even after some sources have finished and
-        // restart all tasks if at least one fails
-        configuration.set(EXECUTION_FAILOVER_STRATEGY, "full");
-        // cancel tasks eagerly to reduce the risk of running out of memory with many restarts
-        configuration.set(TASK_CANCELLATION_TIMEOUT, TASK_CANCELLATION_TIMEOUT_MS);
-        configuration.set(CHECKPOINTING_TIMEOUT, Duration.ofMillis(CHECKPOINT_TIMEOUT_MS));
-        return new MiniClusterResourceConfiguration.Builder()
-                .setConfiguration(configuration)
-                // Get enough TMs to run the job. Parallelize using TMs (rather than
-                // slots) for better isolation - this test tends to exhaust memory
-                // by restarts and fast sources
-                .setNumberTaskManagers(PARALLEL)
-                .build();
-    });
+    private MiniClusterWithClientResource cluster;
 
     // track active sources for:
     // 1. if any cancels, cancel others ASAP
@@ -163,38 +136,61 @@ public class JdbcExactlyOnceSinkE2eTestJUnit5 extends JdbcTestBaseJUnit5 impleme
     // not using SharedObjects because we want to explicitly control which tag (attempt) to use
     private static final Map<Integer, CountDownLatch> inactiveMappers = new ConcurrentHashMap<>();
 
-    @Parameters(name = "dbEnv-{0}")
+    private static final int p = 1;
+
+    @Parameterized.Parameters(name = "{0}")
     public static Collection<JdbcExactlyOnceSinkTestEnv> parameters() {
         return Arrays.asList(
                 // PGSQL: check for issues with suspending connections (requires pooling) and
                 // honoring limits (properly closing connections).
-                new PgSqlJdbcExactlyOnceSinkTestEnv(PARALLEL),
+                new PgSqlJdbcExactlyOnceSinkTestEnv(p),
                 // MYSQL: check for issues with errors on closing connections.
-                new MySqlJdbcExactlyOnceSinkTestEnv(PARALLEL),
+                new MySqlJdbcExactlyOnceSinkTestEnv(p),
                 // ORACLE - default tests.
-                new OracleJdbcExactlyOnceSinkTestEnv(PARALLEL)
+                new OracleJdbcExactlyOnceSinkTestEnv(p)
                 // MSSQL - not testing: XA transactions need to be enabled via GUI (plus EULA).
                 // DB2 - not testing: requires auth configuration (plus EULA).
                 // MARIADB - not testing: XA rollback doesn't recognize recovered transactions.
-        );
+                );
     }
 
-    @BeforeEach
+    @Before
     public void before() throws Exception {
+        Configuration configuration = new Configuration();
+        // single failover region to allow checkpointing even after some sources have finished and
+        // restart all tasks if at least one fails
+        configuration.set(EXECUTION_FAILOVER_STRATEGY, FULL_RESTART_STRATEGY_NAME);
+        // cancel tasks eagerly to reduce the risk of running out of memory with many restarts
+        configuration.set(TASK_CANCELLATION_TIMEOUT, TASK_CANCELLATION_TIMEOUT_MS);
+        configuration.set(CHECKPOINTING_TIMEOUT, Duration.ofMillis(CHECKPOINT_TIMEOUT_MS));
+        cluster =
+                new MiniClusterWithClientResource(
+                        new MiniClusterResourceConfiguration.Builder()
+                                .setConfiguration(configuration)
+                                // Get enough TMs to run the job. Parallelize using TMs (rather than
+                                // slots) for better isolation - this test tends to exhaust memory
+                                // by restarts and fast sources
+                                .setNumberTaskManagers(dbEnv.getParallelism())
+                                .build());
+        cluster.before();
         dbEnv.start();
         super.before();
     }
 
-    @AfterEach
+    @After
     @Override
     public void after() {
         // no need for cleanup - done by test container tear down
+        if (cluster != null) {
+            cluster.after();
+            cluster = null;
+        }
         dbEnv.stop();
         activeSources.clear();
         inactiveMappers.clear();
     }
 
-    @TestTemplate
+    @Test
     public void testInsert() throws Exception {
         long started = System.currentTimeMillis();
         LOG.info("Test insert for {}", dbEnv);
@@ -212,29 +208,21 @@ public class JdbcExactlyOnceSinkE2eTestJUnit5 extends JdbcTestBaseJUnit5 impleme
         env.getCheckpointConfig().setCheckpointTimeout(1000);
         // NOTE: keep operator chaining enabled to prevent memory exhaustion by sources while maps
         // are still initializing
-//        env.addSource(new TestEntrySource(elementsPerSource, numElementsPerCheckpoint))
-//                .setParallelism(dbEnv.getParallelism())
-//                .map(new FailingMapper(minElementsPerFailure, maxElementsPerFailure))
-//                .sinkTo(new JdbcSink<TestEntry>(
-//                        String.format(INSERT_TEMPLATE, INPUT_TABLE),
-//                        JdbcWriterConfig.builder()
-//                                .setJdbcConnectionOptions(
-//                                        JdbcConnectorOptions.builder()
-//                                                .setXaDataSourceSupplier(this.dbEnv.getDataSourceSupplier())
-//                                                .build())
-//                                .setJdbcExecutionOptions(
-//                                        JdbcExecutionOptions.builder()
-//                                                .withMaxRetries(0)
-//                                                .build())
-//                                .setDeliveryGuarantee(DeliveryGuarantee.EXACTLY_ONCE)
-//                                .setJdbcExactlyOnceOptions(
-//                                        JdbcExactlyOnceOptions.builder()
-//                                                .withTransactionPerConnection(true)
-//                                                .build())
-//                                .build(),
-//                        JdbcITCase.TEST_ENTRY_JDBC_STATEMENT_BUILDER,
-//                        TypeInformation.of(TestEntry.class)
-//                ){});
+        env.addSource(new TestEntrySource(elementsPerSource, numElementsPerCheckpoint))
+                .setParallelism(dbEnv.getParallelism())
+                .map(new FailingMapper(minElementsPerFailure, maxElementsPerFailure))
+                .sinkTo(
+                        JdbcSinkBuilder.exactlyOnceSink(
+                                String.format(INSERT_TEMPLATE, INPUT_TABLE),
+                                JdbcITCase.TEST_ENTRY_JDBC_STATEMENT_BUILDER,
+                                JdbcExecutionOptions.builder().withMaxRetries(0).build(),
+                                JdbcExactlyOnceOptions.builder()
+                                        .withTransactionPerConnection(true)
+                                        .withRecoveredAndRollback(true)
+                                        .build(),
+                                this.dbEnv.getDataSourceSupplier(),
+                                // TODO
+                                TypeInformation.of(TestEntry.class)));
 
         env.execute();
 
@@ -486,16 +474,15 @@ public class JdbcExactlyOnceSinkE2eTestJUnit5 extends JdbcTestBaseJUnit5 impleme
                                     new CountDownLatch(
                                             getRuntimeContext().getNumberOfParallelSubtasks()))
                     .countDown();
-            LOG.debug("OPEN______Mapper will fail after {} records", remaining);
+            LOG.debug("OPEN Mapper will fail after {} records", remaining);
         }
 
         @Override
         public TestEntry map(TestEntry value) throws Exception {
             if (--remaining <= 0) {
-                LOG.debug("___________Mapper failing intentionally_____");
+                LOG.debug("Mapper failing intentionally");
                 throw new TestException();
             }
-            LOG.debug("MAP_______Mapper will fail after {} records", remaining);
             return value;
         }
     }
@@ -510,7 +497,7 @@ public class JdbcExactlyOnceSinkE2eTestJUnit5 extends JdbcTestBaseJUnit5 impleme
 
     private static class MySqlJdbcExactlyOnceSinkTestEnv implements JdbcExactlyOnceSinkTestEnv {
         private final int parallelism;
-        private final transient JdbcDatabaseContainer<?> db;
+        private final JdbcDatabaseContainer<?> db;
 
         public MySqlJdbcExactlyOnceSinkTestEnv(int parallelism) {
             this.parallelism = parallelism;
@@ -563,7 +550,7 @@ public class JdbcExactlyOnceSinkE2eTestJUnit5 extends JdbcTestBaseJUnit5 impleme
                 // prevent XAER_RMERR: Fatal error occurred in the transaction  branch - check your
                 // data for consistency works for mysql v8+
                 try (Connection connection =
-                             DriverManager.getConnection(getJdbcUrl(), "root", getPassword())) {
+                        DriverManager.getConnection(getJdbcUrl(), "root", getPassword())) {
                     prepareDb(connection, lockWaitTimeout);
                 } catch (SQLException e) {
                     ExceptionUtils.rethrow(e);
@@ -638,7 +625,7 @@ public class JdbcExactlyOnceSinkE2eTestJUnit5 extends JdbcTestBaseJUnit5 impleme
                                 () -> {
                                     LOG.info("Logging InnoDB status every {}ms", intervalMs);
                                     try (Connection connection =
-                                                 DriverManager.getConnection(url, user, password)) {
+                                            DriverManager.getConnection(url, user, password)) {
                                         while (running) {
                                             Thread.sleep(intervalMs);
                                             queryAndLog(connection);
@@ -695,7 +682,7 @@ public class JdbcExactlyOnceSinkE2eTestJUnit5 extends JdbcTestBaseJUnit5 impleme
             private void showAllTrx(Statement st) throws SQLException {
                 LOG.debug("All TRX");
                 try (ResultSet rs =
-                             st.executeQuery("select * from information_schema.innodb_trx")) {
+                        st.executeQuery("select * from information_schema.innodb_trx")) {
                     while (rs.next()) {
                         LOG.debug(
                                 "trx_id: {}, trx_state: {}, trx_started: {}, trx_requested_lock_id: {}, trx_wait_started: {}, trx_mysql_thread_id: {},",
@@ -712,9 +699,9 @@ public class JdbcExactlyOnceSinkE2eTestJUnit5 extends JdbcTestBaseJUnit5 impleme
             private void showBlockedTrx(Statement st) throws SQLException {
                 LOG.debug("Blocked TRX");
                 try (ResultSet rs =
-                             st.executeQuery(
-                                     " SELECT waiting_trx_id, waiting_pid, waiting_query, blocking_trx_id, blocking_pid, blocking_query "
-                                             + "FROM sys.innodb_lock_waits; ")) {
+                        st.executeQuery(
+                                " SELECT waiting_trx_id, waiting_pid, waiting_query, blocking_trx_id, blocking_pid, blocking_query "
+                                        + "FROM sys.innodb_lock_waits; ")) {
                     while (rs.next()) {
                         LOG.debug(
                                 "waiting_trx_id: {}, waiting_pid: {}, waiting_query: {}, blocking_trx_id: {}, blocking_pid: {}, blocking_query: {}",
@@ -732,7 +719,7 @@ public class JdbcExactlyOnceSinkE2eTestJUnit5 extends JdbcTestBaseJUnit5 impleme
 
     private static class PgSqlJdbcExactlyOnceSinkTestEnv implements JdbcExactlyOnceSinkTestEnv {
         private final int parallelism;
-        private final transient PgXaDb db;
+        private final PgXaDb db;
 
         private PgSqlJdbcExactlyOnceSinkTestEnv(int parallelism) {
             this.parallelism = parallelism;
@@ -821,7 +808,7 @@ public class JdbcExactlyOnceSinkE2eTestJUnit5 extends JdbcTestBaseJUnit5 impleme
 
     private static class OracleJdbcExactlyOnceSinkTestEnv implements JdbcExactlyOnceSinkTestEnv {
         private final int parallelism;
-        private transient OracleContainer db;
+        private final OracleContainer db;
 
         private OracleJdbcExactlyOnceSinkTestEnv(int parallelism) {
             this.parallelism = parallelism;

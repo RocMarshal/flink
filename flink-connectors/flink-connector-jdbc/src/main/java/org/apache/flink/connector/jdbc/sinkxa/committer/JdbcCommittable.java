@@ -15,8 +15,7 @@ public class JdbcCommittable implements Serializable {
     private @Nullable XaFacade xaFacade;
     private @Nonnull CheckpointAndXid checkpointAndXid;
 
-    public JdbcCommittable(XaFacade xaFacade,
-                           @Nonnull CheckpointAndXid checkpointAndXid) {
+    public JdbcCommittable(XaFacade xaFacade, @Nonnull CheckpointAndXid checkpointAndXid) {
         this.xaFacade = xaFacade;
         this.checkpointAndXid = checkpointAndXid;
     }
@@ -35,10 +34,12 @@ public class JdbcCommittable implements Serializable {
 
     @Override
     public String toString() {
-        return "JdbcCommittable{" +
-                "xaFacade=" + xaFacade +
-                ", checkpointAndXid=" + checkpointAndXid +
-                '}';
+        return "JdbcCommittable{"
+                + "xaFacade="
+                + xaFacade
+                + ", checkpointAndXid="
+                + checkpointAndXid
+                + '}';
     }
 
     @Override

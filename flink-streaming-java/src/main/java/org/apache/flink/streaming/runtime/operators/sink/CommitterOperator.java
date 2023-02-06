@@ -41,7 +41,6 @@ import org.apache.flink.streaming.runtime.operators.sink.committables.Committabl
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
-
 import org.apache.flink.util.Preconditions;
 
 import org.slf4j.Logger;
@@ -50,7 +49,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.OptionalLong;
 
 import static org.apache.flink.util.IOUtils.closeAll;
@@ -129,7 +127,7 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
         try {
             if (committer == null) {
                 Preconditions.checkNotNull(sink);
-                this.committer = sink.createCommitter(getRuntimeContext());
+                this.committer = sink.createCommitter(/*getRuntimeContext()*/);
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

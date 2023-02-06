@@ -2,13 +2,11 @@ package org.apache.flink.connector.jdbc.sinkxa.committer;
 
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.connector.sink2.Committer;
-import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.connector.jdbc.sinkxa.writer.JdbcWriterConfig;
 import org.apache.flink.connector.jdbc.xa.CheckpointAndXid;
 import org.apache.flink.connector.jdbc.xa.XaFacade;
 import org.apache.flink.connector.jdbc.xa.XaGroupOps;
 import org.apache.flink.connector.jdbc.xa.XaGroupOpsImpl;
-
 import org.apache.flink.connector.jdbc.xa.XidGenerator;
 
 import org.slf4j.Logger;
@@ -19,6 +17,7 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Collections;
 
 /** JdbcCommitter. */
 public class JdbcCommitter implements Committer<JdbcCommittable>, Serializable {
@@ -33,27 +32,25 @@ public class JdbcCommitter implements Committer<JdbcCommittable>, Serializable {
     private RuntimeContext runtimeContext;
     XidGenerator xidGenerator;
 
-    public JdbcCommitter(RuntimeContext runtimeContext, @Nonnull JdbcWriterConfig jdbcWriterConfig) {
-        this.runtimeContext = runtimeContext;
+    public JdbcCommitter(@Nonnull JdbcWriterConfig jdbcWriterConfig, XaFacade xaFacade) {
         this.jdbcWriterConfig = jdbcWriterConfig;
-        if (jdbcWriterConfig.getDeliveryGuarantee() == DeliveryGuarantee.EXACTLY_ONCE) {
-            xaFacade = XaFacade.fromXaDataSourceSupplier(
-                    jdbcWriterConfig.getJdbcConnectionOptions()
-                            .getXaDatasourceSupplier(),
-                    jdbcWriterConfig.getJdbcExactlyOnceOptions().getTimeoutSec(),
-                    jdbcWriterConfig.getJdbcExactlyOnceOptions().isTransactionPerConnection());
+        this.xaFacade = xaFacade;
+        if (!this.xaFacade.isOpen()) {
             try {
-                xaFacade.open();
+                this.xaFacade.open();
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-            xaGroupOps = new XaGroupOpsImpl(xaFacade);
         }
-        xidGenerator = XidGenerator.semanticXidGenerator();
-//        if (jdbcWriterConfig.getJdbcExactlyOnceOptions().isDiscoverAndRollbackOnRecovery()) {
-//            xaGroupOps.recoverAndRollback(runtimeContext, xidGenerator);
-//        }
 
+        this.xaGroupOps = new XaGroupOpsImpl(xaFacade);
+
+        // xidGenerator = XidGenerator.semanticXidGenerator();
+        //        if
+        // (jdbcWriterConfig.getJdbcExactlyOnceOptions().isDiscoverAndRollbackOnRecovery()) {
+        //            xaGroupOps.recoverAndRollback(runtimeContext, xidGenerator);
+        //        }
+        LOG.error("_____jdbcCommitter");
     }
 
     @Override
@@ -75,16 +72,18 @@ public class JdbcCommitter implements Committer<JdbcCommittable>, Serializable {
                     this.xaFacade = internalXaFacade;
                 }
 
-                LOG.error("JdbcCommitter startCommit_____________, {}", commitRequest.getCommittable());
-                CheckpointAndXid checkpointAndXid = commitRequest
-                        .getCommittable()
-                        .getCheckpointAndXid();
+                LOG.error(
+                        "JdbcCommitter startCommit_____________, {}",
+                        commitRequest.getCommittable());
+                CheckpointAndXid checkpointAndXid =
+                        commitRequest.getCommittable().getCheckpointAndXid();
                 LOG.error("_______Use original");
-                //if (!checkpointAndXid.isRestored()) {
-                    internalXaFacade.commit(checkpointAndXid.getXid(), true);
-                //}
+                // if (!checkpointAndXid.isRestored()) {
+                xaGroupOps.commit(Collections.singletonList(checkpointAndXid), true, 3);
+                // }
 
-                LOG.error("JdbcCommitter endCommit_____________, {}", commitRequest.getCommittable());
+                LOG.error(
+                        "JdbcCommitter endCommit_____________, {}", commitRequest.getCommittable());
 
             } catch (XaFacade.TransientXaException e) {
                 if (commitRequest.getNumberOfRetries()

@@ -76,10 +76,16 @@ public class JdbcCommittableSerializer implements SimpleVersionedSerializer<Jdbc
             int attempts = dis.readInt();
             long chkId = dis.readLong();
             boolean restored = dis.readBoolean();
-            CheckpointAndXid checkpointAndXid = CheckpointAndXid.createRestored(chkId,attempts, xid);
+            CheckpointAndXid checkpointAndXid =
+                    CheckpointAndXid.createRestored(chkId, attempts, xid);
 
-            JdbcCommittable jdbcCommittable = new JdbcCommittable(null, CheckpointAndXid.createRestored(chkId, attempts, xid));
-            LOG.error("deserialize_______, {} , checkpointAndXid______, {}", jdbcCommittable, checkpointAndXid);
+            JdbcCommittable jdbcCommittable =
+                    new JdbcCommittable(
+                            null, CheckpointAndXid.createRestored(chkId, attempts, xid));
+            LOG.error(
+                    "deserialize_______, {} , checkpointAndXid______, {}",
+                    jdbcCommittable,
+                    checkpointAndXid);
             return jdbcCommittable;
         }
     }

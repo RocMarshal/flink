@@ -82,7 +82,7 @@ public class JdbcWriterConfig implements Serializable {
     public static final class Builder {
         private DeliveryGuarantee deliveryGuarantee = DeliveryGuarantee.NONE;
         private JdbcExecutionOptions jdbcFlushOptions = JdbcExecutionOptions.builder().build();
-        private JdbcExactlyOnceOptions jdbcExactlyOnceOptions = null;
+        private JdbcExactlyOnceOptions jdbcExactlyOnceOptions = JdbcExactlyOnceOptions.builder().build();
 
         private JdbcConnectionOptions jdbcConnectionOptions;
 
@@ -108,10 +108,10 @@ public class JdbcWriterConfig implements Serializable {
 
         public JdbcWriterConfig build() {
             if (deliveryGuarantee == DeliveryGuarantee.EXACTLY_ONCE) {
-                Preconditions.checkArgument(
-                        jdbcExactlyOnceOptions != null,
-                        "JdbcExecutionOptions mustn't be null, please specialize it first.");
-                jdbcConnectionOptions.checkSemantic(deliveryGuarantee);
+//                Preconditions.checkArgument(
+//                        jdbcExactlyOnceOptions != null,
+//                        "JdbcExecutionOptions mustn't be null, please specialize it first.");
+//                jdbcConnectionOptions.checkSemantic(deliveryGuarantee);
             }
             return new JdbcWriterConfig(
                     jdbcFlushOptions,

@@ -93,21 +93,25 @@ public class XaFacadeImpl implements XaFacade {
 
     @Override
     public void open() throws SQLException {
-        Preconditions.checkState(!isOpen(), "already connected");
-        XADataSource ds = dataSourceSupplier.get();
-        xaConnection = ds.getXAConnection();
-        xaResource = xaConnection.getXAResource();
-        if (timeoutSec != null) {
-            try {
-                xaResource.setTransactionTimeout(timeoutSec);
-            } catch (XAException e) {
-                throw new SQLException(e);
+        synchronized (this) {
+            if (!isOpen()) {
+                Preconditions.checkState(!isOpen(), "already connected");
+                XADataSource ds = dataSourceSupplier.get();
+                xaConnection = ds.getXAConnection();
+                xaResource = xaConnection.getXAResource();
+                if (timeoutSec != null) {
+                    try {
+                        xaResource.setTransactionTimeout(timeoutSec);
+                    } catch (XAException e) {
+                        throw new SQLException(e);
+                    }
+                }
+                connection = xaConnection.getConnection();
+                connection.setReadOnly(false);
+                connection.setAutoCommit(false);
+                Preconditions.checkState(!connection.getAutoCommit());
             }
         }
-        connection = xaConnection.getConnection();
-        connection.setReadOnly(false);
-        connection.setAutoCommit(false);
-        Preconditions.checkState(!connection.getAutoCommit());
     }
 
     @Override
@@ -294,9 +298,7 @@ public class XaFacadeImpl implements XaFacade {
             if (HEUR_ERR_CODES.contains(e.errorCode)) {
                 cmd.xid.ifPresent(this::forget);
             }
-            return cmd.recover.apply(e).orElseThrow(
-                    () -> wrapException(cmd.name, cmd.xid, e)
-            );
+            return cmd.recover.apply(e).orElseThrow(() -> wrapException(cmd.name, cmd.xid, e));
         } catch (FlinkRuntimeException e) {
             throw e;
         } catch (Exception e) {

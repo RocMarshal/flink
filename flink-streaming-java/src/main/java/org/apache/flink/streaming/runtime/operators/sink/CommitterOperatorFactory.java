@@ -21,7 +21,6 @@ package org.apache.flink.streaming.runtime.operators.sink;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
 import org.apache.flink.streaming.api.connector.sink2.CommittableMessage;
-import org.apache.flink.streaming.api.connector.sink2.WithPostCommitTopology;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperatorFactory;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperatorFactory;
 import org.apache.flink.streaming.api.operators.StreamOperator;
@@ -62,10 +61,7 @@ public final class CommitterOperatorFactory<CommT>
         try {
             final CommitterOperator<CommT> committerOperator =
                     new CommitterOperator<>(
-                            processingTimeService,
-                            sink,
-                            isBatchMode,
-                            isCheckpointingEnabled);
+                            processingTimeService, sink, isBatchMode, isCheckpointingEnabled);
             committerOperator.setup(
                     parameters.getContainingTask(),
                     parameters.getStreamConfig(),

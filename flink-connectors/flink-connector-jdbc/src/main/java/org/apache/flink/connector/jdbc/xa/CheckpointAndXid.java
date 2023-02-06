@@ -33,10 +33,10 @@ import java.util.Objects;
 @ThreadSafe
 @Internal
 public final class CheckpointAndXid {
-    final long checkpointId;
-    final @Nonnull Xid xid;
-    final int attempts;
-    final boolean restored;
+    public final long checkpointId;
+    public final @Nonnull Xid xid;
+    public final int attempts;
+    public final boolean restored;
 
     public Xid getXid() {
         return xid;
