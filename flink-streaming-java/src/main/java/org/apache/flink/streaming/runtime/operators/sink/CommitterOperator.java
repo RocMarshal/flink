@@ -127,7 +127,7 @@ class CommitterOperator<CommT> extends AbstractStreamOperator<CommittableMessage
         try {
             if (committer == null) {
                 Preconditions.checkNotNull(sink);
-                this.committer = sink.createCommitter(/*getRuntimeContext()*/);
+                this.committer = sink.createCommitter(/*getRuntimeContext()*/ );
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

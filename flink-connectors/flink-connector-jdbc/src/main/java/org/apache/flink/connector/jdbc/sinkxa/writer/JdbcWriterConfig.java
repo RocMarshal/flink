@@ -4,7 +4,6 @@ import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.connector.jdbc.JdbcConnectionOptions;
 import org.apache.flink.connector.jdbc.JdbcExactlyOnceOptions;
 import org.apache.flink.connector.jdbc.JdbcExecutionOptions;
-import org.apache.flink.util.Preconditions;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -82,7 +81,8 @@ public class JdbcWriterConfig implements Serializable {
     public static final class Builder {
         private DeliveryGuarantee deliveryGuarantee = DeliveryGuarantee.NONE;
         private JdbcExecutionOptions jdbcFlushOptions = JdbcExecutionOptions.builder().build();
-        private JdbcExactlyOnceOptions jdbcExactlyOnceOptions = JdbcExactlyOnceOptions.builder().build();
+        private JdbcExactlyOnceOptions jdbcExactlyOnceOptions =
+                JdbcExactlyOnceOptions.builder().build();
 
         private JdbcConnectionOptions jdbcConnectionOptions;
 
@@ -108,10 +108,11 @@ public class JdbcWriterConfig implements Serializable {
 
         public JdbcWriterConfig build() {
             if (deliveryGuarantee == DeliveryGuarantee.EXACTLY_ONCE) {
-//                Preconditions.checkArgument(
-//                        jdbcExactlyOnceOptions != null,
-//                        "JdbcExecutionOptions mustn't be null, please specialize it first.");
-//                jdbcConnectionOptions.checkSemantic(deliveryGuarantee);
+                //                Preconditions.checkArgument(
+                //                        jdbcExactlyOnceOptions != null,
+                //                        "JdbcExecutionOptions mustn't be null, please specialize
+                // it first.");
+                //                jdbcConnectionOptions.checkSemantic(deliveryGuarantee);
             }
             return new JdbcWriterConfig(
                     jdbcFlushOptions,

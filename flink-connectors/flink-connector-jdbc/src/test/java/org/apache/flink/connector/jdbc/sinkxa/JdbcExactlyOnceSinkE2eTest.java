@@ -17,6 +17,7 @@
 
 package org.apache.flink.connector.jdbc.sinkxa;
 
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
@@ -170,7 +171,7 @@ public class JdbcExactlyOnceSinkE2eTest extends JdbcTestBase {
                                 // Get enough TMs to run the job. Parallelize using TMs (rather than
                                 // slots) for better isolation - this test tends to exhaust memory
                                 // by restarts and fast sources
-                                .setNumberTaskManagers(dbEnv.getParallelism())
+                                .setNumberTaskManagers(dbEnv.getParallelism() * 2)
                                 .build());
         cluster.before();
         dbEnv.start();
@@ -211,6 +212,15 @@ public class JdbcExactlyOnceSinkE2eTest extends JdbcTestBase {
         env.addSource(new TestEntrySource(elementsPerSource, numElementsPerCheckpoint))
                 .setParallelism(dbEnv.getParallelism())
                 .map(new FailingMapper(minElementsPerFailure, maxElementsPerFailure))
+                .map(
+                        new MapFunction<TestEntry, TestEntry>() {
+                            @Override
+                            public TestEntry map(TestEntry value) throws Exception {
+                                LOG.error("Will send to down " + value.toString());
+                                return value;
+                            }
+                        })
+                .slotSharingGroup("mockSSG1")
                 .sinkTo(
                         JdbcSinkBuilder.exactlyOnceSink(
                                 String.format(INSERT_TEMPLATE, INPUT_TABLE),

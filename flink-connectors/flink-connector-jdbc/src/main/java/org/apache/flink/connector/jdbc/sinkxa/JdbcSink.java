@@ -90,7 +90,7 @@ public class JdbcSink<IN>
         }
         return new JdbcCommitter(
                 JdbcWriterConfig.builder()
-//                        .setJdbcConnectionOptions()
+                        //                        .setJdbcConnectionOptions()
                         .setJdbcExactlyOnceOptions(exactlyOnceOptions)
                         .setDeliveryGuarantee(DeliveryGuarantee.EXACTLY_ONCE)
                         .setJdbcExecutionOptions(executionOptions)
