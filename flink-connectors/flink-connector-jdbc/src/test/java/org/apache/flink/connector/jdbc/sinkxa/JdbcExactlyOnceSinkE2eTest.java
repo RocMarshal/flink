@@ -216,7 +216,7 @@ public class JdbcExactlyOnceSinkE2eTest extends JdbcTestBase {
                         new MapFunction<TestEntry, TestEntry>() {
                             @Override
                             public TestEntry map(TestEntry value) throws Exception {
-                                LOG.error("Will send to down " + value.toString());
+                                LOG.error("UDF " + value.toString());
                                 return value;
                             }
                         })
