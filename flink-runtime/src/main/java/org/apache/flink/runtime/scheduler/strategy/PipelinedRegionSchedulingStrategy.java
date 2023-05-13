@@ -178,23 +178,40 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
                 .collect(Collectors.toSet());
     }
 
+    // FLINK-31757_research
+    // 3. 开始调度
     @Override
     public void startScheduling() {
+        // FLINK-31757_research
+        // 4. 计算 Source Region
         final Set<SchedulingPipelinedRegion> sourceRegions =
                 IterableUtils.toStream(schedulingTopology.getAllPipelinedRegions())
                         .filter(this::isSourceRegion)
                         .collect(Collectors.toSet());
+        // FLINK-31757_research
+        // 6. 调度 source regions.
         maybeScheduleRegions(sourceRegions);
     }
 
+    // FLINK-31757_research
+    // 5. 判断当前 region 是否为 source region.
+    /**
+     * 判断当前的region是否是source region.
+     *
+     * @param region
+     * @return
+     */
     private boolean isSourceRegion(SchedulingPipelinedRegion region) {
         for (ConsumedPartitionGroup consumedPartitionGroup :
                 region.getAllNonPipelinedConsumedPartitionGroups()) {
+
+            /** 如果是跨 region 的分区组或者是非本部 region的 分区组，则表示为非 source region. */
             if (crossRegionConsumedPartitionGroups.contains(consumedPartitionGroup)
                     || isExternalConsumedPartitionGroup(consumedPartitionGroup, region)) {
                 return false;
             }
         }
+        // 否则则做 source region 处理
         return true;
     }
 
@@ -221,6 +238,13 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
     @Override
     public void onPartitionConsumable(final IntermediateResultPartitionID resultPartitionId) {}
 
+    // FLINK-31757_research
+    // 7. 计算并按照顺序调度 regions.
+    /**
+     * 调度 source region.
+     *
+     * @param regions
+     */
     private void maybeScheduleRegions(final Set<SchedulingPipelinedRegion> regions) {
         final Set<SchedulingPipelinedRegion> regionsToSchedule = new HashSet<>();
         Set<SchedulingPipelinedRegion> nextRegions = regions;
@@ -233,6 +257,11 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
                 .forEach(this::scheduleRegion);
     }
 
+    /**
+     * @param currentRegions 当前需要处理的 region.
+     * @param regionsToSchedule 需要调度的 region.
+     * @return 下一组需要调度的region,即消费当前region的所有下游 region.
+     */
     private Set<SchedulingPipelinedRegion> addSchedulableAndGetNextRegions(
             Set<SchedulingPipelinedRegion> currentRegions,
             Set<SchedulingPipelinedRegion> regionsToSchedule) {
@@ -242,7 +271,9 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
         final Set<ConsumedPartitionGroup> visitedConsumedPartitionGroups = new HashSet<>();
 
         for (SchedulingPipelinedRegion currentRegion : currentRegions) {
+            // 判定当前 region 是否可以调度
             if (isRegionSchedulable(currentRegion, consumableStatusCache, regionsToSchedule)) {
+                // 将当前region 加入到待调度的集合中
                 regionsToSchedule.add(currentRegion);
                 producedPartitionGroupsOfRegion
                         .getOrDefault(currentRegion, Collections.emptySet())
@@ -274,16 +305,23 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
             final SchedulingPipelinedRegion region,
             final Map<ConsumedPartitionGroup, Boolean> consumableStatusCache,
             final Set<SchedulingPipelinedRegion> regionToSchedule) {
+        /**
+         * 1. 当前 region不在需要调度的region集合中 2. 当前 region 不在已经调度的region集合中 3. 当前 region 所需要的 inputs 都已经就绪
+         */
         return !regionToSchedule.contains(region)
                 && !scheduledRegions.contains(region)
                 && areRegionInputsAllConsumable(region, consumableStatusCache, regionToSchedule);
     }
 
+    // FLINK-31757_research
+    // 8. 调度 region.
     private void scheduleRegion(final SchedulingPipelinedRegion region) {
         checkState(
                 areRegionVerticesAllInCreatedState(region),
                 "BUG: trying to schedule a region which is not in CREATED state");
         scheduledRegions.add(region);
+        // FLINK-31757_research
+        // 9. 按照creation顺序调度当前 region 中的 execution.
         schedulerOperations.allocateSlotsAndDeploy(regionVerticesSorted.get(region));
     }
 

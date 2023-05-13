@@ -94,6 +94,7 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
 
         transitionToScheduled(executionsToDeploy);
 
+        // 11. 为一组 execution 申请 ExecutionSlotAssignment.
         final List<ExecutionSlotAssignment> executionSlotAssignments =
                 allocateSlotsFor(executionsToDeploy);
 
@@ -118,6 +119,7 @@ public class DefaultExecutionDeployer implements ExecutionDeployer {
         executionsToDeploy.forEach(e -> e.transitionState(ExecutionState.SCHEDULED));
     }
 
+    // 11. 为一组 execution 申请 ExecutionSlotAssignment.
     private List<ExecutionSlotAssignment> allocateSlotsFor(
             final List<Execution> executionsToDeploy) {
         final List<ExecutionAttemptID> executionAttemptIds =

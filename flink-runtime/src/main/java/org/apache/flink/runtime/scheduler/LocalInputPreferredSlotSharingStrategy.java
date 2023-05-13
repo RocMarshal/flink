@@ -64,16 +64,31 @@ class LocalInputPreferredSlotSharingStrategy
             final Set<SlotSharingGroup> logicalSlotSharingGroups,
             final Set<CoLocationGroup> coLocationGroups) {
 
+        /**
+         * TODO JIRA: FLINK-31757_research 引用逻辑共享组和约束组
+         */
         this.logicalSlotSharingGroups = checkNotNull(logicalSlotSharingGroups);
         this.coLocationGroups = checkNotNull(coLocationGroups);
 
+        /**
+         * TODO JIRA: FLINK-31757_research 12.首次构建
+         * execution和 executionSlotSharingGroup 映射.
+         */
         this.executionSlotSharingGroupMap =
                 new ExecutionSlotSharingGroupBuilder(
                                 topology, logicalSlotSharingGroups, coLocationGroups)
                         .build();
+        /**
+         * TODO JIRA: FLINK-31757_research Note: //
+         * 注册监听者
+         */
         topology.registerSchedulingTopologyListener(this);
     }
 
+    /**
+     * TODO JIRA: FLINK-31757_research Note: 12. 获取
+     * evid 所在的共享组.
+     */
     @Override
     public ExecutionSlotSharingGroup getExecutionSlotSharingGroup(
             final ExecutionVertexID executionVertexId) {
@@ -85,6 +100,10 @@ class LocalInputPreferredSlotSharingStrategy
         return new HashSet<>(executionSlotSharingGroupMap.values());
     }
 
+    /**
+     * TODO JIRA: FLINK-31757_research Note: 监听到
+     * SchedulingTopology 的变化则执行
+     */
     @Override
     public void notifySchedulingTopologyUpdated(
             SchedulingTopology schedulingTopology, List<ExecutionVertexID> newExecutionVertices) {
@@ -171,6 +190,10 @@ class LocalInputPreferredSlotSharingStrategy
          * <p>Here we use {@link LinkedHashSet} to reserve the order the same as the
          * SchedulingVertices are traversed.
          */
+        /**
+         * TODO JIRA: FLINK-31757_research 需要消费的分区组->
+         * 有序的eSSG 集合 此映射用于为消费者顶点查找可用的生产者 ExecutionSlotSharingGroup. 如果候选组可用于此消费者顶点，则该候选组将被指定给该顶点。
+         */
         private final Map<ConsumedPartitionGroup, LinkedHashSet<ExecutionSlotSharingGroup>>
                 candidateGroupsForConsumedPartitionGroup;
 
@@ -203,6 +226,11 @@ class LocalInputPreferredSlotSharingStrategy
         }
 
         /**
+         * TODO JIRA: FLINK-31757_research Note: * 构建顺序
+         * * 1. 从约束组中是否已经存在 * 2. 如果生产者在同一插槽共享组中，尝试找到其生产者 vertex 的可用组。 * 3. 尝试找到任何可用的组 * 4. 创建一个新的
+         * group. 12.构建 execution和 executionSlotSharingGroup 映射.
+         */
+        /**
          * Build ExecutionSlotSharingGroups for all vertices in the topology. The
          * ExecutionSlotSharingGroup of a vertex is determined in order below:
          *
@@ -222,9 +250,17 @@ class LocalInputPreferredSlotSharingStrategy
             // loop on job vertices so that an execution vertex will not be added into a group
             // if that group better fits another execution vertex
             for (List<SchedulingExecutionVertex> executionVertices : allVertices.values()) {
+                /**
+                 * TODO JIRA: FLINK-31757_research
+                 * Note: 逐个对 JobVertex 的所有并行化 ev 进行寻找最佳可用的 ssg
+                 */
                 final List<SchedulingExecutionVertex> remaining =
                         tryFindOptimalAvailableExecutionSlotSharingGroupFor(executionVertices);
 
+                /**
+                 * TODO JIRA: FLINK-31757_research
+                 * Note: 从可用 essgs 中查找 essg 或者创建 essg
+                 */
                 findAvailableOrCreateNewExecutionSlotSharingGroupFor(remaining);
 
                 updateConstraintToExecutionSlotSharingGroupMap(executionVertices);
@@ -249,21 +285,45 @@ class LocalInputPreferredSlotSharingStrategy
             return vertices;
         }
 
+        /**
+         * TODO JIRA: FLINK-31757_research Note: 12. 对某个 JobVertex 的所有并行化 ev 进行寻找最佳可用的 Essg. 先 clc,
+         * 后 producer
+         */
         private List<SchedulingExecutionVertex> tryFindOptimalAvailableExecutionSlotSharingGroupFor(
                 final List<SchedulingExecutionVertex> executionVertices) {
 
             final List<SchedulingExecutionVertex> remaining = new ArrayList<>();
             for (SchedulingExecutionVertex executionVertex : executionVertices) {
+                /**
+                 * TODO JIRA: FLINK-31757_research
+                 * Note: 先尝试从 CLG 中没有找到 essg, * jvid -> CLG : MAP * clgID + subtaskid -> CLC *
+                 * CLC->ESSG : MAP
+                 */
                 ExecutionSlotSharingGroup group =
                         tryFindAvailableCoLocatedExecutionSlotSharingGroupFor(executionVertex);
 
+                /**
+                 *  TODO JIRA: FLINK-31757_research
+                 * Note: 如果 CLG 中没有找到 essg, 则从 producer 中尝试寻找 尝试从上游消费者所在的分组中查找是否可以共用分组.
+                 *
+                 */
                 if (group == null) {
                     group = tryFindAvailableProducerExecutionSlotSharingGroupFor(executionVertex);
                 }
 
+                /**
+                 *  TODO JIRA: FLINK-31757_research
+                 * 如果从上游消费者所在的分组中没有查找到 essg. 则将 此 ev 添加到剩余未分配的列表中
+                 *
+                 */
                 if (group == null) {
                     remaining.add(executionVertex);
                 } else {
+                    /**
+                     *  TODO JIRA: FLINK-31757_research
+                     * 将 ev 添加到 essg 中; 更新 ev->essg MAP 从jv 可用的 essg 列表中移除当前的的 essg
+                     *
+                     */
                     addVertexToExecutionSlotSharingGroup(executionVertex, group);
                 }
             }
@@ -271,16 +331,25 @@ class LocalInputPreferredSlotSharingStrategy
             return remaining;
         }
 
+        // FLINK-31757_research
+        /**
+         *  TODO JIRA: FLINK-31757_research // 12. 尝试从
+         * CLG 映射中， 对 SEE进行寻找最佳可用的 ssg.
+         */
         private ExecutionSlotSharingGroup tryFindAvailableCoLocatedExecutionSlotSharingGroupFor(
                 final SchedulingExecutionVertex executionVertex) {
 
             final ExecutionVertexID executionVertexId = executionVertex.getId();
+            // 先尝试从 clg 中寻找
             final CoLocationGroup coLocationGroup =
                     coLocationGroupMap.get(executionVertexId.getJobVertexId());
+            // 如果查找到 clg,
             if (coLocationGroup != null) {
+                // 获取 clgID + subtask  -> clc
                 final CoLocationConstraint constraint =
                         coLocationGroup.getLocationConstraint(executionVertexId.getSubtaskIndex());
 
+                // 尝试从 clc -> essg map 中查找
                 return constraintToExecutionSlotSharingGroupMap.get(constraint);
             } else {
                 return null;
@@ -295,6 +364,10 @@ class LocalInputPreferredSlotSharingStrategy
             for (ConsumedPartitionGroup consumedPartitionGroup :
                     executionVertex.getConsumedPartitionGroups()) {
 
+                /**
+                 *  TODO JIRA: FLINK-31757_research //
+                 * 查找上游中 producers的所有候选 essg
+                 */
                 Set<ExecutionSlotSharingGroup> candidateGroups =
                         candidateGroupsForConsumedPartitionGroup.computeIfAbsent(
                                 consumedPartitionGroup,
@@ -306,6 +379,11 @@ class LocalInputPreferredSlotSharingStrategy
 
                 while (candidateIterator.hasNext()) {
                     ExecutionSlotSharingGroup candidateGroup = candidateIterator.next();
+                    /**
+                     *  TODO JIRA: FLINK-31757_research
+                     * // 如果JV 的其他并行度的ev没有和此 essg 共享，则进行分配 // 如果JV 的其他并行度的ev已经和此 essg 共享，则不进行分配
+                     *
+                     */
                     // There are two cases for this candidate group:
                     //
                     // 1. The group is available for this vertex, and it will be assigned to this
@@ -326,6 +404,10 @@ class LocalInputPreferredSlotSharingStrategy
             return null;
         }
 
+        /**
+         *  TODO JIRA: FLINK-31757_research * evid 所属的
+         * jv 目前已经有了可以用的 essg, 可用的 essg 包含目标 essg.
+         */
         private boolean isExecutionSlotSharingGroupAvailableForVertex(
                 ExecutionSlotSharingGroup executionSlotSharingGroup, ExecutionVertexID vertexId) {
 
@@ -349,6 +431,11 @@ class LocalInputPreferredSlotSharingStrategy
             return checkNotNull(slotSharingGroupMap.get(jobVertexId));
         }
 
+        /**
+         *  TODO JIRA: FLINK-31757_research * 将 ev 添加到
+         * essg 中; * 更新 ev->essg MAP * 从jv 可用的 essg 列表中移除当前的的 essg
+         *
+         */
         private void addVertexToExecutionSlotSharingGroup(
                 final SchedulingExecutionVertex vertex, final ExecutionSlotSharingGroup group) {
 
@@ -369,17 +456,33 @@ class LocalInputPreferredSlotSharingStrategy
 
             for (SchedulingExecutionVertex executionVertex : executionVertices) {
 
+                /**
+                 *  TODO JIRA: FLINK-31757_research 从 jv
+                 * 可用的 essgs 中选择第一个.
+                 */
                 ExecutionSlotSharingGroup group =
                         tryFindAvailableExecutionSlotSharingGroupFor(executionVertex);
 
+                /**
+                 *  TODO JIRA: FLINK-31757_research //
+                 * 如果查找不到，则创建
+                 */
                 if (group == null) {
                     group = createNewExecutionSlotSharingGroup(executionVertex.getId());
                 }
 
+                /**
+                 *  TODO JIRA: FLINK-31757_research //
+                 * 分配 essg 并更新信息 //----------------
+                 */
                 addVertexToExecutionSlotSharingGroup(executionVertex, group);
             }
         }
 
+        /**
+         *  TODO JIRA: FLINK-31757_research * 从 jv 可用的
+         * essgs 中选择第一个.
+         */
         private ExecutionSlotSharingGroup tryFindAvailableExecutionSlotSharingGroupFor(
                 SchedulingExecutionVertex executionVertex) {
 
@@ -394,17 +497,37 @@ class LocalInputPreferredSlotSharingStrategy
             return null;
         }
 
+        /**
+         *  TODO JIRA: FLINK-31757_research 为 evid 创建一个
+         * essg.
+         */
         private ExecutionSlotSharingGroup createNewExecutionSlotSharingGroup(
                 ExecutionVertexID executionVertexId) {
+            /**
+             *  TODO JIRA: FLINK-31757_research 获取 ssg
+             *
+             */
             final SlotSharingGroup slotSharingGroup =
                     getSlotSharingGroup(executionVertexId.getJobVertexId());
+            /**
+             *  TODO JIRA: FLINK-31757_research 创建
+             * <ssgID, List<Essg>> Map.
+             */
             final List<ExecutionSlotSharingGroup> correspondingExecutionSlotSharingGroups =
                     executionSlotSharingGroups.computeIfAbsent(
                             slotSharingGroup.getSlotSharingGroupId(), k -> new ArrayList<>());
 
+            /**
+             *  TODO JIRA: FLINK-31757_research // 创建新的
+             * essg, 并且填充 rr 信息。
+             */
             final ExecutionSlotSharingGroup newGroup = new ExecutionSlotSharingGroup();
             newGroup.setResourceProfile(slotSharingGroup.getResourceProfile());
 
+            /**
+             *  TODO JIRA: FLINK-31757_research // 回填
+             * ssgID 对应的列表
+             */
             correspondingExecutionSlotSharingGroups.add(newGroup);
 
             // Once a new ExecutionSlotSharingGroup is created, it's available for all JobVertices
@@ -413,19 +536,37 @@ class LocalInputPreferredSlotSharingStrategy
                 Set<ExecutionSlotSharingGroup> availableExecutionSlotSharingGroups =
                         availableGroupsForJobVertex.computeIfAbsent(
                                 jobVertexId, ignore -> new LinkedHashSet<>());
+                /**
+                 *  TODO JIRA: FLINK-31757_research //
+                 * 将新建的 essg 添加到所有的 jvid 对应的 essg 有序集合中.
+                 *
+                 */
                 availableExecutionSlotSharingGroups.add(newGroup);
             }
 
             return newGroup;
         }
 
+        /**
+         *  TODO JIRA: FLINK-31757_research * 更新某个 jv
+         * 下的所有 sev 的 clc-> essg 映射关系.
+         */
         private void updateConstraintToExecutionSlotSharingGroupMap(
                 final List<SchedulingExecutionVertex> executionVertices) {
 
             for (SchedulingExecutionVertex executionVertex : executionVertices) {
                 final ExecutionVertexID executionVertexId = executionVertex.getId();
+                /**
+                 *  TODO JIRA: FLINK-31757_research * 获取
+                 * sev的jv对应的逻辑 CLC.
+                 */
                 final CoLocationGroup coLocationGroup =
                         coLocationGroupMap.get(executionVertexId.getJobVertexId());
+
+                /**
+                 *  TODO JIRA: FLINK-31757_research *
+                 * 如果不为空则更新 clc-> essg MAP.
+                 */
                 if (coLocationGroup != null) {
                     final CoLocationConstraint constraint =
                             coLocationGroup.getLocationConstraint(
@@ -437,6 +578,11 @@ class LocalInputPreferredSlotSharingStrategy
             }
         }
 
+        /**
+         *  TODO JIRA: FLINK-31757_research * 根据
+         * consumer jobid , consumedPartitionGroup 计算所有的候选 essg
+         *
+         */
         private LinkedHashSet<ExecutionSlotSharingGroup>
                 computeAllCandidateGroupsForConsumedPartitionGroup(
                         JobVertexID consumerJobVertexId,
@@ -464,6 +610,11 @@ class LocalInputPreferredSlotSharingStrategy
                     ExecutionVertexID producerExecutionVertexId =
                             topology.getResultPartition(consumedPartition).getProducer().getId();
 
+                    /**
+                     *  TODO JIRA: FLINK-31757_research
+                     * // 查看 evid->essg 的map 中是否已经有对应的 essg
+                     *
+                     */
                     ExecutionSlotSharingGroup assignedGroupForProducerExecutionVertex =
                             executionSlotSharingGroupMap.get(producerExecutionVertexId);
                     checkNotNull(assignedGroupForProducerExecutionVertex);

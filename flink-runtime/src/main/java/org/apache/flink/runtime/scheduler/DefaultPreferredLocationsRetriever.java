@@ -55,6 +55,13 @@ public class DefaultPreferredLocationsRetriever implements PreferredLocationsRet
         this.inputsLocationsRetriever = checkNotNull(inputsLocationsRetriever);
     }
 
+    /**
+     * 获取某个 EV 的倾向 Location.
+     *
+     * @param executionVertexId id of the execution vertex
+     * @param producersToIgnore producer vertices to ignore when calculating input locations
+     * @return
+     */
     @Override
     public CompletableFuture<Collection<TaskManagerLocation>> getPreferredLocations(
             final ExecutionVertexID executionVertexId,
@@ -81,6 +88,13 @@ public class DefaultPreferredLocationsRetriever implements PreferredLocationsRet
                 .orElse(Collections.emptySet());
     }
 
+    /**
+     * 基于 输入的位置倾向
+     *
+     * @param executionVertexId
+     * @param producersToIgnore
+     * @return
+     */
     private CompletableFuture<Collection<TaskManagerLocation>> getPreferredLocationsBasedOnInputs(
             final ExecutionVertexID executionVertexId,
             final Set<ExecutionVertexID> producersToIgnore) {
@@ -88,6 +102,7 @@ public class DefaultPreferredLocationsRetriever implements PreferredLocationsRet
         CompletableFuture<Collection<TaskManagerLocation>> preferredLocations =
                 CompletableFuture.completedFuture(Collections.emptyList());
 
+        /** 获取某个EV 的上游输入的组集合 */
         final Collection<ConsumedPartitionGroup> consumedPartitionGroups =
                 inputsLocationsRetriever.getConsumedPartitionGroups(executionVertexId);
         for (ConsumedPartitionGroup consumedPartitionGroup : consumedPartitionGroups) {
@@ -110,6 +125,7 @@ public class DefaultPreferredLocationsRetriever implements PreferredLocationsRet
         return preferredLocations;
     }
 
+    /** // 对于 producer location 的位置不为空的话，进行添加 */
     private Collection<CompletableFuture<TaskManagerLocation>> getInputLocationFutures(
             final Set<ExecutionVertexID> producersToIgnore,
             final Collection<ExecutionVertexID> producers) {
@@ -124,6 +140,7 @@ public class DefaultPreferredLocationsRetriever implements PreferredLocationsRet
             } else {
                 optionalLocationFuture = Optional.empty();
             }
+            // 对于 producer location 的位置不为空的话，进行添加
             optionalLocationFuture.ifPresent(locationsFutures::add);
 
             // inputs which have too many distinct sources are not considered because
@@ -147,6 +164,7 @@ public class DefaultPreferredLocationsRetriever implements PreferredLocationsRet
         return locationsCombinedAlready.thenCombine(
                 uniqueLocationsFuture,
                 (locationsOnOneEdge, locationsOnAnotherEdge) -> {
+                    // （如果 定位于 一个边的 位置不为空，且定位于其他边的位置数量大于 定于一个边的数量）或者位于其他边的位置为空
                     if ((!locationsOnOneEdge.isEmpty()
                                     && locationsOnAnotherEdge.size() > locationsOnOneEdge.size())
                             || locationsOnAnotherEdge.isEmpty()) {

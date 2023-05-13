@@ -710,6 +710,10 @@ public class DeclarativeSlotManager implements SlotManager {
                 pendingSlots = matchingResult.getNewAvailableResources();
                 if (!matchingResult.isSuccessfulMatching()) {
                     final WorkerAllocationResult allocationResult =
+                            /**
+                             * TODO JIRA:
+                             * FLINK-31757_research TODO 申请 worker (TM) 和slot
+                             */
                             tryAllocateWorkerAndReserveSlot(profile, pendingSlots);
                     pendingSlots = allocationResult.getNewAvailableResources();
                     if (!allocationResult.isSuccessfulAllocating()

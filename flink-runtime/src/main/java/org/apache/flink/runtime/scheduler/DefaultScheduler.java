@@ -207,11 +207,15 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
                 .forEach(ev -> cancelAllPendingSlotRequestsForVertex(ev.getId()));
     }
 
+    // FLINK-31757_research
+    // 1. 开始调度
     @Override
     protected void startSchedulingInternal() {
         log.info(
                 "Starting scheduling with scheduling strategy [{}]",
                 schedulingStrategy.getClass().getName());
+        // FLINK-31757_research
+        // 2. 开始调度
         transitionToRunning();
         schedulingStrategy.startScheduling();
     }
@@ -440,16 +444,21 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
     // SchedulerOperations
     // ------------------------------------------------------------------------
 
+    // FLINK-31757_research
+    // 10. 按照creation顺序调度 region 中的一组 execution.
     @Override
     public void allocateSlotsAndDeploy(final List<ExecutionVertexID> verticesToDeploy) {
         final Map<ExecutionVertexID, ExecutionVertexVersion> requiredVersionByVertex =
                 executionVertexVersioner.recordVertexModifications(verticesToDeploy);
 
+        // 获取 execution 列表
         final List<Execution> executionsToDeploy =
                 verticesToDeploy.stream()
                         .map(this::getCurrentExecutionOfVertex)
                         .collect(Collectors.toList());
 
+        // FLINK-31757_research
+        // 10. 按照creation顺序调度 region 中的一组 execution.
         executionDeployer.allocateSlotsAndDeploy(executionsToDeploy, requiredVersionByVertex);
     }
 

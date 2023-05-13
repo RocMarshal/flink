@@ -99,11 +99,13 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
         this.slotProvider.disableBatchSlotRequestTimeoutCheck();
     }
 
+    // 11. 为一组 execution 申请 ExecutionSlotAssignment.
     @Override
     public List<ExecutionSlotAssignment> allocateSlotsFor(
             List<ExecutionAttemptID> executionAttemptIds) {
 
         final Map<ExecutionVertexID, ExecutionAttemptID> vertexIdToExecutionId = new HashMap<>();
+        // 更新 execution vertexId -> ExecutionAttemptID
         executionAttemptIds.forEach(
                 executionId ->
                         vertexIdToExecutionId.put(executionId.getExecutionVertexId(), executionId));
@@ -112,11 +114,13 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                 vertexIdToExecutionId.size() == executionAttemptIds.size(),
                 "SlotSharingExecutionSlotAllocator does not support one execution vertex to have multiple concurrent executions");
 
+        // get vertexIds
         final List<ExecutionVertexID> vertexIds =
                 executionAttemptIds.stream()
                         .map(ExecutionAttemptID::getExecutionVertexId)
                         .collect(Collectors.toList());
 
+        /** 基于 {@link LocalInputPreferredSlotSharingStrategy}申请 slot. */
         return allocateSlotsForVertices(vertexIds).stream()
                 .map(
                         vertexAssignment ->
@@ -153,12 +157,14 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
     private List<SlotExecutionVertexAssignment> allocateSlotsForVertices(
             List<ExecutionVertexID> executionVertexIds) {
 
+        // 计算执行槽共享组的 SlotProfile。
         SharedSlotProfileRetriever sharedSlotProfileRetriever =
                 sharedSlotProfileRetrieverFactory.createFromBulk(new HashSet<>(executionVertexIds));
         Map<ExecutionSlotSharingGroup, List<ExecutionVertexID>> executionsByGroup =
                 executionVertexIds.stream()
                         .collect(
                                 Collectors.groupingBy(
+                                        // 计算执行槽共享组的 SlotProfile。
                                         slotSharingStrategy::getExecutionSlotSharingGroup));
         Map<ExecutionSlotSharingGroup, SharedSlot> slots =
                 executionsByGroup.keySet().stream()
@@ -225,6 +231,13 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
         return assignments;
     }
 
+    /**
+     * 为 ESSG 获取 sharedSharingGroup
+     *
+     * @param executionSlotSharingGroup essg
+     * @param sharedSlotProfileRetriever sspr
+     * @return SharedSlot
+     */
     private SharedSlot getOrAllocateSharedSlot(
             ExecutionSlotSharingGroup executionSlotSharingGroup,
             SharedSlotProfileRetriever sharedSlotProfileRetriever) {
@@ -234,6 +247,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                     SlotRequestId physicalSlotRequestId = new SlotRequestId();
                     ResourceProfile physicalSlotResourceProfile =
                             getPhysicalSlotResourceProfile(group);
+                    /** 根据 slotProfile 和 PhysicalSlotRequest 进行申请 shared slot. */
                     SlotProfile slotProfile =
                             sharedSlotProfileRetriever.getSlotProfile(
                                     group, physicalSlotResourceProfile);
@@ -243,6 +257,8 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                                     slotProfile,
                                     slotWillBeOccupiedIndefinitely);
                     CompletableFuture<PhysicalSlot> physicalSlotFuture =
+                            // FLINK-31757_research
+                            // TODO 使用到slot选择策略 spread, 等等
                             slotProvider
                                     .allocatePhysicalSlot(physicalSlotRequest)
                                     .thenApply(PhysicalSlotRequest.Result::getPhysicalSlot);
