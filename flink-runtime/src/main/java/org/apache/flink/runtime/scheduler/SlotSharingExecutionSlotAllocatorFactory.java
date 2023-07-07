@@ -18,10 +18,12 @@
 
 package org.apache.flink.runtime.scheduler;
 
+import org.apache.flink.api.common.TaskSchedulingStrategy;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotProvider;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotRequestBulkChecker;
 import org.apache.flink.runtime.scheduler.SharedSlotProfileRetriever.SharedSlotProfileRetrieverFactory;
+import org.apache.flink.util.Preconditions;
 
 /** Factory for {@link SlotSharingExecutionSlotAllocator}. */
 public class SlotSharingExecutionSlotAllocatorFactory implements ExecutionSlotAllocatorFactory {
@@ -35,17 +37,21 @@ public class SlotSharingExecutionSlotAllocatorFactory implements ExecutionSlotAl
 
     private final SlotSharingStrategy.Factory slotSharingStrategyFactory;
 
+    private final TaskSchedulingStrategy taskSchedulingStrategy;
+
     public SlotSharingExecutionSlotAllocatorFactory(
             PhysicalSlotProvider slotProvider,
             boolean slotWillBeOccupiedIndefinitely,
             PhysicalSlotRequestBulkChecker bulkChecker,
-            Time allocationTimeout) {
+            Time allocationTimeout,
+            TaskSchedulingStrategy taskSchedulingStrategy) {
         this(
                 slotProvider,
                 slotWillBeOccupiedIndefinitely,
                 bulkChecker,
                 allocationTimeout,
-                new LocalInputPreferredSlotSharingStrategy.Factory());
+                getSlotSharingStrategy(taskSchedulingStrategy),
+                taskSchedulingStrategy);
     }
 
     SlotSharingExecutionSlotAllocatorFactory(
@@ -53,12 +59,14 @@ public class SlotSharingExecutionSlotAllocatorFactory implements ExecutionSlotAl
             boolean slotWillBeOccupiedIndefinitely,
             PhysicalSlotRequestBulkChecker bulkChecker,
             Time allocationTimeout,
-            SlotSharingStrategy.Factory slotSharingStrategyFactory) {
+            SlotSharingStrategy.Factory slotSharingStrategyFactory,
+            TaskSchedulingStrategy taskSchedulingStrategy) {
         this.slotProvider = slotProvider;
         this.slotWillBeOccupiedIndefinitely = slotWillBeOccupiedIndefinitely;
         this.bulkChecker = bulkChecker;
         this.slotSharingStrategyFactory = slotSharingStrategyFactory;
         this.allocationTimeout = allocationTimeout;
+        this.taskSchedulingStrategy = Preconditions.checkNotNull(taskSchedulingStrategy);
     }
 
     @Override
@@ -82,6 +90,19 @@ public class SlotSharingExecutionSlotAllocatorFactory implements ExecutionSlotAl
                 sharedSlotProfileRetrieverFactory,
                 bulkChecker,
                 allocationTimeout,
-                context::getResourceProfile);
+                context::getResourceProfile,
+                taskSchedulingStrategy);
+    }
+
+    static SlotSharingStrategy.Factory getSlotSharingStrategy(
+            TaskSchedulingStrategy taskSchedulingStrategy) {
+        if (taskSchedulingStrategy == TaskSchedulingStrategy.BALANCED_PREFERRED) {
+            return new BalancedPreferredSlotSharingStrategy.Factory();
+        }
+        if (taskSchedulingStrategy == TaskSchedulingStrategy.LOCAL_INPUT_PREFERRED) {
+            return new LocalInputPreferredSlotSharingStrategy.Factory();
+        }
+        throw new UnsupportedOperationException(
+                String.format("Unsupported task scheduling strategy '%s'", taskSchedulingStrategy));
     }
 }

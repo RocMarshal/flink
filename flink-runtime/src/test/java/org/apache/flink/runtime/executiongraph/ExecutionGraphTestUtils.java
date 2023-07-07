@@ -31,20 +31,20 @@ import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.jobmaster.LogicalSlot;
-import org.apache.flink.runtime.scheduler.DefaultSchedulerBuilder;
 import org.apache.flink.runtime.scheduler.SchedulerBase;
+import org.apache.flink.runtime.scheduler.SchedulerTestingUtils;
 import org.apache.flink.runtime.scheduler.strategy.ConsumedPartitionGroup;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
-import org.apache.flink.runtime.taskmanager.TaskExecutionState;
 import org.apache.flink.runtime.testtasks.NoOpInvokable;
 import org.apache.flink.runtime.testutils.DirectScheduledExecutorService;
+import org.apache.flink.testutils.TestingUtils;
+import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.List;
-import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeoutException;
@@ -52,7 +52,8 @@ import java.util.function.Predicate;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 /** A collection of utility methods for testing the ExecutionGraph and its related classes. */
 public class ExecutionGraphTestUtils {
@@ -231,21 +232,11 @@ public class ExecutionGraphTestUtils {
 
     /**
      * Takes all vertices in the given ExecutionGraph and switches their current execution to
-     * INITIALIZING.
-     */
-    public static void switchAllVerticesToInitializing(ExecutionGraph eg) {
-        for (ExecutionVertex vertex : eg.getAllExecutionVertices()) {
-            vertex.getCurrentExecutionAttempt().switchToInitializing();
-        }
-    }
-
-    /**
-     * Takes all vertices in the given ExecutionGraph and switches their current execution to
      * RUNNING.
      */
     public static void switchAllVerticesToRunning(ExecutionGraph eg) {
         for (ExecutionVertex vertex : eg.getAllExecutionVertices()) {
-            vertex.getCurrentExecutionAttempt().switchToInitializing();
+            vertex.getCurrentExecutionAttempt().switchToRecovering();
             vertex.getCurrentExecutionAttempt().switchToRunning();
         }
     }
@@ -258,23 +249,6 @@ public class ExecutionGraphTestUtils {
         for (ExecutionVertex vertex : eg.getAllExecutionVertices()) {
             vertex.getCurrentExecutionAttempt().completeCancelling();
         }
-    }
-
-    public static void finishJobVertex(ExecutionGraph executionGraph, JobVertexID jobVertexId) {
-        for (ExecutionVertex vertex :
-                Objects.requireNonNull(executionGraph.getJobVertex(jobVertexId))
-                        .getTaskVertices()) {
-            finishExecutionVertex(executionGraph, vertex);
-        }
-    }
-
-    public static void finishExecutionVertex(
-            ExecutionGraph executionGraph, ExecutionVertex executionVertex) {
-        executionGraph.updateState(
-                new TaskExecutionStateTransition(
-                        new TaskExecutionState(
-                                executionVertex.getCurrentExecutionAttempt().getAttemptId(),
-                                ExecutionState.FINISHED)));
     }
 
     /**
@@ -332,6 +306,19 @@ public class ExecutionGraphTestUtils {
     //  Mocking ExecutionGraph
     // ------------------------------------------------------------------------
 
+    /** Creates an execution graph with on job vertex of parallelism 10. */
+    public static ExecutionGraph createSimpleTestGraph() throws Exception {
+        JobVertex vertex = createNoOpVertex(10);
+
+        return createSimpleTestGraph(vertex);
+    }
+
+    /** Creates an execution graph containing the given vertices. */
+    public static DefaultExecutionGraph createSimpleTestGraph(JobVertex... vertices)
+            throws Exception {
+        return createExecutionGraph(TestingUtils.defaultExecutor(), vertices);
+    }
+
     public static DefaultExecutionGraph createExecutionGraph(
             ScheduledExecutorService executor, JobVertex... vertices) throws Exception {
 
@@ -348,8 +335,10 @@ public class ExecutionGraphTestUtils {
         DefaultExecutionGraph executionGraph =
                 TestingDefaultExecutionGraphBuilder.newBuilder()
                         .setJobGraph(JobGraphTestUtils.streamingJobGraph(vertices))
+                        .setFutureExecutor(executor)
+                        .setIoExecutor(executor)
                         .setRpcTimeout(timeout)
-                        .build(executor);
+                        .build();
         executionGraph.start(ComponentMainThreadExecutorServiceAdapter.forMainThread());
         return executionGraph;
     }
@@ -376,6 +365,12 @@ public class ExecutionGraphTestUtils {
 
     public static ExecutionVertexID createRandomExecutionVertexId() {
         return new ExecutionVertexID(new JobVertexID(), new Random().nextInt(Integer.MAX_VALUE));
+    }
+
+    public static ExecutionVertexID createRandomExecutionVertexId(
+            JobVertexID jobVertexID, int subTaskIndex) {
+        Preconditions.checkArgument(subTaskIndex >= 0);
+        return new ExecutionVertexID(jobVertexID, subTaskIndex);
     }
 
     public static JobVertex createJobVertex(
@@ -419,10 +414,10 @@ public class ExecutionGraphTestUtils {
         JobGraph jobGraph = JobGraphTestUtils.batchJobGraph(jobVertex);
 
         SchedulerBase scheduler =
-                new DefaultSchedulerBuilder(
-                                jobGraph,
-                                ComponentMainThreadExecutorServiceAdapter.forMainThread(),
-                                executor)
+                SchedulerTestingUtils.newSchedulerBuilder(
+                                jobGraph, ComponentMainThreadExecutorServiceAdapter.forMainThread())
+                        .setIoExecutor(executor)
+                        .setFutureExecutor(executor)
                         .build();
 
         return scheduler.getExecutionJobVertex(jobVertex.getID());
@@ -456,25 +451,6 @@ public class ExecutionGraphTestUtils {
         return ejv.getTaskVertices()[subtaskIndex].getCurrentExecutionAttempt();
     }
 
-    public static ExecutionAttemptID createExecutionAttemptId() {
-        return createExecutionAttemptId(new JobVertexID(0, 0));
-    }
-
-    public static ExecutionAttemptID createExecutionAttemptId(JobVertexID jobVertexId) {
-        return createExecutionAttemptId(jobVertexId, 0, 0);
-    }
-
-    public static ExecutionAttemptID createExecutionAttemptId(
-            JobVertexID jobVertexId, int subtaskIndex, int attemptNumber) {
-        return createExecutionAttemptId(
-                new ExecutionVertexID(jobVertexId, subtaskIndex), attemptNumber);
-    }
-
-    public static ExecutionAttemptID createExecutionAttemptId(
-            ExecutionVertexID executionVertexId, int attemptNumber) {
-        return new ExecutionAttemptID(new ExecutionGraphID(), executionVertexId, attemptNumber);
-    }
-
     // ------------------------------------------------------------------------
     //  graph vertex verifications
     // ------------------------------------------------------------------------
@@ -490,61 +466,63 @@ public class ExecutionGraphTestUtils {
      * @param outputJobVertices downstream vertices of the verified vertex, used to check produced
      *     data sets of generated vertex
      */
-    static void verifyGeneratedExecutionJobVertex(
+    public static void verifyGeneratedExecutionJobVertex(
             ExecutionGraph executionGraph,
             JobVertex originJobVertex,
             @Nullable List<JobVertex> inputJobVertices,
             @Nullable List<JobVertex> outputJobVertices) {
 
         ExecutionJobVertex ejv = executionGraph.getAllVertices().get(originJobVertex.getID());
-        assertThat(ejv).isNotNull();
+        assertNotNull(ejv);
 
         // verify basic properties
-        assertThat(originJobVertex.getParallelism()).isEqualTo(ejv.getParallelism());
-        assertThat(executionGraph.getJobID()).isEqualTo(ejv.getJobId());
-        assertThat(originJobVertex.getID()).isEqualTo(ejv.getJobVertexId());
-        assertThat(originJobVertex).isEqualTo(ejv.getJobVertex());
+        assertEquals(originJobVertex.getParallelism(), ejv.getParallelism());
+        assertEquals(executionGraph.getJobID(), ejv.getJobId());
+        assertEquals(originJobVertex.getID(), ejv.getJobVertexId());
+        assertEquals(originJobVertex, ejv.getJobVertex());
 
         // verify produced data sets
         if (outputJobVertices == null) {
-            assertThat(ejv.getProducedDataSets()).isEmpty();
+            assertEquals(0, ejv.getProducedDataSets().length);
         } else {
-            assertThat(outputJobVertices).hasSize(ejv.getProducedDataSets().length);
+            assertEquals(outputJobVertices.size(), ejv.getProducedDataSets().length);
             for (int i = 0; i < outputJobVertices.size(); i++) {
-                assertThat(originJobVertex.getProducedDataSets().get(i).getId())
-                        .isEqualTo(ejv.getProducedDataSets()[i].getId());
-                assertThat(originJobVertex.getParallelism())
-                        .isEqualTo(ejv.getProducedDataSets()[0].getPartitions().length);
+                assertEquals(
+                        originJobVertex.getProducedDataSets().get(i).getId(),
+                        ejv.getProducedDataSets()[i].getId());
+                assertEquals(
+                        originJobVertex.getParallelism(),
+                        ejv.getProducedDataSets()[0].getPartitions().length);
             }
         }
 
         // verify task vertices for their basic properties and their inputs
-        assertThat(originJobVertex.getParallelism()).isEqualTo(ejv.getTaskVertices().length);
+        assertEquals(originJobVertex.getParallelism(), ejv.getTaskVertices().length);
 
         int subtaskIndex = 0;
         for (ExecutionVertex ev : ejv.getTaskVertices()) {
-            assertThat(executionGraph.getJobID()).isEqualTo(ev.getJobId());
-            assertThat(originJobVertex.getID()).isEqualTo(ev.getJobvertexId());
+            assertEquals(executionGraph.getJobID(), ev.getJobId());
+            assertEquals(originJobVertex.getID(), ev.getJobvertexId());
 
-            assertThat(originJobVertex.getParallelism())
-                    .isEqualTo(ev.getTotalNumberOfParallelSubtasks());
-            assertThat(subtaskIndex).isEqualTo(ev.getParallelSubtaskIndex());
+            assertEquals(originJobVertex.getParallelism(), ev.getTotalNumberOfParallelSubtasks());
+            assertEquals(subtaskIndex, ev.getParallelSubtaskIndex());
 
             if (inputJobVertices == null) {
-                assertThat(ev.getNumberOfInputs()).isZero();
+                assertEquals(0, ev.getNumberOfInputs());
             } else {
-                assertThat(inputJobVertices).hasSize(ev.getNumberOfInputs());
+                assertEquals(inputJobVertices.size(), ev.getNumberOfInputs());
 
                 for (int i = 0; i < inputJobVertices.size(); i++) {
                     ConsumedPartitionGroup consumedPartitionGroup = ev.getConsumedPartitionGroup(i);
-                    assertThat(inputJobVertices.get(i).getParallelism())
-                            .isEqualTo(consumedPartitionGroup.size());
+                    assertEquals(
+                            inputJobVertices.get(i).getParallelism(),
+                            consumedPartitionGroup.size());
 
                     int expectedPartitionNum = 0;
                     for (IntermediateResultPartitionID consumedPartitionId :
                             consumedPartitionGroup) {
-                        assertThat(consumedPartitionId.getPartitionNumber())
-                                .isEqualTo(expectedPartitionNum);
+                        assertEquals(
+                                expectedPartitionNum, consumedPartitionId.getPartitionNumber());
 
                         expectedPartitionNum++;
                     }

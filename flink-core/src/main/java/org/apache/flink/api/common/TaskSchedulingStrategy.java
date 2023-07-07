@@ -16,21 +16,14 @@
  * limitations under the License.
  */
 
-package org.apache.flink.runtime.scheduler;
+package org.apache.flink.api.common;
 
-import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
-import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
+/** An enum to represent the tasks scheduling strategy. */
+public enum TaskSchedulingStrategy {
 
-class SharedSlotTestingUtils {
-    private SharedSlotTestingUtils() {}
+    /** Local-input-preferred tasks scheduling strategy. */
+    LOCAL_INPUT_PREFERRED,
 
-    static ExecutionSlotSharingGroup createExecutionSlotSharingGroup(
-            ExecutionVertexID... executions) {
-        ExecutionSlotSharingGroup group = new ExecutionSlotSharingGroup();
-        group.setSlotSharingGroup(new SlotSharingGroup());
-        for (ExecutionVertexID execution : executions) {
-            group.addVertex(execution);
-        }
-        return group;
-    }
+    /** Balanced preferred tasks scheduling strategy. */
+    BALANCED_PREFERRED
 }

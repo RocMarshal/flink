@@ -23,15 +23,16 @@ import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationConstraint;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationGroup;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
-import org.apache.flink.runtime.scheduler.adapter.DefaultExecutionTopology;
 import org.apache.flink.runtime.scheduler.strategy.ConsumedPartitionGroup;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.runtime.scheduler.strategy.SchedulingExecutionVertex;
 import org.apache.flink.runtime.scheduler.strategy.SchedulingTopology;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -42,69 +43,23 @@ import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
-import static org.apache.flink.util.Preconditions.checkState;
 
 /**
  * This strategy tries to reduce remote data exchanges. Execution vertices, which are connected and
  * belong to the same SlotSharingGroup, tend to be put in the same ExecutionSlotSharingGroup.
  * Co-location constraints will be respected.
  */
-class LocalInputPreferredSlotSharingStrategy
+class LocalInputPreferredSlotSharingStrategy extends SlotSharingStrategyBase
         implements SlotSharingStrategy, SchedulingTopologyListener {
 
-    private final Map<ExecutionVertexID, ExecutionSlotSharingGroup> executionSlotSharingGroupMap;
-
-    private final Set<SlotSharingGroup> logicalSlotSharingGroups;
-
-    private final Set<CoLocationGroup> coLocationGroups;
+    public static final Logger LOG =
+            LoggerFactory.getLogger(LocalInputPreferredSlotSharingStrategy.class);
 
     LocalInputPreferredSlotSharingStrategy(
             final SchedulingTopology topology,
             final Set<SlotSharingGroup> logicalSlotSharingGroups,
             final Set<CoLocationGroup> coLocationGroups) {
-
-        this.logicalSlotSharingGroups = checkNotNull(logicalSlotSharingGroups);
-        this.coLocationGroups = checkNotNull(coLocationGroups);
-
-        this.executionSlotSharingGroupMap =
-                new ExecutionSlotSharingGroupBuilder(
-                                topology, logicalSlotSharingGroups, coLocationGroups)
-                        .build();
-        topology.registerSchedulingTopologyListener(this);
-    }
-
-    @Override
-    public ExecutionSlotSharingGroup getExecutionSlotSharingGroup(
-            final ExecutionVertexID executionVertexId) {
-        return executionSlotSharingGroupMap.get(executionVertexId);
-    }
-
-    @Override
-    public Set<ExecutionSlotSharingGroup> getExecutionSlotSharingGroups() {
-        return new HashSet<>(executionSlotSharingGroupMap.values());
-    }
-
-    @Override
-    public void notifySchedulingTopologyUpdated(
-            SchedulingTopology schedulingTopology, List<ExecutionVertexID> newExecutionVertices) {
-
-        final Map<ExecutionVertexID, ExecutionSlotSharingGroup> newMap =
-                new LocalInputPreferredSlotSharingStrategy.ExecutionSlotSharingGroupBuilder(
-                                schedulingTopology, logicalSlotSharingGroups, coLocationGroups)
-                        .build();
-
-        for (ExecutionVertexID vertexId : newMap.keySet()) {
-            final ExecutionSlotSharingGroup newEssg = newMap.get(vertexId);
-            final ExecutionSlotSharingGroup oldEssg = executionSlotSharingGroupMap.get(vertexId);
-            if (oldEssg == null) {
-                executionSlotSharingGroupMap.put(vertexId, newEssg);
-            } else {
-                // ensures that existing slot sharing groups are not changed
-                checkState(
-                        oldEssg.getExecutionVertexIds().equals(newEssg.getExecutionVertexIds()),
-                        "Existing ExecutionSlotSharingGroups are changed after topology update");
-            }
-        }
+        super(topology, logicalSlotSharingGroups, coLocationGroups);
     }
 
     static class Factory implements SlotSharingStrategy.Factory {
@@ -119,10 +74,20 @@ class LocalInputPreferredSlotSharingStrategy
         }
     }
 
-    private static class ExecutionSlotSharingGroupBuilder {
+    @Override
+    protected Map<ExecutionVertexID, ExecutionSlotSharingGroup> computeExecutionToESsgMap(
+            SchedulingTopology schedulingTopology) {
+        return new LocalInputPreferredExecutionSlotSharingGroupBuilder(
+                        schedulingTopology, logicalSlotSharingGroups, coLocationGroups)
+                .build();
+    }
+
+    private static class LocalInputPreferredExecutionSlotSharingGroupBuilder {
         private final SchedulingTopology topology;
 
         private final Map<JobVertexID, SlotSharingGroup> slotSharingGroupMap;
+
+        private final Map<SlotSharingGroup, Integer> slotIndexes;
 
         private final Map<JobVertexID, CoLocationGroup> coLocationGroupMap;
 
@@ -170,7 +135,7 @@ class LocalInputPreferredSlotSharingStrategy
         private final Map<ConsumedPartitionGroup, LinkedHashSet<ExecutionSlotSharingGroup>>
                 candidateGroupsForConsumedPartitionGroup;
 
-        private ExecutionSlotSharingGroupBuilder(
+        private LocalInputPreferredExecutionSlotSharingGroupBuilder(
                 final SchedulingTopology topology,
                 final Set<SlotSharingGroup> logicalSlotSharingGroups,
                 final Set<CoLocationGroup> coLocationGroups) {
@@ -195,6 +160,7 @@ class LocalInputPreferredSlotSharingStrategy
             constraintToExecutionSlotSharingGroupMap = new HashMap<>();
             availableGroupsForJobVertex = new HashMap<>();
             candidateGroupsForConsumedPartitionGroup = new IdentityHashMap<>();
+            slotIndexes = new HashMap<>();
         }
 
         /**
@@ -212,7 +178,7 @@ class LocalInputPreferredSlotSharingStrategy
          */
         private Map<ExecutionVertexID, ExecutionSlotSharingGroup> build() {
             final LinkedHashMap<JobVertexID, List<SchedulingExecutionVertex>> allVertices =
-                    getExecutionVertices();
+                    getExecutionVertices(topology);
 
             // loop on job vertices so that an execution vertex will not be added into a group
             // if that group better fits another execution vertex
@@ -226,22 +192,6 @@ class LocalInputPreferredSlotSharingStrategy
             }
 
             return executionSlotSharingGroupMap;
-        }
-
-        /**
-         * The vertices are topologically sorted since {@link DefaultExecutionTopology#getVertices}
-         * are topologically sorted.
-         */
-        private LinkedHashMap<JobVertexID, List<SchedulingExecutionVertex>> getExecutionVertices() {
-            final LinkedHashMap<JobVertexID, List<SchedulingExecutionVertex>> vertices =
-                    new LinkedHashMap<>();
-            for (SchedulingExecutionVertex executionVertex : topology.getVertices()) {
-                final List<SchedulingExecutionVertex> executionVertexGroup =
-                        vertices.computeIfAbsent(
-                                executionVertex.getId().getJobVertexId(), k -> new ArrayList<>());
-                executionVertexGroup.add(executionVertex);
-            }
-            return vertices;
         }
 
         private List<SchedulingExecutionVertex> tryFindOptimalAvailableExecutionSlotSharingGroupFor(
@@ -394,8 +344,11 @@ class LocalInputPreferredSlotSharingStrategy
             final SlotSharingGroup slotSharingGroup =
                     getSlotSharingGroup(executionVertexId.getJobVertexId());
 
-            final ExecutionSlotSharingGroup newGroup = new ExecutionSlotSharingGroup();
-            newGroup.setResourceProfile(slotSharingGroup.getResourceProfile());
+            Integer eSsgIndexOfSsg = slotIndexes.getOrDefault(slotSharingGroup, 0);
+            final ExecutionSlotSharingGroup newGroup =
+                    new ExecutionSlotSharingGroup(slotSharingGroup, eSsgIndexOfSsg);
+
+            slotIndexes.put(slotSharingGroup, eSsgIndexOfSsg + 1);
 
             // Once a new ExecutionSlotSharingGroup is created, it's available for all JobVertices
             // in this SlotSharingGroup
