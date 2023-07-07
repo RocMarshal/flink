@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.scheduler;
 
 import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.TaskSchedulingStrategy;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.blob.BlobWriter;
@@ -382,7 +383,8 @@ public class SchedulerTestingUtils {
                 true,
                 new TestingPhysicalSlotRequestBulkChecker(),
                 allocationTimeout,
-                new LocalInputPreferredSlotSharingStrategy.Factory());
+                new LocalInputPreferredSlotSharingStrategy.Factory(),
+                TaskSchedulingStrategy.LOCAL_INPUT_PREFERRED);
     }
 
     /** Builder for {@link DefaultScheduler}. */

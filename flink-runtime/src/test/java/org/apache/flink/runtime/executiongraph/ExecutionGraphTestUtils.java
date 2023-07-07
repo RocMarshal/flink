@@ -38,6 +38,7 @@ import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.runtime.testtasks.NoOpInvokable;
 import org.apache.flink.runtime.testutils.DirectScheduledExecutorService;
 import org.apache.flink.testutils.TestingUtils;
+import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
 
@@ -364,6 +365,12 @@ public class ExecutionGraphTestUtils {
 
     public static ExecutionVertexID createRandomExecutionVertexId() {
         return new ExecutionVertexID(new JobVertexID(), new Random().nextInt(Integer.MAX_VALUE));
+    }
+
+    public static ExecutionVertexID createRandomExecutionVertexId(
+            JobVertexID jobVertexID, int subTaskIndex) {
+        Preconditions.checkArgument(subTaskIndex >= 0);
+        return new ExecutionVertexID(jobVertexID, subTaskIndex);
     }
 
     public static JobVertex createJobVertex(

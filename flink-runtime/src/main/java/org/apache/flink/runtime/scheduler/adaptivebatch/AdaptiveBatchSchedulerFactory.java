@@ -20,6 +20,7 @@
 package org.apache.flink.runtime.scheduler.adaptivebatch;
 
 import org.apache.flink.api.common.BatchShuffleMode;
+import org.apache.flink.api.common.TaskSchedulingStrategy;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ExecutionOptions;
@@ -117,7 +118,11 @@ public class AdaptiveBatchSchedulerFactory implements SchedulerNGFactory {
                 new PhysicalSlotProviderImpl(slotSelectionStrategy, slotPool);
         final ExecutionSlotAllocatorFactory allocatorFactory =
                 new SlotSharingExecutionSlotAllocatorFactory(
-                        physicalSlotProvider, false, bulkChecker, slotRequestTimeout);
+                        physicalSlotProvider,
+                        false,
+                        bulkChecker,
+                        slotRequestTimeout,
+                        TaskSchedulingStrategy.LOCAL_INPUT_PREFERRED);
 
         final RestartBackoffTimeStrategy restartBackoffTimeStrategy =
                 RestartBackoffTimeStrategyFactoryLoader.createRestartBackoffTimeStrategyFactory(
