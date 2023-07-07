@@ -19,8 +19,11 @@
 package org.apache.flink.runtime.scheduler;
 
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
+import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.util.Preconditions;
+
+import javax.annotation.Nonnull;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -31,9 +34,20 @@ class ExecutionSlotSharingGroup {
 
     private final Set<ExecutionVertexID> executionVertexIds;
 
-    private ResourceProfile resourceProfile = ResourceProfile.UNKNOWN;
+    private @Nonnull SlotSharingGroup slotSharingGroup;
 
+    private int indexInSsg;
+
+    /** @deprecated Only for test cases. */
+    @Deprecated
     ExecutionSlotSharingGroup() {
+        this.executionVertexIds = new HashSet<>();
+    }
+
+    ExecutionSlotSharingGroup(SlotSharingGroup slotSharingGroup, int indexInSsg) {
+        Preconditions.checkArgument(indexInSsg >= 0);
+        this.indexInSsg = indexInSsg;
+        this.slotSharingGroup = Preconditions.checkNotNull(slotSharingGroup);
         this.executionVertexIds = new HashSet<>();
     }
 
@@ -41,12 +55,22 @@ class ExecutionSlotSharingGroup {
         executionVertexIds.add(executionVertexId);
     }
 
-    void setResourceProfile(ResourceProfile resourceProfile) {
-        this.resourceProfile = Preconditions.checkNotNull(resourceProfile);
+    void setSlotSharingGroup(SlotSharingGroup slotSharingGroup) {
+        this.slotSharingGroup = Preconditions.checkNotNull(slotSharingGroup);
     }
 
+    int getIndexInSsg() {
+        return indexInSsg;
+    }
+
+    @Nonnull
     ResourceProfile getResourceProfile() {
-        return resourceProfile;
+        return slotSharingGroup.getResourceProfile();
+    }
+
+    @Nonnull
+    SlotSharingGroup getSlotSharingGroup() {
+        return slotSharingGroup;
     }
 
     Set<ExecutionVertexID> getExecutionVertexIds() {
@@ -58,8 +82,10 @@ class ExecutionSlotSharingGroup {
         return "ExecutionSlotSharingGroup{"
                 + "executionVertexIds="
                 + executionVertexIds
-                + ", resourceProfile="
-                + resourceProfile
+                + ", indexInSsg="
+                + indexInSsg
+                + ", slotSharingGroup="
+                + slotSharingGroup
                 + '}';
     }
 }

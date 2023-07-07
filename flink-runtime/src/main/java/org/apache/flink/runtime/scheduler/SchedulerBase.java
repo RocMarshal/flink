@@ -165,6 +165,8 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
 
     private final DeploymentStateTimeMetrics deploymentStateTimeMetrics;
 
+    protected final Configuration jobMasterConfiguration;
+
     public SchedulerBase(
             final Logger log,
             final JobGraph jobGraph,
@@ -188,6 +190,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
         this.jobManagerJobMetricGroup = checkNotNull(jobManagerJobMetricGroup);
         this.executionVertexVersioner = checkNotNull(executionVertexVersioner);
         this.mainThreadExecutor = mainThreadExecutor;
+        this.jobMasterConfiguration = checkNotNull(jobMasterConfiguration);
 
         this.checkpointsCleaner = checkpointsCleaner;
         this.completedCheckpointStore =

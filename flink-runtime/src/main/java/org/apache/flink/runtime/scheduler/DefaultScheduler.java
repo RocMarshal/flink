@@ -495,6 +495,11 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
         }
 
         @Override
+        public Configuration getConfiguration() {
+            return jobMasterConfiguration;
+        }
+
+        @Override
         public Optional<AllocationID> findPriorAllocationId(
                 final ExecutionVertexID executionVertexId) {
             return getExecutionVertex(executionVertexId).findLastAllocation();

@@ -18,12 +18,14 @@
 
 package org.apache.flink.runtime.scheduler;
 
+import org.apache.flink.api.common.TaskSchedulingStrategy;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.SlotProfile;
 import org.apache.flink.runtime.clusterframework.types.SlotProfileTestingUtils;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
+import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.jobmaster.LogicalSlot;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
 import org.apache.flink.runtime.jobmaster.TestingPayload;
@@ -428,13 +430,18 @@ class SlotSharingExecutionSlotAllocatorTest {
     }
 
     @Test
-    void testSlotRequestProfileFromExecutionSlotSharingGroup() {
+    public void testSlotRequestProfileFromExecutionSlotSharingGroup() {
+        SlotSharingGroup slotSharingGroup1 = new SlotSharingGroup();
         final ResourceProfile resourceProfile1 = ResourceProfile.fromResources(1, 10);
+        slotSharingGroup1.setResourceProfile(resourceProfile1);
+        SlotSharingGroup slotSharingGroup2 = new SlotSharingGroup();
         final ResourceProfile resourceProfile2 = ResourceProfile.fromResources(2, 20);
+        slotSharingGroup2.setResourceProfile(resourceProfile2);
+
         final AllocationContext context =
                 AllocationContext.newBuilder()
-                        .addGroupAndResource(resourceProfile1, EV1, EV3)
-                        .addGroupAndResource(resourceProfile2, EV2, EV4)
+                        .addGroupAndResource(slotSharingGroup1, EV1, EV3)
+                        .addGroupAndResource(slotSharingGroup2, EV2, EV4)
                         .build();
 
         context.allocateSlotsFor(EV1, EV2);
@@ -533,7 +540,7 @@ class SlotSharingExecutionSlotAllocatorTest {
         }
 
         private static class Builder {
-            private final Map<ExecutionVertexID[], ResourceProfile> groups = new HashMap<>();
+            private final Map<ExecutionVertexID[], SlotSharingGroup> groups = new HashMap<>();
             private boolean slotWillBeOccupiedIndefinitely = false;
             private PhysicalSlotRequestBulkChecker bulkChecker =
                     new TestingPhysicalSlotRequestBulkChecker();
@@ -542,13 +549,13 @@ class SlotSharingExecutionSlotAllocatorTest {
                     TestingPhysicalSlotProvider.createWithInfiniteSlotCreation();
 
             private Builder addGroup(ExecutionVertexID... group) {
-                groups.put(group, ResourceProfile.UNKNOWN);
+                groups.put(group, new SlotSharingGroup());
                 return this;
             }
 
             private Builder addGroupAndResource(
-                    ResourceProfile resourceProfile, ExecutionVertexID... group) {
-                groups.put(group, resourceProfile);
+                    SlotSharingGroup slotSharingGroup, ExecutionVertexID... group) {
+                groups.put(group, slotSharingGroup);
                 return this;
             }
 
@@ -582,7 +589,9 @@ class SlotSharingExecutionSlotAllocatorTest {
                                 sharedSlotProfileRetrieverFactory,
                                 bulkChecker,
                                 ALLOCATION_TIMEOUT,
-                                executionVertexID -> RESOURCE_PROFILE);
+                                executionVertexID -> RESOURCE_PROFILE,
+                                TaskSchedulingStrategy.LOCAL_INPUT_PREFERRED,
+                                2);
                 return new AllocationContext(
                         physicalSlotProvider,
                         slotSharingStrategy,
@@ -612,14 +621,14 @@ class SlotSharingExecutionSlotAllocatorTest {
         }
 
         private static TestingSlotSharingStrategy createWithGroupsAndResources(
-                Map<ExecutionVertexID[], ResourceProfile> groupAndResources) {
+                Map<ExecutionVertexID[], SlotSharingGroup> groupAndResources) {
             Map<ExecutionVertexID, ExecutionSlotSharingGroup> executionSlotSharingGroups =
                     new HashMap<>();
-            for (Map.Entry<ExecutionVertexID[], ResourceProfile> groupAndResource :
+            for (Map.Entry<ExecutionVertexID[], SlotSharingGroup> groupAndResource :
                     groupAndResources.entrySet()) {
                 ExecutionSlotSharingGroup executionSlotSharingGroup =
                         new ExecutionSlotSharingGroup();
-                executionSlotSharingGroup.setResourceProfile(groupAndResource.getValue());
+                executionSlotSharingGroup.setSlotSharingGroup(groupAndResource.getValue());
                 for (ExecutionVertexID executionVertexId : groupAndResource.getKey()) {
                     executionSlotSharingGroup.addVertex(executionVertexId);
                     executionSlotSharingGroups.put(executionVertexId, executionSlotSharingGroup);
@@ -629,12 +638,13 @@ class SlotSharingExecutionSlotAllocatorTest {
         }
     }
 
-    private static class TestingSharedSlotProfileRetrieverFactory
+    /** Testing class for SharedSlotProfileRetrieverFactory. */
+    public static class TestingSharedSlotProfileRetrieverFactory
             implements SharedSlotProfileRetrieverFactory {
         private final List<Set<ExecutionVertexID>> askedBulks;
         private final List<ExecutionSlotSharingGroup> askedGroups;
 
-        private TestingSharedSlotProfileRetrieverFactory() {
+        public TestingSharedSlotProfileRetrieverFactory() {
             this.askedBulks = new ArrayList<>();
             this.askedGroups = new ArrayList<>();
         }

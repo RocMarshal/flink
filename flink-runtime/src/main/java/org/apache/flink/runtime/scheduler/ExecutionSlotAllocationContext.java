@@ -20,6 +20,7 @@
 package org.apache.flink.runtime.scheduler;
 
 import org.apache.flink.configuration.CheckpointingOptions;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationGroup;
@@ -40,6 +41,8 @@ interface ExecutionSlotAllocationContext extends InputsLocationsRetriever, State
      * @return required resources for the given execution vertex
      */
     ResourceProfile getResourceProfile(ExecutionVertexID executionVertexId);
+
+    Configuration getConfiguration();
 
     /**
      * Returns prior allocation id for an execution vertex.

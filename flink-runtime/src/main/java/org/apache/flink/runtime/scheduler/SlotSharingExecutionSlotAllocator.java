@@ -18,11 +18,14 @@
 
 package org.apache.flink.runtime.scheduler;
 
+import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.api.common.TaskSchedulingStrategy;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.SlotProfile;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.ExecutionVertex;
+import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.jobmaster.LogicalSlot;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlot;
@@ -37,9 +40,11 @@ import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -79,6 +84,9 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
 
     private final Function<ExecutionVertexID, ResourceProfile> resourceProfileRetriever;
 
+    private final TaskSchedulingStrategy taskSchedulingStrategy;
+    private final int numSlotsPerTM;
+
     SlotSharingExecutionSlotAllocator(
             PhysicalSlotProvider slotProvider,
             boolean slotWillBeOccupiedIndefinitely,
@@ -86,7 +94,9 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
             SharedSlotProfileRetrieverFactory sharedSlotProfileRetrieverFactory,
             PhysicalSlotRequestBulkChecker bulkChecker,
             Time allocationTimeout,
-            Function<ExecutionVertexID, ResourceProfile> resourceProfileRetriever) {
+            Function<ExecutionVertexID, ResourceProfile> resourceProfileRetriever,
+            TaskSchedulingStrategy taskSchedulingStrategy,
+            int numSlotsPerTM) {
         this.slotProvider = checkNotNull(slotProvider);
         this.slotWillBeOccupiedIndefinitely = slotWillBeOccupiedIndefinitely;
         this.slotSharingStrategy = checkNotNull(slotSharingStrategy);
@@ -95,8 +105,10 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
         this.allocationTimeout = checkNotNull(allocationTimeout);
         this.resourceProfileRetriever = checkNotNull(resourceProfileRetriever);
         this.sharedSlots = new IdentityHashMap<>();
+        this.taskSchedulingStrategy = Preconditions.checkNotNull(taskSchedulingStrategy);
 
         this.slotProvider.disableBatchSlotRequestTimeoutCheck();
+        this.numSlotsPerTM = numSlotsPerTM;
     }
 
     @Override
@@ -156,10 +168,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
         SharedSlotProfileRetriever sharedSlotProfileRetriever =
                 sharedSlotProfileRetrieverFactory.createFromBulk(new HashSet<>(executionVertexIds));
         Map<ExecutionSlotSharingGroup, List<ExecutionVertexID>> executionsByGroup =
-                executionVertexIds.stream()
-                        .collect(
-                                Collectors.groupingBy(
-                                        slotSharingStrategy::getExecutionSlotSharingGroup));
+                groupByExecutionSlotSharingGroup(executionVertexIds);
         Map<ExecutionSlotSharingGroup, SharedSlot> slots =
                 executionsByGroup.keySet().stream()
                         .map(group -> getOrAllocateSharedSlot(group, sharedSlotProfileRetriever))
@@ -314,6 +323,75 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                         bulk.clearPendingRequests();
                         return null;
                     });
+        }
+    }
+
+    protected Map<ExecutionSlotSharingGroup, List<ExecutionVertexID>>
+            groupByExecutionSlotSharingGroup(List<ExecutionVertexID> executionVertexIds) {
+
+        final Map<ExecutionSlotSharingGroup, List<ExecutionVertexID>> eSsgToExecutionIDs =
+                executionVertexIds.stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        slotSharingStrategy::getExecutionSlotSharingGroup));
+
+        if (taskSchedulingStrategy == TaskSchedulingStrategy.LOCAL_INPUT_PREFERRED) {
+            return eSsgToExecutionIDs;
+        }
+        if (taskSchedulingStrategy != TaskSchedulingStrategy.BALANCED_PREFERRED) {
+            throw new UnsupportedOperationException(
+                    String.format(
+                            "Unsupported task scheduling strategy '%s'", taskSchedulingStrategy));
+        }
+
+        Map<SlotSharingGroup, List<Map.Entry<ExecutionSlotSharingGroup, List<ExecutionVertexID>>>>
+                collect =
+                        eSsgToExecutionIDs.entrySet().stream()
+                                .collect(
+                                        Collectors.groupingBy(
+                                                entry -> entry.getKey().getSlotSharingGroup()));
+
+        final LinkedHashMap<ExecutionSlotSharingGroup, List<ExecutionVertexID>> result =
+                new LinkedHashMap<>();
+
+        collect.forEach((ssg, entries) -> sortInSlotSharingGroup(ssg, result, entries));
+
+        LOG.debug("The result after groupByExecutionSlotSharingGroup is: {}", result);
+        return result;
+    }
+
+    @VisibleForTesting
+    public void sortInSlotSharingGroup(
+            SlotSharingGroup slotSharingGroup,
+            LinkedHashMap<ExecutionSlotSharingGroup, List<ExecutionVertexID>> eSsgToExecutionIDs,
+            List<Map.Entry<ExecutionSlotSharingGroup, List<ExecutionVertexID>>> entries) {
+
+        final int configuredSlotsPerTM = numSlotsPerTM;
+
+        LOG.debug(
+                "Execute sortInSlotSharingGroup method with parameters configuredSlotsPerTM: {}, slotSharingGroup: {}",
+                configuredSlotsPerTM,
+                slotSharingGroup);
+        if (configuredSlotsPerTM == 1) {
+            entries.forEach(entry -> eSsgToExecutionIDs.put(entry.getKey(), entry.getValue()));
+            return;
+        }
+        List<Map.Entry<ExecutionSlotSharingGroup, List<ExecutionVertexID>>> sortedEntries =
+                entries.stream()
+                        .sorted(Comparator.comparingInt(left -> left.getKey().getIndexInSsg()))
+                        .collect(Collectors.toList());
+
+        // Note: the step must be grater than 1 due to the above if condition.
+        int tmNum = (int) Math.ceil(1.0 * sortedEntries.size() / configuredSlotsPerTM);
+        for (int tmIndex = 0; tmIndex < tmNum; tmIndex++) {
+            for (int slotIndexOfTM = 0; slotIndexOfTM < configuredSlotsPerTM; slotIndexOfTM++) {
+                int index = tmIndex + slotIndexOfTM * tmNum;
+                if (index >= sortedEntries.size()) {
+                    break;
+                }
+                eSsgToExecutionIDs.put(
+                        sortedEntries.get(index).getKey(), sortedEntries.get(index).getValue());
+            }
         }
     }
 
