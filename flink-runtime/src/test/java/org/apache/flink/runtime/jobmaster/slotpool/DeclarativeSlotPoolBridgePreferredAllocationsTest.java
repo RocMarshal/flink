@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.jobmaster.slotpool;
 
 import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutorServiceAdapter;
@@ -47,17 +48,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ExtendWith(TestLoggerExtension.class)
 public class DeclarativeSlotPoolBridgePreferredAllocationsTest {
 
+    protected DeclarativeSlotPoolBridge getDeclarativeSlotPoolBridge() {
+        return new DeclarativeSlotPoolBridge(
+                new JobID(),
+                new DefaultDeclarativeSlotPoolFactory(),
+                SystemClock.getInstance(),
+                TestingUtils.infiniteTime(),
+                TestingUtils.infiniteTime(),
+                TestingUtils.infiniteTime(),
+                PreferredAllocationRequestSlotMatchingStrategy.INSTANCE);
+    }
+
+    protected Time getWaitTime() {
+        return Time.milliseconds(0L);
+    }
+
     @Test
     public void testDeclarativeSlotPoolTakesPreferredAllocationsIntoAccount() throws Exception {
-        final DeclarativeSlotPoolBridge declarativeSlotPoolBridge =
-                new DeclarativeSlotPoolBridge(
-                        new JobID(),
-                        new DefaultDeclarativeSlotPoolFactory(),
-                        SystemClock.getInstance(),
-                        TestingUtils.infiniteTime(),
-                        TestingUtils.infiniteTime(),
-                        TestingUtils.infiniteTime(),
-                        PreferredAllocationRequestSlotMatchingStrategy.INSTANCE);
+        final DeclarativeSlotPoolBridge declarativeSlotPoolBridge = getDeclarativeSlotPoolBridge();
 
         declarativeSlotPoolBridge.start(
                 JobMasterId.generate(),
@@ -82,6 +90,7 @@ public class DeclarativeSlotPoolBridgePreferredAllocationsTest {
         slotOffers.add(new SlotOffer(otherAllocationId, 1, ResourceProfile.ANY));
         slotOffers.add(new SlotOffer(allocationId1, 2, ResourceProfile.ANY));
 
+        Thread.sleep(getWaitTime().toMilliseconds());
         declarativeSlotPoolBridge.registerTaskManager(localTaskManagerLocation.getResourceID());
         declarativeSlotPoolBridge.offerSlots(
                 localTaskManagerLocation, new SimpleAckingTaskManagerGateway(), slotOffers);

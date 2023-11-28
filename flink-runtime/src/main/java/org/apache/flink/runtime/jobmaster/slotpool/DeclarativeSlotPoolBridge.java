@@ -59,11 +59,11 @@ import java.util.stream.Stream;
 /** {@link SlotPool} implementation which uses the {@link DeclarativeSlotPool} to allocate slots. */
 public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implements SlotPool {
 
-    private final Map<SlotRequestId, PendingRequest> pendingRequests;
-    private final Map<SlotRequestId, AllocationID> fulfilledRequests;
+    protected final Map<SlotRequestId, PendingRequest> pendingRequests;
+    protected final Map<SlotRequestId, AllocationID> fulfilledRequests;
     private final Time idleSlotTimeout;
 
-    private final RequestSlotMatchingStrategy requestSlotMatchingStrategy;
+    protected final RequestSlotMatchingStrategy requestSlotMatchingStrategy;
 
     @Nullable private ComponentMainThreadExecutor componentMainThreadExecutor;
 
@@ -204,6 +204,11 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
                 requestSlotMatchingStrategy.matchRequestsAndSlots(
                         newSlots, pendingRequests.values());
 
+        reserveAndFulfillSlots(requestSlotMatches);
+    }
+
+    protected void reserveAndFulfillSlots(
+            Collection<RequestSlotMatchingStrategy.RequestSlotMatch> requestSlotMatches) {
         for (RequestSlotMatchingStrategy.RequestSlotMatch match : requestSlotMatches) {
             final PendingRequest pendingRequest = match.getPendingRequest();
             final PhysicalSlot slot = match.getSlot();
@@ -232,7 +237,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
         }
     }
 
-    private void reserveFreeSlot(
+    protected void reserveFreeSlot(
             SlotRequestId slotRequestId,
             AllocationID allocationId,
             ResourceProfile resourceProfile) {
@@ -314,7 +319,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
         return internalRequestNewSlot(pendingRequest, null);
     }
 
-    private CompletableFuture<PhysicalSlot> internalRequestNewSlot(
+    protected CompletableFuture<PhysicalSlot> internalRequestNewSlot(
             PendingRequest pendingRequest, @Nullable Time timeout) {
         internalRequestNewAllocatedSlot(pendingRequest);
 
@@ -344,7 +349,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
                 new TimeoutException("Pending slot request timed out in slot pool."));
     }
 
-    private void internalRequestNewAllocatedSlot(PendingRequest pendingRequest) {
+    protected void internalRequestNewAllocatedSlot(PendingRequest pendingRequest) {
         pendingRequests.put(pendingRequest.getSlotRequestId(), pendingRequest);
 
         getDeclarativeSlotPool()
@@ -441,7 +446,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
         isBatchSlotRequestTimeoutCheckDisabled = true;
     }
 
-    private void assertRunningInMainThread() {
+    protected void assertRunningInMainThread() {
         if (componentMainThreadExecutor != null) {
             componentMainThreadExecutor.assertRunningInMainThread();
         } else {

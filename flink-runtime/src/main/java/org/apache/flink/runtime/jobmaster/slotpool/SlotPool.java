@@ -148,6 +148,19 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
             ResourceProfile requirementProfile);
 
     /**
+     * Allocates the available slot with the given physical slot request and slot selection
+     * strategy.
+     *
+     * @param physicalSlotRequest physical slot request.
+     * @param slotSelectionStrategy slot selection strategy.
+     * @return the available slot for the given physical slot request and slot selection strategy.
+     */
+    default Optional<PhysicalSlot> allocateAvailableSlot(
+            PhysicalSlotRequest physicalSlotRequest, SlotSelectionStrategy slotSelectionStrategy) {
+        return Optional.empty();
+    }
+
+    /**
      * Request the allocation of a new slot from the resource manager. This method will not return a
      * slot from the already available slots from the pool, but instead will add a new slot to that
      * pool that is immediately allocated and returned.

@@ -91,9 +91,38 @@ public class DeclarativeSlotPoolBridgeBuilder {
                 requestSlotMatchingStrategy);
     }
 
+    public GlobalViewDeclarativeSlotPoolBridge build(Time slotRequestMaxInterval) {
+        return new MockedGlobalViewDeclarativeSlotPoolBridge(
+                jobId,
+                new DefaultDeclarativeSlotPoolFactory(),
+                clock,
+                TestingUtils.infiniteTime(),
+                idleSlotTimeout,
+                batchSlotTimeout,
+                slotRequestMaxInterval,
+                requestSlotMatchingStrategy);
+    }
+
     public DeclarativeSlotPoolBridge buildAndStart(
             ComponentMainThreadExecutor componentMainThreadExecutor) throws Exception {
         final DeclarativeSlotPoolBridge slotPool = build();
+
+        slotPool.start(JobMasterId.generate(), "foobar", componentMainThreadExecutor);
+
+        if (resourceManagerGateway != null) {
+            CompletableFuture.runAsync(
+                            () -> slotPool.connectToResourceManager(resourceManagerGateway),
+                            componentMainThreadExecutor)
+                    .join();
+        }
+
+        return slotPool;
+    }
+
+    public GlobalViewDeclarativeSlotPoolBridge buildGlobalViewDeclarativeSlotPoolBridgeAndStart(
+            ComponentMainThreadExecutor componentMainThreadExecutor, Time slotRequestMaxInterval)
+            throws Exception {
+        final GlobalViewDeclarativeSlotPoolBridge slotPool = build(slotRequestMaxInterval);
 
         slotPool.start(JobMasterId.generate(), "foobar", componentMainThreadExecutor);
 

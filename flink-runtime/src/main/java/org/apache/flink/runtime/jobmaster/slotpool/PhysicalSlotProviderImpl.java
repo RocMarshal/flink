@@ -40,9 +40,9 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
     private static final Logger LOG = LoggerFactory.getLogger(PhysicalSlotProviderImpl.class);
 
-    private final SlotSelectionStrategy slotSelectionStrategy;
+    protected final SlotSelectionStrategy slotSelectionStrategy;
 
-    private final SlotPool slotPool;
+    protected final SlotPool slotPool;
 
     public PhysicalSlotProviderImpl(
             SlotSelectionStrategy slotSelectionStrategy, SlotPool slotPool) {
@@ -108,7 +108,7 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
                                 }));
     }
 
-    private Map<SlotRequestId, Optional<PhysicalSlot>> tryAllocateFromAvailable(
+    protected Map<SlotRequestId, Optional<PhysicalSlot>> tryAllocateFromAvailable(
             Collection<PhysicalSlotRequest> slotRequests) {
         FreeSlotInfoTracker freeSlotInfoTracker = slotPool.getFreeSlotInfoTracker();
 
@@ -132,7 +132,7 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
         return allocateResult;
     }
 
-    private CompletableFuture<PhysicalSlot> requestNewSlot(
+    protected CompletableFuture<PhysicalSlot> requestNewSlot(
             SlotRequestId slotRequestId,
             ResourceProfile resourceProfile,
             Collection<AllocationID> preferredAllocations,

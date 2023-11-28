@@ -23,6 +23,7 @@ import org.apache.flink.runtime.clusterframework.types.SlotProfileTestingUtils;
 import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutor;
 import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutorServiceAdapter;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
+import org.apache.flink.util.Preconditions;
 
 import org.junit.rules.ExternalResource;
 
@@ -41,15 +42,15 @@ import java.util.function.Function;
  */
 public class PhysicalSlotProviderResource extends ExternalResource {
 
-    private ScheduledExecutorService singleThreadScheduledExecutorService;
+    protected ScheduledExecutorService singleThreadScheduledExecutorService;
 
-    private ComponentMainThreadExecutor mainThreadExecutor;
+    protected ComponentMainThreadExecutor mainThreadExecutor;
 
-    private final SlotSelectionStrategy slotSelectionStrategy;
+    protected final SlotSelectionStrategy slotSelectionStrategy;
 
     private DeclarativeSlotPoolBridge slotPool;
 
-    private PhysicalSlotProvider physicalSlotProvider;
+    protected PhysicalSlotProvider physicalSlotProvider;
 
     public PhysicalSlotProviderResource(@Nonnull SlotSelectionStrategy slotSelectionStrategy) {
         this.slotSelectionStrategy = slotSelectionStrategy;
@@ -97,6 +98,10 @@ public class PhysicalSlotProviderResource extends ExternalResource {
                 new SlotRequestId(),
                 SlotProfileTestingUtils.noLocality(ResourceProfile.UNKNOWN),
                 false);
+    }
+
+    protected void setSlotPool(DeclarativeSlotPoolBridge slotPool) {
+        this.slotPool = Preconditions.checkNotNull(slotPool);
     }
 
     public ComponentMainThreadExecutor getMainThreadExecutor() {

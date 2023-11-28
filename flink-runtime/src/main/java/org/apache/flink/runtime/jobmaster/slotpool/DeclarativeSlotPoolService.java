@@ -110,7 +110,7 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
     }
 
     @Override
-    public final void start(
+    public void start(
             JobMasterId jobMasterId, String address, ComponentMainThreadExecutor mainThreadExecutor)
             throws Exception {
         Preconditions.checkState(
@@ -142,7 +142,7 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
     }
 
     @Override
-    public final void close() {
+    public void close() {
         if (state != State.CLOSED) {
 
             onClose();
