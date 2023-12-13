@@ -361,7 +361,8 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
                         .createSlotPoolService(
                                 jid,
                                 createDeclarativeSlotPoolFactory(
-                                        jobMasterConfiguration.getConfiguration()));
+                                        jobMasterConfiguration.getConfiguration()),
+                                getMainThreadExecutor());
 
         this.partitionTracker =
                 checkNotNull(partitionTrackerFactory)
@@ -1113,6 +1114,11 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
             JobResourceRequirements jobResourceRequirements) {
         schedulerNG.updateJobResourceRequirements(jobResourceRequirements);
         return CompletableFuture.completedFuture(Acknowledge.get());
+    }
+
+    @VisibleForTesting
+    public SlotPoolService getSlotPoolService() {
+        return slotPoolService;
     }
 
     // ----------------------------------------------------------------------------------------------
