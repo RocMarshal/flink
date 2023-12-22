@@ -187,9 +187,8 @@ class ResourceManagerJobMasterTest {
                         jobId,
                         TIMEOUT);
         assertThatFuture(unMatchedLeaderFuture)
-                .isCompletedWithValueMatching(
-                        registrationResponse ->
-                                registrationResponse instanceof RegistrationResponse.Failure);
+                .eventuallySucceeds()
+                .isInstanceOf(RegistrationResponse.Failure.class);
     }
 
     /** Test receive registration with invalid address from job master. */

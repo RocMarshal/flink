@@ -55,6 +55,7 @@ import org.apache.flink.util.function.RunnableWithException;
 
 import org.apache.flink.shaded.guava31.com.google.common.collect.ImmutableSet;
 
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -122,7 +123,7 @@ class ActiveResourceManagerTest {
 
                             startNewWorkerFuture.get(TIMEOUT_SEC, TimeUnit.SECONDS);
                             assertThat(taskExecutorProcessSpec)
-                                    .isSameAs(
+                                    .isEqualTo(
                                             TaskExecutorProcessUtils
                                                     .processSpecFromWorkerResourceSpec(
                                                             flinkConfig, WORKER_RESOURCE_SPEC));
@@ -368,7 +369,7 @@ class ActiveResourceManagerTest {
 
                             startNewWorkerFuture.get(TIMEOUT_SEC, TimeUnit.SECONDS);
                             assertThat(taskExecutorProcessSpec1)
-                                    .isSameAs(
+                                    .isEqualTo(
                                             TaskExecutorProcessUtils
                                                     .processSpecFromWorkerResourceSpec(
                                                             flinkConfig, WORKER_RESOURCE_SPEC));
@@ -385,7 +386,8 @@ class ActiveResourceManagerTest {
                                             .get(1)
                                             .get(TIMEOUT_SEC, TimeUnit.SECONDS);
 
-                            assertThat(taskExecutorProcessSpec2).isSameAs(taskExecutorProcessSpec1);
+                            assertThat(taskExecutorProcessSpec2)
+                                    .isEqualTo(taskExecutorProcessSpec1);
 
                             // second request allocated, verify registration succeed
                             runInMainThread(() -> resourceIdFutures.get(1).complete(tmResourceId));
@@ -447,7 +449,7 @@ class ActiveResourceManagerTest {
 
                             startNewWorkerFuture.get(TIMEOUT_SEC, TimeUnit.SECONDS);
                             assertThat(taskExecutorProcessSpec1)
-                                    .isSameAs(
+                                    .isEqualTo(
                                             TaskExecutorProcessUtils
                                                     .processSpecFromWorkerResourceSpec(
                                                             flinkConfig, WORKER_RESOURCE_SPEC));
@@ -465,7 +467,8 @@ class ActiveResourceManagerTest {
                                             .get(1)
                                             .get(TIMEOUT_SEC, TimeUnit.SECONDS);
 
-                            assertThat(taskExecutorProcessSpec2).isSameAs(taskExecutorProcessSpec1);
+                            assertThat(taskExecutorProcessSpec2)
+                                    .isEqualTo(taskExecutorProcessSpec1);
 
                             // second worker registered, verify registration succeed
                             CompletableFuture<RegistrationResponse> registerTaskExecutorFuture =
@@ -526,7 +529,7 @@ class ActiveResourceManagerTest {
 
                             startNewWorkerFuture.get(TIMEOUT_SEC, TimeUnit.SECONDS);
                             assertThat(taskExecutorProcessSpec1)
-                                    .isSameAs(
+                                    .isEqualTo(
                                             TaskExecutorProcessUtils
                                                     .processSpecFromWorkerResourceSpec(
                                                             flinkConfig, WORKER_RESOURCE_SPEC));
@@ -550,7 +553,8 @@ class ActiveResourceManagerTest {
                                             .get(1)
                                             .get(TIMEOUT_SEC, TimeUnit.SECONDS);
 
-                            assertThat(taskExecutorProcessSpec2).isSameAs(taskExecutorProcessSpec1);
+                            assertThat(taskExecutorProcessSpec2)
+                                    .isEqualTo(taskExecutorProcessSpec1);
 
                             // second worker registered, verify registration succeed
                             CompletableFuture<RegistrationResponse> registerTaskExecutorFuture2 =
@@ -603,7 +607,7 @@ class ActiveResourceManagerTest {
 
                             startNewWorkerFuture.get(TIMEOUT_SEC, TimeUnit.SECONDS);
                             assertThat(taskExecutorProcessSpec)
-                                    .isSameAs(
+                                    .isEqualTo(
                                             TaskExecutorProcessUtils
                                                     .processSpecFromWorkerResourceSpec(
                                                             flinkConfig, WORKER_RESOURCE_SPEC));
@@ -984,7 +988,8 @@ class ActiveResourceManagerTest {
                                     .isLessThan(TESTING_START_WORKER_TIMEOUT_MS);
                             assertThat(registrationResponse)
                                     .isInstanceOf(RegistrationResponse.Success.class);
-                            assertThat(releaseResourceFuture).isNotCompleted();
+                            // TODO
+                            assertThatFuture(releaseResourceFuture).isNotDone();
                         });
             }
         };
