@@ -136,6 +136,8 @@ import static org.apache.flink.client.deployment.application.ApplicationConfigur
 import static org.apache.flink.configuration.ConfigConstants.DEFAULT_FLINK_USR_LIB_DIR;
 import static org.apache.flink.configuration.ConfigConstants.ENV_FLINK_LIB_DIR;
 import static org.apache.flink.configuration.ConfigConstants.ENV_FLINK_OPT_DIR;
+import static org.apache.flink.configuration.ResourceManagerOptions.CONTAINERIZED_MASTER_ENV_PREFIX;
+import static org.apache.flink.configuration.ResourceManagerOptions.CONTAINERIZED_TASK_MANAGER_ENV_PREFIX;
 import static org.apache.flink.runtime.entrypoint.component.FileJobGraphRetriever.JOB_GRAPH_FILE_PATH;
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -202,6 +204,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         this.sharedYarnClient = sharedYarnClient;
 
         this.flinkConfiguration = Preconditions.checkNotNull(flinkConfiguration);
+        this.adaptEnvRootLoggerLevelConfig(flinkConfiguration);
         this.userJarInclusion = getUserJarInclusionMode(flinkConfiguration);
 
         getLocalFlinkDistPath(flinkConfiguration).ifPresent(this::setLocalJarPath);
@@ -214,6 +217,22 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         this.customName = flinkConfiguration.getString(YarnConfigOptions.APPLICATION_NAME);
         this.applicationType = flinkConfiguration.getString(YarnConfigOptions.APPLICATION_TYPE);
         this.nodeLabel = flinkConfiguration.getString(YarnConfigOptions.NODE_LABEL);
+    }
+
+    /** Set flink root logger level env setting. */
+    private void adaptEnvRootLoggerLevelConfig(Configuration config) {
+        Optional<String> envRootLoggerLevelOpt = config.getOptional(CoreOptions.FLINK_LOG_LEVEL);
+        if (!envRootLoggerLevelOpt.isPresent()) {
+            return;
+        }
+        String rootLoggerLevel = envRootLoggerLevelOpt.get();
+        if (StringUtils.isNullOrWhitespaceOnly(rootLoggerLevel)) {
+            return;
+        }
+        final String rootLoggerLevelEnvKey = "ROOT_LOG_LEVEL";
+        config.setString(CONTAINERIZED_MASTER_ENV_PREFIX + rootLoggerLevelEnvKey, rootLoggerLevel);
+        config.setString(
+                CONTAINERIZED_TASK_MANAGER_ENV_PREFIX + rootLoggerLevelEnvKey, rootLoggerLevel);
     }
 
     private Optional<List<Path>> decodeFilesToShipToCluster(
