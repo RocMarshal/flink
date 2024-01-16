@@ -130,6 +130,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.flink.client.deployment.application.ApplicationConfiguration.APPLICATION_MAIN_CLASS;
@@ -204,7 +205,16 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
         this.sharedYarnClient = sharedYarnClient;
 
         this.flinkConfiguration = Preconditions.checkNotNull(flinkConfiguration);
-        this.adaptEnvRootLoggerLevelConfig(flinkConfiguration);
+        adaptEnvLoggerConfig(
+                flinkConfiguration,
+                CoreOptions.FLINK_LOG_LEVEL,
+                "ROOT_LOG_LEVEL",
+                level -> !StringUtils.isNullOrWhitespaceOnly(level));
+        adaptEnvLoggerConfig(
+                flinkConfiguration,
+                CoreOptions.FLINK_LOG_MAX,
+                "MAX_LOG_FILE_NUMBER",
+                maxFilesNum -> maxFilesNum > 0);
         this.userJarInclusion = getUserJarInclusionMode(flinkConfiguration);
 
         getLocalFlinkDistPath(flinkConfiguration).ifPresent(this::setLocalJarPath);
@@ -220,19 +230,21 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
     }
 
     /** Set flink root logger level env setting. */
-    private void adaptEnvRootLoggerLevelConfig(Configuration config) {
-        Optional<String> envRootLoggerLevelOpt = config.getOptional(CoreOptions.FLINK_LOG_LEVEL);
-        if (!envRootLoggerLevelOpt.isPresent()) {
+    private static <T> void adaptEnvLoggerConfig(
+            Configuration config,
+            ConfigOption<T> configOption,
+            String envKey,
+            Function<T, Boolean> validator) {
+        Optional<T> valueOpt = config.getOptional(configOption);
+        if (!valueOpt.isPresent()) {
             return;
         }
-        String rootLoggerLevel = envRootLoggerLevelOpt.get();
-        if (StringUtils.isNullOrWhitespaceOnly(rootLoggerLevel)) {
+        T value = valueOpt.get();
+        if (!validator.apply(value)) {
             return;
         }
-        final String rootLoggerLevelEnvKey = "ROOT_LOG_LEVEL";
-        config.setString(CONTAINERIZED_MASTER_ENV_PREFIX + rootLoggerLevelEnvKey, rootLoggerLevel);
-        config.setString(
-                CONTAINERIZED_TASK_MANAGER_ENV_PREFIX + rootLoggerLevelEnvKey, rootLoggerLevel);
+        config.setString(CONTAINERIZED_MASTER_ENV_PREFIX + envKey, String.valueOf(value));
+        config.setString(CONTAINERIZED_TASK_MANAGER_ENV_PREFIX + envKey, String.valueOf(value));
     }
 
     private Optional<List<Path>> decodeFilesToShipToCluster(
