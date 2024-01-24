@@ -89,7 +89,11 @@ class SharedSlotTest {
         SimpleAckingTaskManagerGateway taskManagerGateway = new SimpleAckingTaskManagerGateway();
         slotContextFuture.complete(
                 new TestingPhysicalSlot(
-                        allocationId, taskManagerLocation, 3, taskManagerGateway, RP));
+                        allocationId,
+                        taskManagerLocation,
+                        3,
+                        taskManagerGateway,
+                        RP.toEmptyLoadsResourceProfile()));
 
         assertThat(sharedSlot.isEmpty()).isFalse();
         assertThatFuture(released).isNotDone();
