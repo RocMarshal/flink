@@ -19,11 +19,20 @@
 package org.apache.flink.runtime.instance;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobmanager.slots.TaskManagerGateway;
 import org.apache.flink.runtime.jobmaster.SlotContext;
+import org.apache.flink.runtime.scheduler.loading.DefaultLoadingWeight;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.util.Preconditions;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
+import java.util.Objects;
+import java.util.Optional;
 
 /** Simple implementation of the {@link SlotContext} interface for the legacy code. */
 public class SimpleSlotContext implements SlotContext {
@@ -37,6 +46,10 @@ public class SimpleSlotContext implements SlotContext {
     private final TaskManagerGateway taskManagerGateway;
 
     private final ResourceProfile resourceProfile;
+
+    private @Nonnull LoadingWeight loadingWeight = DefaultLoadingWeight.EMPTY;
+
+    private @Nullable LoadingWeight previousLoad;
 
     public SimpleSlotContext(
             AllocationID allocationId,
@@ -92,5 +105,25 @@ public class SimpleSlotContext implements SlotContext {
     @Override
     public boolean willBeOccupiedIndefinitely() {
         return true;
+    }
+
+    @Override
+    public void setLoading(LoadingWeight loadingWeight) {
+        this.previousLoad = this.loadingWeight;
+        this.loadingWeight = Preconditions.checkNotNull(loadingWeight);
+    }
+
+    @Nonnull
+    @Override
+    public LoadingWeight getLoading() {
+        return loadingWeight;
+    }
+
+    @Nonnull
+    @Override
+    public Optional<LoadableResourceProfile> getPreviousLoadableResourceProfile() {
+        return Objects.isNull(previousLoad)
+                ? Optional.empty()
+                : Optional.of(resourceProfile.toLoadable(previousLoad));
     }
 }
