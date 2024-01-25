@@ -22,6 +22,9 @@ import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
 import org.apache.flink.runtime.scheduler.TestingPhysicalSlot;
+import org.apache.flink.runtime.scheduler.loading.DefaultLoadingWeight;
+import org.apache.flink.runtime.taskmanager.LocalTaskManagerLocation;
+import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.util.TestLoggerExtension;
 
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,8 +47,9 @@ class PreferredAllocationRequestSlotMatchingStrategyTest {
      */
     @Test
     void testNewSlotsAreMatchedAgainstPreferredAllocationIDs() {
-        final PreferredAllocationRequestSlotMatchingStrategy strategy =
-                PreferredAllocationRequestSlotMatchingStrategy.INSTANCE;
+        final RequestSlotMatchingStrategy strategy =
+                PreferredAllocationRequestSlotMatchingStrategy.create(
+                        SimpleRequestSlotMatchingStrategy.INSTANCE);
 
         final AllocationID allocationId1 = new AllocationID();
         final AllocationID allocationId2 = new AllocationID();
@@ -65,13 +70,88 @@ class PreferredAllocationRequestSlotMatchingStrategyTest {
                                 Collections.singleton(allocationId1)));
 
         final Collection<RequestSlotMatchingStrategy.RequestSlotMatch> requestSlotMatches =
-                strategy.matchRequestsAndSlots(slots, pendingRequests);
+                strategy.matchRequestsAndSlots(slots, pendingRequests, new HashMap<>());
 
         assertThat(requestSlotMatches).hasSize(2);
 
         for (RequestSlotMatchingStrategy.RequestSlotMatch requestSlotMatch : requestSlotMatches) {
             assertThat(requestSlotMatch.getPendingRequest().getPreferredAllocations())
                     .contains(requestSlotMatch.getSlot().getAllocationId());
+        }
+    }
+
+    /**
+     * This test ensures that new slots are matched on {@link
+     * PreviousAllocationSlotSelectionStrategy} and {@link
+     * TasksBalancedRequestSlotMatchingStrategy}.
+     */
+    @Test
+    void testNewSlotsAreMatchedAgainstAllocationAndBalancedPreferredIDs() {
+        final RequestSlotMatchingStrategy strategy =
+                PreferredAllocationRequestSlotMatchingStrategy.create(
+                        TasksBalancedRequestSlotMatchingStrategy.INSTANCE);
+
+        final AllocationID allocationId1 = new AllocationID();
+        final AllocationID allocationId2 = new AllocationID();
+        TaskManagerLocation tmLocation1 = new LocalTaskManagerLocation();
+        TaskManagerLocation tmLocation2 = new LocalTaskManagerLocation();
+
+        final Collection<TestingPhysicalSlot> slots =
+                Arrays.asList(
+                        TestingPhysicalSlot.builder()
+                                .withAllocationID(allocationId1)
+                                .withTaskManagerLocation(tmLocation1)
+                                .build(),
+                        TestingPhysicalSlot.builder()
+                                .withAllocationID(allocationId2)
+                                .withTaskManagerLocation(tmLocation2)
+                                .build(),
+                        TestingPhysicalSlot.builder().withTaskManagerLocation(tmLocation1).build(),
+                        TestingPhysicalSlot.builder().withTaskManagerLocation(tmLocation2).build());
+
+        final Collection<PendingRequest> pendingRequests =
+                Arrays.asList(
+                        PendingRequest.createNormalRequest(
+                                new SlotRequestId(),
+                                ResourceProfile.UNKNOWN,
+                                new DefaultLoadingWeight(3f),
+                                Collections.singleton(allocationId2)),
+                        PendingRequest.createNormalRequest(
+                                new SlotRequestId(),
+                                ResourceProfile.UNKNOWN,
+                                new DefaultLoadingWeight(2f),
+                                Collections.emptyList()),
+                        PendingRequest.createNormalRequest(
+                                new SlotRequestId(),
+                                ResourceProfile.UNKNOWN,
+                                new DefaultLoadingWeight(1f),
+                                Collections.singleton(allocationId1)),
+                        PendingRequest.createNormalRequest(
+                                new SlotRequestId(),
+                                ResourceProfile.UNKNOWN,
+                                new DefaultLoadingWeight(1f),
+                                Collections.emptyList()));
+
+        final Collection<RequestSlotMatchingStrategy.RequestSlotMatch> requestSlotMatches =
+                strategy.matchRequestsAndSlots(slots, pendingRequests, new HashMap<>());
+
+        assertThat(requestSlotMatches).hasSize(4);
+
+        for (RequestSlotMatchingStrategy.RequestSlotMatch requestSlotMatch : requestSlotMatches) {
+            // Check for allocationIds preferred.
+            if (!requestSlotMatch.getPendingRequest().getPreferredAllocations().isEmpty()) {
+                assertThat(requestSlotMatch.getPendingRequest().getPreferredAllocations())
+                        .contains(requestSlotMatch.getSlot().getAllocationId());
+                continue;
+            }
+            // Check for balanced.
+            PendingRequest loading = requestSlotMatch.getPendingRequest();
+            PhysicalSlot slot = requestSlotMatch.getSlot();
+            if (loading.getLoading().getLoading() == 1f) {
+                assertThat(slot.getTaskManagerLocation()).isEqualTo(tmLocation2);
+            } else {
+                assertThat(slot.getTaskManagerLocation()).isEqualTo(tmLocation1);
+            }
         }
     }
 }
