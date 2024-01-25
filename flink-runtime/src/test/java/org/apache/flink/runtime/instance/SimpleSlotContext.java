@@ -22,8 +22,13 @@ import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobmanager.slots.TaskManagerGateway;
 import org.apache.flink.runtime.jobmaster.SlotContext;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.util.Preconditions;
+
+import org.jetbrains.annotations.NotNull;
+
+import javax.annotation.Nonnull;
 
 /** Simple implementation of the {@link SlotContext} interface for the legacy code. */
 public class SimpleSlotContext implements SlotContext {
@@ -37,6 +42,8 @@ public class SimpleSlotContext implements SlotContext {
     private final TaskManagerGateway taskManagerGateway;
 
     private final ResourceProfile resourceProfile;
+
+    private @Nonnull LoadingWeight loadingWeight = LoadingWeight.EMPTY;
 
     public SimpleSlotContext(
             AllocationID allocationId,
@@ -92,5 +99,16 @@ public class SimpleSlotContext implements SlotContext {
     @Override
     public boolean willBeOccupiedIndefinitely() {
         return true;
+    }
+
+    @Override
+    public void setLoading(LoadingWeight loadingWeight) {
+        this.loadingWeight = Preconditions.checkNotNull(loadingWeight);
+    }
+
+    @NotNull
+    @Override
+    public LoadingWeight getLoading() {
+        return loadingWeight;
     }
 }

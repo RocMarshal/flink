@@ -109,6 +109,7 @@ import org.apache.flink.runtime.scheduler.ExecutionGraphInfo;
 import org.apache.flink.runtime.scheduler.SchedulerTestingUtils;
 import org.apache.flink.runtime.scheduler.TestingSchedulerNG;
 import org.apache.flink.runtime.scheduler.TestingSchedulerNGFactory;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.shuffle.DefaultPartitionWithMetrics;
 import org.apache.flink.runtime.shuffle.DefaultShuffleMetrics;
 import org.apache.flink.runtime.shuffle.NettyShuffleDescriptor;
@@ -620,11 +621,22 @@ class JobMasterTest {
                     "TestingSlotPool does not support this operation.");
         }
 
+        @Override
+        public Optional<PhysicalSlot> allocateAvailableSlot(
+                SlotRequestId slotRequestId,
+                AllocationID allocationID,
+                ResourceProfile requirementProfile,
+                LoadingWeight loadingWeight) {
+            throw new UnsupportedOperationException(
+                    "TestingSlotPool does not support this operation.");
+        }
+
         @Nonnull
         @Override
         public CompletableFuture<PhysicalSlot> requestNewAllocatedSlot(
                 @Nonnull SlotRequestId slotRequestId,
                 @Nonnull ResourceProfile resourceProfile,
+                @Nonnull LoadingWeight loadingWeight,
                 @Nonnull Collection<AllocationID> preferredAllocations,
                 @Nullable Time timeout) {
             return new CompletableFuture<>();
@@ -1208,15 +1220,6 @@ class JobMasterTest {
                         TaskManagerLoadBalanceMode.TASKS,
                         true,
                         false),
-
-                // Ignored.
-                // Arguments.of(SchedulerType.AdaptiveBatch, JobType.STREAMING,
-                // TaskManagerLoadBalanceMode.NONE, true, false),
-                // Arguments.of(SchedulerType.AdaptiveBatch, JobType.STREAMING,
-                // TaskManagerLoadBalanceMode.SLOTS, true, false),
-                // Arguments.of(SchedulerType.AdaptiveBatch, JobType.STREAMING,
-                // TaskManagerLoadBalanceMode.TASKS, true, true),
-
                 Arguments.of(
                         SchedulerType.AdaptiveBatch,
                         JobType.BATCH,
