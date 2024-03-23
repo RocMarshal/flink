@@ -143,8 +143,12 @@ public final class ResourceCounter implements WeightLoadable {
             Iterable<? extends Map.Entry<LoadableResourceProfile, Integer>> entries) {
         final Map<LoadableResourceProfile, Integer> newValues = new HashMap<>(resources);
 
-        LOG.debug("internalAdd this pre {}", this);
-        LOG.debug("internalAdd resourceCounter param entries {}, newValues {}", entries, newValues);
+        // LOG.debug("internalAdd this pre {}", this, new RuntimeException());
+        LOG.debug(
+                "internalAdd resourceCounter param entries {}, newValues {}",
+                entries,
+                newValues,
+                new RuntimeException());
 
         for (Map.Entry<LoadableResourceProfile, Integer> resourceIncrement : entries) {
             final LoadableResourceProfile profileLoading = resourceIncrement.getKey();
@@ -153,7 +157,7 @@ public final class ResourceCounter implements WeightLoadable {
 
             updateNewValue(newValues, profileLoading, newCnt);
         }
-        LOG.debug("internalAdd result newValues: {}", newValues);
+        LOG.debug("internalAdd result newValues: {}", newValues, new RuntimeException());
 
         return new ResourceCounter(newValues);
     }
@@ -235,11 +239,12 @@ public final class ResourceCounter implements WeightLoadable {
             Iterable<? extends Map.Entry<LoadableResourceProfile, Integer>> entries) {
         final Map<LoadableResourceProfile, Integer> newValues = new HashMap<>(resources);
 
-        LOG.debug("internalSubtract this pre {}", this);
+        LOG.debug("internalSubtract this pre {}", this, new RuntimeException());
         LOG.debug(
                 "internalSubtract resourceCounter param entries {}, newValues {}",
                 entries,
-                newValues);
+                newValues,
+                new RuntimeException());
 
         for (Map.Entry<LoadableResourceProfile, Integer> resourceDecrement : entries) {
             final LoadableResourceProfile profileLoading = resourceDecrement.getKey();
@@ -249,7 +254,7 @@ public final class ResourceCounter implements WeightLoadable {
             updateNewValue(newValues, profileLoading, newValue);
         }
 
-        LOG.debug("internalSubtract result newValues {}", newValues);
+        LOG.debug("internalSubtract result newValues {}", newValues, new RuntimeException());
 
         return new ResourceCounter(newValues);
     }

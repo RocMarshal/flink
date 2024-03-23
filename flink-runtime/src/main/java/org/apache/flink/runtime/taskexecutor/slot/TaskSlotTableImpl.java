@@ -80,9 +80,11 @@ public class TaskSlotTableImpl<T extends TaskSlotPayload> implements TaskSlotTab
     private final TimerService<AllocationID> timerService;
 
     /** The list of all task slots. */
+    /** 只有被申请的 slot 放到 taskSlots 中，释放的时候被移除. index->slot */
     private final Map<Integer, TaskSlot<T>> taskSlots;
 
     /** Mapping from allocation id to task slot. */
+    /** allocateID->TaskSlot, taskSlot 中没有任务的时候移除 */
     private final Map<AllocationID, TaskSlot<T>> allocatedSlots;
 
     /** Mapping from execution attempt id to task and task slot. */
@@ -258,6 +260,7 @@ public class TaskSlotTableImpl<T extends TaskSlotPayload> implements TaskSlotTab
             slotStatuses.add(slotStatus);
         }
 
+        // 收集大于 index 边界的slot
         for (TaskSlot<T> taskSlot : allocatedSlots.values()) {
             if (isDynamicIndex(taskSlot.getIndex())) {
                 SlotStatus slotStatus =
