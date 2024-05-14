@@ -22,50 +22,41 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.connector.source.util.ratelimit.RateLimiterStrategy;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.RestOptions;
+import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.connector.datagen.source.DataGeneratorSource;
+import org.apache.flink.connector.datagen.source.GeneratorFunction;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
-import org.apache.flink.streaming.api.functions.source.SourceFunction;
-
-import java.util.Random;
 
 /** AdaptiveSchedulerDemo class. */
-public class AdaptiveSchedulerDemo {
+public class DefaultSchedulerDemo {
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
         //        conf.setString("taskmanager.numberOfTaskSlots", "100");
 
-        conf.setString("taskmanager.numberOfTaskSlots", "2");
-        conf.setString("local.number-taskmanager", "6");
-        conf.setString("rest.flamegraph.enabled", "true");
-
-        //        conf.setString("jobmanager.scheduler", "adaptive");
-        conf.setString("taskmanager.load-balance.mode", "TASKS");
-
-        //        conf.setString("job.autoscaler.enabled", "true");
-        //        conf.setString("job.autoscaler.scaling.enabled", "true");
-        //        conf.setString("job.autoscaler.stabilization.interval", "1m");
-        //        conf.setString("job.autoscaler.metrics.window", "2m");
+        conf.set(TaskManagerOptions.NUM_TASK_SLOTS, 2);
+        conf.set(TaskManagerOptions.MINI_CLUSTER_NUM_TASK_MANAGERS, 6);
+        conf.set(RestOptions.ENABLE_FLAMEGRAPH, true);
+        conf.set(
+                TaskManagerOptions.TASK_MANAGER_LOAD_BALANCE_MODE,
+                TaskManagerOptions.TaskManagerLoadBalanceMode.TASKS);
 
         StreamExecutionEnvironment env =
                 StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(conf);
         env.setParallelism(5);
 
-        env.addSource(new SourceFunction<Long>() {
-            volatile boolean running = true;
-                    @Override
-                    public void run(SourceContext<Long> ctx) throws Exception {
-                        while (running) {
-                            Thread.sleep(1000L);
-                            ctx.collect(new Random().nextLong());
-                        }
-                    }
+        GeneratorFunction<Long, Long> generatorFunction = index -> index;
+        double recordsPerSecond = 100;
 
-                    @Override
-                    public void cancel() {
-                        running = false;
-                    }
-                })
+        DataGeneratorSource<Long> source =
+                new DataGeneratorSource<>(
+                        generatorFunction,
+                        Long.MAX_VALUE,
+                        RateLimiterStrategy.perSecond(recordsPerSecond),
+                        Types.LONG);
+
+        env.fromSource(source, WatermarkStrategy.noWatermarks(), "generateSource")
                 .rebalance()
                 .map((MapFunction<Long, String>) String::valueOf)
                 .name("RateLimiterMapFunction")
@@ -73,6 +64,6 @@ public class AdaptiveSchedulerDemo {
                 .addSink(new DiscardingSink<>())
                 .name("MySink");
 
-        env.execute(AdaptiveSchedulerDemo.class.getSimpleName());
+        env.execute(DefaultSchedulerDemo.class.getSimpleName());
     }
 }
