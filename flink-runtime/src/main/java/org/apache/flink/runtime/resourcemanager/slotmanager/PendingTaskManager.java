@@ -103,9 +103,20 @@ public class PendingTaskManager implements WeightLoadable {
 
     @Override
     public String toString() {
-        return String.format(
-                "PendingTaskManager{id=%s, totalResourceProfile=%s, defaultSlotResourceProfile=%s}",
-                pendingTaskManagerId, totalResourceProfile, defaultSlotResourceProfile);
+        return "PendingTaskManager{"
+                + "pendingTaskManagerId="
+                + pendingTaskManagerId
+                + ", totalResourceProfile="
+                + totalResourceProfile
+                + ", defaultSlotResourceProfile="
+                + defaultSlotResourceProfile
+                + ", numSlots="
+                + numSlots
+                + ", unusedResource="
+                + unusedResource
+                + ", pendingSlotAllocationRecords="
+                + pendingSlotAllocationRecords
+                + '}';
     }
 
     @Nonnull

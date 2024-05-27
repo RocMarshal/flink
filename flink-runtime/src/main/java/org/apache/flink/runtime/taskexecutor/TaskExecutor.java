@@ -158,6 +158,9 @@ import org.apache.flink.util.concurrent.FutureUtils;
 import org.apache.flink.shaded.guava31.com.google.common.collect.ImmutableList;
 import org.apache.flink.shaded.guava31.com.google.common.collect.Sets;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -201,6 +204,8 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * {@link Task}.
  */
 public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
+
+    public static final Logger LOG = LoggerFactory.getLogger(TaskExecutor.class);
 
     public static final String TASK_MANAGER_NAME = "taskmanager";
 
@@ -264,6 +269,18 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
     // --------- task slot allocation table -----------
 
     private final TaskSlotTable<Task> taskSlotTable;
+
+    @Override
+    public String toString() {
+        return "TaskExecutor{"
+                + "taskSlotTable="
+                + taskSlotTable
+                + ", currentSlotOfferPerJob="
+                + currentSlotOfferPerJob
+                + ", jobTable="
+                + jobTable
+                + '}';
+    }
 
     private final Map<JobID, UUID> currentSlotOfferPerJob = new HashMap<>();
 
@@ -399,6 +416,21 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
         this.jobInformationCache = taskExecutorServices.getJobInformationCache();
         this.taskInformationCache = taskExecutorServices.getTaskInformationCache();
         this.shuffleDescriptorsCache = taskExecutorServices.getShuffleDescriptorCache();
+        new Thread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                while (true) {
+                                    try {
+                                        Thread.sleep(5000L);
+                                        LOG.info("{}", TaskExecutor.this);
+                                    } catch (InterruptedException e) {
+                                        System.err.println("Error in debug." + e.getMessage());
+                                    }
+                                }
+                            }
+                        })
+                .start();
     }
 
     private HeartbeatManager<Void, TaskExecutorHeartbeatPayload>
@@ -2262,6 +2294,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
      */
     private void syncSlotsWithSnapshotFromJobMaster(
             JobMasterGateway jobMasterGateway, AllocatedSlotReport allocatedSlotReport) {
+        LOG.info("syncSlotsWithSnapshotFromJobMaster {}", allocatedSlotReport);
         failNoLongerAllocatedSlots(allocatedSlotReport, jobMasterGateway);
         freeNoLongerUsedSlots(allocatedSlotReport);
     }

@@ -142,4 +142,22 @@ public class FineGrainedTaskManagerSlot implements TaskManagerSlotInformation {
     public void setLoading(@Nonnull LoadingWeight loadingWeight) {
         this.loadingWeight = Preconditions.checkNotNull(loadingWeight);
     }
+
+    @Override
+    public String toString() {
+        return "FineGrainedTaskManagerSlot{"
+                + "resourceProfile="
+                + resourceProfile
+                + ", taskManagerConnection="
+                + taskManagerConnection
+                + ", allocationId="
+                + allocationId
+                + ", jobId="
+                + jobId
+                + ", state="
+                + state
+                + ", loadingWeight="
+                + loadingWeight
+                + '}';
+    }
 }

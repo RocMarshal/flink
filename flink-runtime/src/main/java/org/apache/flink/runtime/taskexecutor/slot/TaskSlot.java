@@ -75,6 +75,30 @@ public class TaskSlot<T extends TaskSlotPayload> implements AutoCloseableAsync {
     /** Resource characteristics for this slot. */
     private @Nonnull final LoadableResourceProfile resourceProfile;
 
+    @Override
+    public String toString() {
+        return "TaskSlot{"
+                + "index="
+                + index
+                + ", resourceProfile="
+                + resourceProfile
+                + ", tasks="
+                + tasks
+                + ", memoryManager="
+                + memoryManager
+                + ", state="
+                + state
+                + ", jobId="
+                + jobId
+                + ", allocationId="
+                + allocationId
+                + ", closingFuture="
+                + closingFuture
+                + ", asyncExecutor="
+                + asyncExecutor
+                + '}';
+    }
+
     /** Tasks running in this slot. */
     private final Map<ExecutionAttemptID, T> tasks;
 
@@ -290,21 +314,6 @@ public class TaskSlot<T extends TaskSlotPayload> implements AutoCloseableAsync {
         Preconditions.checkState(allocationId != null, "The task slot are not allocated");
 
         return new SlotOffer(allocationId, index, resourceProfile);
-    }
-
-    @Override
-    public String toString() {
-        return "TaskSlot(index:"
-                + index
-                + ", state:"
-                + state
-                + ", resource profile: "
-                + resourceProfile
-                + ", allocationId: "
-                + (allocationId != null ? allocationId.toString() : "none")
-                + ", jobId: "
-                + (jobId != null ? jobId.toString() : "none")
-                + ')';
     }
 
     @Override

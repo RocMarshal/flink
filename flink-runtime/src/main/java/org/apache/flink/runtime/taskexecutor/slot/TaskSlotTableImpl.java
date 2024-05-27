@@ -692,6 +692,11 @@ public class TaskSlotTableImpl<T extends TaskSlotPayload> implements TaskSlotTab
         public TaskSlot<T> getTaskSlot() {
             return taskSlot;
         }
+
+        @Override
+        public String toString() {
+            return "TaskSlotMapping{" + "task=" + task + ", taskSlot=" + taskSlot + '}';
+        }
     }
 
     /**

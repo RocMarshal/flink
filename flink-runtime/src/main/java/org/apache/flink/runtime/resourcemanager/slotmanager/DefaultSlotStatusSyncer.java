@@ -58,6 +58,26 @@ public class DefaultSlotStatusSyncer implements SlotStatusSyncer {
     @Nullable private Executor mainThreadExecutor;
     @Nullable private ResourceManagerId resourceManagerId;
 
+    @Override
+    public String toString() {
+        return "DefaultSlotStatusSyncer{"
+                + "pendingSlotAllocations="
+                + pendingSlotAllocations
+                + ", taskManagerRequestTimeout="
+                + taskManagerRequestTimeout
+                + ", taskManagerTracker="
+                + taskManagerTracker
+                + ", resourceTracker="
+                + resourceTracker
+                + ", mainThreadExecutor="
+                + mainThreadExecutor
+                + ", resourceManagerId="
+                + resourceManagerId
+                + ", started="
+                + started
+                + '}';
+    }
+
     private boolean started = false;
 
     public DefaultSlotStatusSyncer(Time taskManagerRequestTimeout) {

@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.heartbeat;
 
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.util.concurrent.ScheduledExecutor;
 
@@ -55,6 +56,7 @@ class HeartbeatManagerSenderImpl<I, O> extends HeartbeatManagerImpl<I, O> implem
                 new DefaultHeartbeatMonitor.Factory<>());
     }
 
+    @VisibleForTesting
     HeartbeatManagerSenderImpl(
             long heartbeatPeriod,
             long heartbeatTimeout,

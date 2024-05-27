@@ -40,6 +40,17 @@ import java.util.Set;
 
 /** Default {@link AllocatedSlotPool} implementation. */
 public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
+    @Override
+    public String toString() {
+        return "DefaultAllocatedSlotPool{"
+                + "registeredSlots="
+                + registeredSlots
+                + ", freeSlots="
+                + freeSlots
+                + ", slotsPerTaskExecutor="
+                + slotsPerTaskExecutor
+                + '}';
+    }
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAllocatedSlotPool.class);
 

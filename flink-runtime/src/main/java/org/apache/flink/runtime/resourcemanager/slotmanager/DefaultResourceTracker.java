@@ -42,6 +42,11 @@ public class DefaultResourceTracker implements ResourceTracker {
     private final Map<JobID, JobScopedResourceTracker> trackers = new HashMap<>();
 
     @Override
+    public String toString() {
+        return "DefaultResourceTracker{" + "trackers=" + trackers + '}';
+    }
+
+    @Override
     public void notifyResourceRequirements(
             JobID jobId, Collection<ResourceRequirement> resourceRequirements) {
         Preconditions.checkNotNull(jobId);

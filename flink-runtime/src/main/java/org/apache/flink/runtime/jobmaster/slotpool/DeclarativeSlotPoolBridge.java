@@ -38,6 +38,9 @@ import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.clock.Clock;
 import org.apache.flink.util.concurrent.FutureUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -61,10 +64,37 @@ import java.util.stream.Stream;
 
 /** {@link SlotPool} implementation which uses the {@link DeclarativeSlotPool} to allocate slots. */
 public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implements SlotPool {
+    public static final Logger LOG = LoggerFactory.getLogger(DeclarativeSlotPoolBridge.class);
 
     private final Map<SlotRequestId, PendingRequest> pendingRequests;
     private final Map<SlotRequestId, AllocationID> fulfilledRequests;
     private final Time idleSlotTimeout;
+
+    @Override
+    public String toString() {
+        return "DeclarativeSlotPoolBridge{"
+                + "pendingRequests="
+                + pendingRequests
+                + ", fulfilledRequests="
+                + fulfilledRequests
+                + ", idleSlotTimeout="
+                + idleSlotTimeout
+                + ", requestSlotMatchingStrategy="
+                + requestSlotMatchingStrategy
+                + ", componentMainThreadExecutor="
+                + componentMainThreadExecutor
+                + ", batchSlotTimeout="
+                + batchSlotTimeout
+                + ", isBatchSlotRequestTimeoutCheckDisabled="
+                + isBatchSlotRequestTimeoutCheckDisabled
+                + ", isJobRestarting="
+                + isJobRestarting
+                + ", slotBatchAllocatable="
+                + slotBatchAllocatable
+                + ", receivedSlots="
+                + receivedSlots
+                + '}';
+    }
 
     private final RequestSlotMatchingStrategy requestSlotMatchingStrategy;
 
@@ -112,6 +142,21 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
         this.fulfilledRequests = new HashMap<>();
         this.slotBatchAllocatable = slotBatchAllocatable;
         this.receivedSlots = new HashSet<>();
+        new Thread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                while (true) {
+                                    try {
+                                        Thread.sleep(5000L);
+                                        LOG.info("{}", DeclarativeSlotPoolBridge.this);
+                                    } catch (InterruptedException e) {
+                                        System.err.println("Error in debug." + e.getMessage());
+                                    }
+                                }
+                            }
+                        })
+                .start();
     }
 
     @Override

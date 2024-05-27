@@ -29,14 +29,14 @@ import org.apache.flink.connector.datagen.source.GeneratorFunction;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
 
-/** AdaptiveSchedulerDemo class. */
+/** DefaultSchedulerDemo class. */
 public class DefaultSchedulerDemo {
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
         //        conf.setString("taskmanager.numberOfTaskSlots", "100");
 
         conf.set(TaskManagerOptions.NUM_TASK_SLOTS, 2);
-        conf.set(TaskManagerOptions.MINI_CLUSTER_NUM_TASK_MANAGERS, 6);
+        conf.set(TaskManagerOptions.MINI_CLUSTER_NUM_TASK_MANAGERS, 3);
         conf.set(RestOptions.ENABLE_FLAMEGRAPH, true);
         conf.set(
                 TaskManagerOptions.TASK_MANAGER_LOAD_BALANCE_MODE,
@@ -57,11 +57,14 @@ public class DefaultSchedulerDemo {
                         Types.LONG);
 
         env.fromSource(source, WatermarkStrategy.noWatermarks(), "generateSource")
+                .setParallelism(2)
                 .rebalance()
                 .map((MapFunction<Long, String>) String::valueOf)
+                .setParallelism(3)
                 .name("RateLimiterMapFunction")
                 .rebalance()
                 .addSink(new DiscardingSink<>())
+                .setParallelism(5)
                 .name("MySink");
 
         env.execute(DefaultSchedulerDemo.class.getSimpleName());

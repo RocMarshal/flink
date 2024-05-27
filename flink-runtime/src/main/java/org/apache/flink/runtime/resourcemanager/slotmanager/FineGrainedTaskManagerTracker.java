@@ -50,6 +50,26 @@ public class FineGrainedTaskManagerTracker implements TaskManagerTracker {
     /** Map for allocated and pending slots. */
     private final Map<AllocationID, FineGrainedTaskManagerSlot> slots;
 
+    @Override
+    public String toString() {
+        return "FineGrainedTaskManagerTracker{"
+                + "slots="
+                + slots
+                + ", taskManagerRegistrations="
+                + taskManagerRegistrations
+                + ", unWantedTaskManagers="
+                + unWantedTaskManagers
+                + ", pendingTaskManagers="
+                + pendingTaskManagers
+                + ", totalRegisteredResource="
+                + totalRegisteredResource
+                + ", totalPendingResource="
+                + totalPendingResource
+                + ", totalAndDefaultSlotProfilesToPendingTaskManagers="
+                + totalAndDefaultSlotProfilesToPendingTaskManagers
+                + '}';
+    }
+
     /** All currently registered task managers. */
     private final Map<InstanceID, FineGrainedTaskManagerRegistration> taskManagerRegistrations;
 

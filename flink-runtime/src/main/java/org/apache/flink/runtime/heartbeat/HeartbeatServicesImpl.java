@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.heartbeat;
 
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.concurrent.ScheduledExecutor;
@@ -37,6 +38,7 @@ public final class HeartbeatServicesImpl implements HeartbeatServices {
 
     private final int failedRpcRequestsUntilUnreachable;
 
+    @VisibleForTesting
     public HeartbeatServicesImpl(long heartbeatInterval, long heartbeatTimeout) {
         this(heartbeatInterval, heartbeatTimeout, FAILED_RPC_DETECTION_DISABLED);
     }

@@ -69,6 +69,17 @@ public class DeclarativeSlotPoolService implements SlotPoolService {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
+    @Override
+    public String toString() {
+        return "DeclarativeSlotPoolService{"
+                + "declarativeSlotPool="
+                + declarativeSlotPool
+                + ", registeredTaskManagers="
+                + registeredTaskManagers
+                + '}';
+    }
+
+    // send request to RM
     private DeclareResourceRequirementServiceConnectionManager
             resourceRequirementServiceConnectionManager =
                     NoOpDeclareResourceRequirementServiceConnectionManager.INSTANCE;

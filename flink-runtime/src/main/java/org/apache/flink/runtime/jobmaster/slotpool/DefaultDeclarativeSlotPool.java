@@ -108,6 +108,38 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
 
     private NewSlotsListener newSlotsListener = NoOpNewSlotsListener.INSTANCE;
 
+    @Override
+    public String toString() {
+        return "DefaultDeclarativeSlotPool{"
+                + "notifyNewResourceRequirements="
+                + notifyNewResourceRequirements
+                + ", idleSlotTimeout="
+                + idleSlotTimeout
+                + ", rpcTimeout="
+                + rpcTimeout
+                + ", jobId="
+                + jobId
+                + ", slotPool="
+                + slotPool
+                + ", slotToRequirementProfileMappings="
+                + slotToRequirementProfileMappings
+                + ", totalResourceRequirements="
+                + totalResourceRequirements
+                + ", fulfilledResourceRequirements="
+                + fulfilledResourceRequirements
+                + ", newSlotsListener="
+                + newSlotsListener
+                + ", requirementMatcher="
+                + requirementMatcher
+                + ", componentMainThreadExecutor="
+                + componentMainThreadExecutor
+                + ", slotRequestMaxInterval="
+                + slotRequestMaxInterval
+                + ", slotRequestMaxIntervalTimeoutFuture="
+                + slotRequestMaxIntervalTimeoutFuture
+                + '}';
+    }
+
     private final RequirementMatcher requirementMatcher = new DefaultRequirementMatcher();
 
     @Nonnull private final ComponentMainThreadExecutor componentMainThreadExecutor;

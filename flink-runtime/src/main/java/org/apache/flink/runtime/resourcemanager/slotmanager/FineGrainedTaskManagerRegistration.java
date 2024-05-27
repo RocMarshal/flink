@@ -55,6 +55,28 @@ public class FineGrainedTaskManagerRegistration implements TaskManagerInfo {
     /** Timestamp when the last time becoming idle. Otherwise Long.MAX_VALUE. */
     private long idleSince;
 
+    @Override
+    public String toString() {
+        return "FineGrainedTaskManagerRegistration{"
+                + "taskManagerConnection="
+                + taskManagerConnection
+                + ", slots="
+                + slots
+                + ", defaultSlotResourceProfile="
+                + defaultSlotResourceProfile
+                + ", totalResource="
+                + totalResource
+                + ", defaultNumSlots="
+                + defaultNumSlots
+                + ", unusedResource="
+                + unusedResource
+                + ", pendingResource="
+                + pendingResource
+                + ", idleSince="
+                + idleSince
+                + '}';
+    }
+
     public FineGrainedTaskManagerRegistration(
             TaskExecutorConnection taskManagerConnection,
             ResourceProfile totalResourceProfile,

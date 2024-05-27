@@ -78,6 +78,60 @@ public class FineGrainedSlotManager implements SlotManager {
 
     private final SlotStatusSyncer slotStatusSyncer;
 
+    @Override
+    public String toString() {
+        return "FineGrainedSlotManager{"
+                + "taskManagerTracker="
+                + taskManagerTracker
+                + ", resourceTracker="
+                + resourceTracker
+                + ", resourceAllocationStrategy="
+                + resourceAllocationStrategy
+                + ", slotStatusSyncer="
+                + slotStatusSyncer
+                + ", scheduledExecutor="
+                + scheduledExecutor
+                + ", taskManagerTimeout="
+                + taskManagerTimeout
+                + ", requirementsCheckDelay="
+                + requirementsCheckDelay
+                + ", declareNeededResourceDelay="
+                + declareNeededResourceDelay
+                + ", slotManagerMetricGroup="
+                + slotManagerMetricGroup
+                + ", jobMasterTargetAddresses="
+                + jobMasterTargetAddresses
+                + ", waitResultConsumedBeforeRelease="
+                + waitResultConsumedBeforeRelease
+                + ", maxTotalCpu="
+                + maxTotalCpu
+                + ", maxTotalMem="
+                + maxTotalMem
+                + ", sendNotEnoughResourceNotifications="
+                + sendNotEnoughResourceNotifications
+                + ", unfulfillableJobs="
+                + unfulfillableJobs
+                + ", resourceManagerId="
+                + resourceManagerId
+                + ", mainThreadExecutor="
+                + mainThreadExecutor
+                + ", resourceAllocator="
+                + resourceAllocator
+                + ", resourceEventListener="
+                + resourceEventListener
+                + ", clusterReconciliationCheck="
+                + clusterReconciliationCheck
+                + ", requirementsCheckFuture="
+                + requirementsCheckFuture
+                + ", declareNeededResourceFuture="
+                + declareNeededResourceFuture
+                + ", blockedTaskManagerChecker="
+                + blockedTaskManagerChecker
+                + ", started="
+                + started
+                + '}';
+    }
+
     /** Scheduled executor for timeouts. */
     private final ScheduledExecutor scheduledExecutor;
 
@@ -169,6 +223,22 @@ public class FineGrainedSlotManager implements SlotManager {
         requirementsCheckFuture = null;
 
         started = false;
+
+        new Thread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                while (true) {
+                                    try {
+                                        Thread.sleep(5000L);
+                                        LOG.info("{}", FineGrainedSlotManager.this);
+                                    } catch (InterruptedException e) {
+                                        System.err.println("Error in debug." + e.getMessage());
+                                    }
+                                }
+                            }
+                        })
+                .start();
     }
 
     @Override
