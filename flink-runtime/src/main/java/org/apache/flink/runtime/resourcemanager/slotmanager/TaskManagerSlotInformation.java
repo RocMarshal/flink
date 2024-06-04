@@ -56,6 +56,10 @@ public interface TaskManagerSlotInformation extends WeightLoadable {
         return getResourceProfile().isMatching(required);
     }
 
+    default boolean isMatchingRequirement(LoadableResourceProfile loadableResourceProfile) {
+        return getLoadableResourceProfile().isMatching(loadableResourceProfile);
+    }
+
     /**
      * Get resource profile of this slot.
      *

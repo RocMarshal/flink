@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.jobmaster.slotpool;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 
 import java.util.Collection;
@@ -52,7 +53,7 @@ class PhysicalSlotRequestBulkWithTimestamp implements PhysicalSlotRequestBulk {
     }
 
     @Override
-    public Collection<ResourceProfile> getPendingRequests() {
+    public Collection<LoadableResourceProfile> getPendingRequests() {
         return physicalSlotRequestBulk.getPendingRequests();
     }
 

@@ -34,10 +34,10 @@ class EvenlySpreadOutLocationPreferenceSlotSelectionStrategy
     @Override
     protected Optional<SlotInfoAndLocality> selectWithoutLocationPreference(
             @Nonnull FreeSlotInfoTracker freeSlotInfoTracker,
-            @Nonnull ResourceProfile resourceProfile) {
+            @Nonnull PhysicalSlotRequest physicalSlotRequest) {
         return freeSlotInfoTracker.getAvailableSlots().stream()
                 .map(freeSlotInfoTracker::getSlotInfo)
-                .filter(slotInfo -> slotInfo.getResourceProfile().isMatching(resourceProfile))
+                .filter(slotInfo -> slotInfo.getLoadableResourceProfile().isMatching(physicalSlotRequest.getPhysicalSlotResourceProfile()))
                 // calculate utilization first to avoid duplicated calculation in min()
                 .map(
                         slot ->

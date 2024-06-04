@@ -119,8 +119,7 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
         Map<SlotRequestId, Optional<PhysicalSlot>> allocateResult = new HashMap<>();
         for (PhysicalSlotRequest request : slotRequests) {
             Optional<SlotSelectionStrategy.SlotInfoAndLocality> slot =
-                    slotSelectionStrategy.selectBestSlotForProfile(
-                            freeSlotInfoTracker, request.getSlotProfile());
+                    slotSelectionStrategy.selectBestSlotForProfile(freeSlotInfoTracker, request);
             allocateResult.put(
                     request.getSlotRequestId(),
                     slot.flatMap(

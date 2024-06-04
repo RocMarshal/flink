@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.jobmaster.slotpool;
 
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
 
@@ -27,11 +28,11 @@ import java.util.function.BiConsumer;
 
 class TestingPhysicalSlotRequestBulkBuilder {
     private static final BiConsumer<SlotRequestId, Throwable> EMPTY_CANCELLER = (r, t) -> {};
-    private Map<SlotRequestId, ResourceProfile> pendingRequests = new HashMap<>();
+    private Map<SlotRequestId, LoadableResourceProfile> pendingRequests = new HashMap<>();
     private BiConsumer<SlotRequestId, Throwable> canceller = EMPTY_CANCELLER;
 
     TestingPhysicalSlotRequestBulkBuilder addPendingRequest(
-            SlotRequestId slotRequestId, ResourceProfile resourceProfile) {
+            SlotRequestId slotRequestId, LoadableResourceProfile resourceProfile) {
         pendingRequests.put(slotRequestId, resourceProfile);
         return this;
     }

@@ -21,9 +21,11 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.connector.source.util.ratelimit.RateLimiterStrategy;
+import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
+import org.apache.flink.configuration.WebOptions;
 import org.apache.flink.connector.datagen.source.DataGeneratorSource;
 import org.apache.flink.connector.datagen.source.GeneratorFunction;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -38,6 +40,10 @@ public class DefaultSchedulerDemo {
         conf.set(TaskManagerOptions.NUM_TASK_SLOTS, 2);
         conf.set(TaskManagerOptions.MINI_CLUSTER_NUM_TASK_MANAGERS, 3);
         conf.set(RestOptions.ENABLE_FLAMEGRAPH, true);
+
+        conf.setString(WebOptions.LOG_PATH,"/Users/yuepeng.pan/acommunity/flink/flink-examples/flink-examples-streaming/src/main/resources/job.log");
+        conf.setString(ConfigConstants.TASK_MANAGER_LOG_PATH_KEY,"/Users/yuepeng.pan/acommunity/flink/flink-examples/flink-examples-streaming/src/main/resources/job.log");
+
         conf.set(
                 TaskManagerOptions.TASK_MANAGER_LOAD_BALANCE_MODE,
                 TaskManagerOptions.TaskManagerLoadBalanceMode.TASKS);
@@ -57,14 +63,14 @@ public class DefaultSchedulerDemo {
                         Types.LONG);
 
         env.fromSource(source, WatermarkStrategy.noWatermarks(), "generateSource")
-                .setParallelism(2)
+                .setParallelism(1)
                 .rebalance()
                 .map((MapFunction<Long, String>) String::valueOf)
-                .setParallelism(3)
+                .setParallelism(1)
                 .name("RateLimiterMapFunction")
                 .rebalance()
                 .addSink(new DiscardingSink<>())
-                .setParallelism(5)
+                .setParallelism(4)
                 .name("MySink");
 
         env.execute(DefaultSchedulerDemo.class.getSimpleName());

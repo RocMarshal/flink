@@ -699,6 +699,42 @@ public class TaskSlotTableImpl<T extends TaskSlotPayload> implements TaskSlotTab
         }
     }
 
+    @Override
+    public String toString() {
+        return "TaskSlotTableImpl{"
+                + "numberSlots="
+                + numberSlots
+                + ", defaultSlotResourceProfile="
+                + defaultSlotResourceProfile
+                + ", memoryPageSize="
+                + memoryPageSize
+                + ", timerService="
+                + timerService
+                + ", taskSlots="
+                + taskSlots
+                + ", allocatedSlots="
+                + allocatedSlots
+                + ", taskSlotMappings="
+                + taskSlotMappings
+                + ", slotsPerJob="
+                + slotsPerJob
+                + ", slotActions="
+                + slotActions
+                + ", state="
+                + state
+                + ", dynamicSlotIndex="
+                + dynamicSlotIndex
+                + ", budgetManager="
+                + budgetManager
+                + ", closingFuture="
+                + closingFuture
+                + ", mainThreadExecutor="
+                + mainThreadExecutor
+                + ", memoryVerificationExecutor="
+                + memoryVerificationExecutor
+                + '}';
+    }
+
     /**
      * Iterator over {@link TaskSlot} which fulfill a given state condition and belong to the given
      * job.

@@ -241,6 +241,16 @@ public final class DefaultJobTable implements JobTable {
         }
     }
 
+    @Override
+    public String toString() {
+        return "DefaultJobTable{"
+                + "jobs="
+                + jobs
+                + ", resourceIdJobIdIndex="
+                + resourceIdJobIdIndex
+                + '}';
+    }
+
     private static final class EstablishedConnection {
 
         // The unique id used for identifying the job manager

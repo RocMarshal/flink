@@ -249,7 +249,7 @@ class PhysicalSlotRequestBulkCheckerImplTest {
         final TestingPhysicalSlotRequestBulkBuilder builder =
                 TestingPhysicalSlotRequestBulkBuilder.newBuilder();
         for (SlotRequestId slotRequestId : slotRequestIds) {
-            builder.addPendingRequest(slotRequestId, ResourceProfile.UNKNOWN);
+            builder.addPendingRequest(slotRequestId, ResourceProfile.UNKNOWN.toEmptyLoadsResourceProfile());
         }
         return builder.buildPhysicalSlotRequestBulkImpl();
     }
@@ -257,7 +257,7 @@ class PhysicalSlotRequestBulkCheckerImplTest {
     private PhysicalSlotRequestBulk createPhysicalSlotRequestBulkWithCancellationFuture(
             CompletableFuture<SlotRequestId> cancellationFuture, SlotRequestId slotRequestId) {
         return TestingPhysicalSlotRequestBulkBuilder.newBuilder()
-                .addPendingRequest(slotRequestId, ResourceProfile.UNKNOWN)
+                .addPendingRequest(slotRequestId, ResourceProfile.UNKNOWN.toEmptyLoadsResourceProfile())
                 .setCanceller((id, t) -> cancellationFuture.complete(id))
                 .buildPhysicalSlotRequestBulkImpl();
     }

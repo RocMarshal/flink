@@ -94,7 +94,7 @@ public class PreferredAllocationRequestSlotMatchingStrategy implements RequestSl
             while (pendingRequestIterator.hasNext()) {
                 final PendingRequest pendingRequest = pendingRequestIterator.next();
 
-                if (freeSlot.getResourceProfile().isMatching(pendingRequest.getResourceProfile())
+                if (freeSlot.getLoadableResourceProfile().isMatching(pendingRequest.getLoadableResourceProfile())
                         && pendingRequest
                                 .getPreferredAllocations()
                                 .contains(freeSlot.getAllocationId())) {

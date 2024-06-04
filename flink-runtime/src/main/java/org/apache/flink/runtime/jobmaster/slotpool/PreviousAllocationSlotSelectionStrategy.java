@@ -48,9 +48,10 @@ public class PreviousAllocationSlotSelectionStrategy implements SlotSelectionStr
 
     @Override
     public Optional<SlotInfoAndLocality> selectBestSlotForProfile(
-            @Nonnull FreeSlotInfoTracker freeSlotInfoTracker, @Nonnull SlotProfile slotProfile) {
+            @Nonnull FreeSlotInfoTracker freeSlotInfoTracker, @Nonnull PhysicalSlotRequest physicalSlotRequest) {
 
-        LOG.debug("Select best slot for profile {}.", slotProfile);
+        final SlotProfile slotProfile = physicalSlotRequest.getSlotProfile();
+        LOG.debug("Select best slot for physical slot request {}.", physicalSlotRequest);
 
         Collection<AllocationID> priorAllocations = slotProfile.getPreferredAllocations();
 
@@ -70,7 +71,7 @@ public class PreviousAllocationSlotSelectionStrategy implements SlotSelectionStr
         return fallbackSlotSelectionStrategy.selectBestSlotForProfile(
                 freeSlotInfoTracker.createNewFreeSlotInfoTrackerWithoutBlockedSlots(
                         slotProfile.getReservedAllocations()),
-                slotProfile);
+                physicalSlotRequest);
     }
 
     public static PreviousAllocationSlotSelectionStrategy create() {

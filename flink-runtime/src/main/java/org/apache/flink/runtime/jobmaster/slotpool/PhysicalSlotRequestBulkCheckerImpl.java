@@ -21,6 +21,7 @@ package org.apache.flink.runtime.jobmaster.slotpool;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutor;
 import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutor.DummyComponentMainThreadExecutor;
@@ -170,10 +171,10 @@ public class PhysicalSlotRequestBulkCheckerImpl implements PhysicalSlotRequestBu
      * number of all slots).
      */
     private static boolean areRequestsFulfillableWithSlots(
-            final Collection<ResourceProfile> requestResourceProfiles, final Set<SlotInfo> slots) {
+            final Collection<LoadableResourceProfile> requestResourceProfiles, final Set<SlotInfo> slots) {
 
         final Set<SlotInfo> remainingSlots = new HashSet<>(slots);
-        for (ResourceProfile requestResourceProfile : requestResourceProfiles) {
+        for (LoadableResourceProfile requestResourceProfile : requestResourceProfiles) {
             final Optional<SlotInfo> matchedSlot =
                     findMatchingSlotForRequest(requestResourceProfile, remainingSlots);
             if (matchedSlot.isPresent()) {
@@ -186,10 +187,10 @@ public class PhysicalSlotRequestBulkCheckerImpl implements PhysicalSlotRequestBu
     }
 
     private static Optional<SlotInfo> findMatchingSlotForRequest(
-            final ResourceProfile requestResourceProfile, final Collection<SlotInfo> slots) {
+            final LoadableResourceProfile requestResourceProfile, final Collection<SlotInfo> slots) {
 
         return slots.stream()
-                .filter(slot -> slot.getResourceProfile().isMatching(requestResourceProfile))
+                .filter(slot -> slot.getLoadableResourceProfile().isMatching(requestResourceProfile))
                 .findFirst();
     }
 

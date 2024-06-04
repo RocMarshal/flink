@@ -331,7 +331,7 @@ class SlotSharingExecutionSlotAllocatorTest {
 
         assertThat(bulk.getPendingRequests()).hasSize(2);
         assertThat(bulk.getPendingRequests())
-                .containsExactlyInAnyOrder(RESOURCE_PROFILE.multiply(2), RESOURCE_PROFILE);
+                .containsExactlyInAnyOrder(RESOURCE_PROFILE.multiply(2).toEmptyLoadsResourceProfile(), RESOURCE_PROFILE.toEmptyLoadsResourceProfile());
         assertThat(bulk.getAllocationIdsOfFulfilledRequests()).isEmpty();
         assertThat(bulkChecker.getTimeout()).isEqualTo(ALLOCATION_TIMEOUT);
     }
@@ -349,7 +349,7 @@ class SlotSharingExecutionSlotAllocatorTest {
         PhysicalSlotRequestBulk bulk = bulkChecker.getBulk();
 
         assertThat(bulk.getPendingRequests()).hasSize(1);
-        assertThat(bulk.getPendingRequests()).containsExactly(pendingSlotResourceProfile);
+        assertThat(bulk.getPendingRequests()).containsExactly(pendingSlotResourceProfile.toEmptyLoadsResourceProfile());
         assertThat(bulk.getAllocationIdsOfFulfilledRequests()).hasSize(1);
         assertThat(bulk.getAllocationIdsOfFulfilledRequests()).containsExactly(allocationId);
     }

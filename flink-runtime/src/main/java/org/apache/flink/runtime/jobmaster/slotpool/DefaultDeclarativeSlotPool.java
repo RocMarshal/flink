@@ -323,16 +323,17 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
     }
 
     private Optional<LoadableResourceProfile> matchWithOutstandingRequirementOrWildcard(
-            LoadableResourceProfile resourceProfile) {
+            LoadableResourceProfile resourceProfileTryAccepted) {
+        log.error("__debug: matchWithOutstandingRequirementOrWildcard");
         final Optional<LoadableResourceProfile> match =
-                matchWithOutstandingRequirement(resourceProfile);
+                matchWithOutstandingRequirement(resourceProfileTryAccepted);
 
         if (match.isPresent()) {
             return match;
         } else {
             // use ANY as wildcard as there is no practical purpose for a slot with 0 resources
             return Optional.of(
-                    ResourceProfile.ANY.toLoadableResourceProfile(resourceProfile.getLoading()));
+                    ResourceProfile.ANY.toLoadableResourceProfile(resourceProfileTryAccepted.getLoading()));
         }
     }
 
@@ -342,6 +343,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
             TaskManagerGateway taskManagerGateway,
             Function<LoadableResourceProfile, Optional<LoadableResourceProfile>>
                     matchingCondition) {
+        log.error("__debug: matchOfferWithOutstandingRequirements");
 
         final Optional<LoadableResourceProfile> match =
                 matchingCondition.apply(slotOffer.getLoadableResourceProfile());
@@ -369,9 +371,10 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
     }
 
     private Optional<LoadableResourceProfile> matchWithOutstandingRequirement(
-            LoadableResourceProfile resourceProfile) {
+            LoadableResourceProfile resourceProfileTryAccepted) {
+        log.error("__debug: matchWithOutstandingRequirement");
         return requirementMatcher.match(
-                resourceProfile,
+                resourceProfileTryAccepted,
                 totalResourceRequirements,
                 fulfilledResourceRequirements::getLoadableResourceCount);
     }
@@ -423,13 +426,14 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
         final AllocatedSlot allocatedSlot =
                 slotPool.reserveFreeSlot(allocationId, requiredSlotProfile.getLoading());
 
+        if (!allocatedSlot.getLoadableResourceProfile().isMatching(requiredSlotProfile)) {
+            System.out.println();
+        }
         Preconditions.checkState(
-                allocatedSlot
-                        .getResourceProfile()
-                        .isMatching(requiredSlotProfile.getResourceProfile()),
+                allocatedSlot.getLoadableResourceProfile().isMatching(requiredSlotProfile),
                 "Slot {} cannot fulfill the given requirement. SlotProfile={} Requirement={}",
                 allocationId,
-                allocatedSlot.getResourceProfile(),
+                allocatedSlot.getLoadableResourceProfile(),
                 requiredSlotProfile);
 
         LoadableResourceProfile previouslyMatchedResourceProfile =

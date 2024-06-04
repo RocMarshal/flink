@@ -59,7 +59,7 @@ public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatch
             List<? extends PhysicalSlot> slotCandidates = availableSlots.get(candidateTaskExecutor);
             Preconditions.checkState(!isNullOrEmpty(slotCandidates));
             for (PhysicalSlot slot : slotCandidates) {
-                if (slot.getResourceProfile().isMatching(request.getResourceProfile())) {
+                if (slot.getLoadableResourceProfile().isMatchingResource(request.getLoadableResourceProfile())) {
                     resultingMatches.add(RequestSlotMatch.createFor(request, slot));
                     slotCandidates.remove(slot);
                     taskExecutorsLoadingWeight.compute(

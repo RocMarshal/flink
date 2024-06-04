@@ -289,6 +289,9 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
                             return newCount == 0 ? null : newCount;
                         });
             }
+            if (freeSince == null) {
+                System.out.println();
+            }
 
             return freeSince;
         }
@@ -303,6 +306,16 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
 
         public Map<AllocationID, Long> getFreeSlotsSince() {
             return freeSlotsSince;
+        }
+
+        @Override
+        public String toString() {
+            return "FreeSlots{"
+                    + "freeSlotsSince="
+                    + freeSlotsSince
+                    + ", freeSlotsNumberPerTaskExecutor="
+                    + freeSlotsNumberPerTaskExecutor
+                    + '}';
         }
     }
 

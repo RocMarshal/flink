@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.scheduler;
 
 import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.scheduler.loading.DefaultLoadingWeight;
@@ -58,6 +59,11 @@ class ExecutionSlotSharingGroup implements WeightLoadable {
     @Nonnull
     ResourceProfile getResourceProfile() {
         return slotSharingGroup.getResourceProfile();
+    }
+
+    @Nonnull
+    LoadableResourceProfile getLoadableResourceProfile() {
+        return slotSharingGroup.getResourceProfile().toLoadableResourceProfile(new DefaultLoadingWeight(executionVertexIds.size()));
     }
 
     Set<ExecutionVertexID> getExecutionVertexIds() {

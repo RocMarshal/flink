@@ -21,6 +21,7 @@ package org.apache.flink.runtime.jobmaster;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.scheduler.loading.WeightLoadable;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
@@ -66,4 +67,13 @@ public interface SlotInfo extends WeightLoadable {
      * @return true if the slot will be occupied indefinitely, otherwise false.
      */
     boolean willBeOccupiedIndefinitely();
+
+
+    /**
+     * Set the loading.
+     * @param loadingWeight loading weight to set.
+     */
+    default void setLoading(LoadingWeight loadingWeight) {
+        throw new UnsupportedOperationException();
+    }
 }

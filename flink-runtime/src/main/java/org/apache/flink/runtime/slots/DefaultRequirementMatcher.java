@@ -20,6 +20,9 @@ package org.apache.flink.runtime.slots;
 import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.util.ResourceCounter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -29,16 +32,23 @@ import java.util.function.Function;
  * that a) is not unfulfilled and B) matches the resource profile.
  */
 public class DefaultRequirementMatcher implements RequirementMatcher {
+
+    public static final Logger LOG = LoggerFactory.getLogger(DefaultRequirementMatcher.class);
+
     @Override
     public Optional<LoadableResourceProfile> match(
-            LoadableResourceProfile loadableResourceProfile,
+            LoadableResourceProfile resourceProfileTryAccepted,
             ResourceCounter totalRequirements,
             Function<LoadableResourceProfile, Integer> numAssignedResourcesLookup) {
         // Short-cut for fine-grained resource management. If there is already exactly equal
         // requirement, we can directly match with it.
-        if (totalRequirements.getLoadableResourceCount(loadableResourceProfile)
-                > numAssignedResourcesLookup.apply(loadableResourceProfile)) {
-            return Optional.of(loadableResourceProfile);
+        if (totalRequirements.getLoadableResourceCount(resourceProfileTryAccepted)
+                > numAssignedResourcesLookup.apply(resourceProfileTryAccepted)) {
+            LOG.info(
+                    "__debug: resourceProfile {}, match result: {}",
+                    resourceProfileTryAccepted,
+                    resourceProfileTryAccepted);
+            return Optional.of(resourceProfileTryAccepted);
         }
 
         for (Map.Entry<LoadableResourceProfile, Integer> requirementCandidate :
@@ -48,12 +58,19 @@ public class DefaultRequirementMatcher implements RequirementMatcher {
             // beware the order when matching resources to requirements, because
             // ResourceProfile.UNKNOWN (which only
             // occurs as a requirement) does not match any resource!
-            if (loadableResourceProfile.isMatching(requirementLoadableProfile)
+            if (resourceProfileTryAccepted.isMatching(requirementLoadableProfile)
                     && requirementCandidate.getValue()
-                            > numAssignedResourcesLookup.apply(loadableResourceProfile)) {
+                            > numAssignedResourcesLookup.apply(resourceProfileTryAccepted)) {
+                LOG.info(
+                        "__debug: resourceProfile {}, match result: {}",
+                        resourceProfileTryAccepted,
+                        requirementLoadableProfile);
+
                 return Optional.of(requirementLoadableProfile);
             }
         }
+        LOG.info("__debug: resourceProfile {}, match result: null", resourceProfileTryAccepted);
+
         return Optional.empty();
     }
 }

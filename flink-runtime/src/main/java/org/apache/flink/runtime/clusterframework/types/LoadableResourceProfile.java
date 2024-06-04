@@ -23,6 +23,9 @@ import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.scheduler.loading.WeightLoadable;
 import org.apache.flink.util.Preconditions;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.Nonnull;
 
 import java.io.Serializable;
@@ -31,6 +34,9 @@ import java.util.Objects;
 /** Util class to represent {@link ResourceProfile} and expected {@link LoadingWeight}. */
 @Internal
 public final class LoadableResourceProfile implements WeightLoadable, Serializable {
+
+    public static final Logger LOG = LoggerFactory.getLogger(LoadableResourceProfile.class);
+
     private @Nonnull final ResourceProfile resourceProfile;
     private @Nonnull final LoadingWeight weight;
 
@@ -53,8 +59,10 @@ public final class LoadableResourceProfile implements WeightLoadable, Serializab
     }
 
     public boolean isMatching(@Nonnull LoadableResourceProfile loadableResourceProfile) {
+
         if (resourceProfile.equals(ResourceProfile.ANY)
-                || loadableResourceProfile.resourceProfile.equals(ResourceProfile.ANY)) {
+        /*|| loadableResourceProfile.resourceProfile.equals(ResourceProfile.UNKNOWN)*/ ) {
+
             return true;
         }
         return resourceProfile.isMatching(loadableResourceProfile.resourceProfile)

@@ -49,7 +49,7 @@ public enum SimpleRequestSlotMatchingStrategy implements RequestSlotMatchingStra
 
             while (pendingRequestIterator.hasNext()) {
                 final PendingRequest pendingRequest = pendingRequestIterator.next();
-                if (slot.getResourceProfile().isMatching(pendingRequest.getResourceProfile())) {
+                if (slot.getLoadableResourceProfile().isMatchingResource(pendingRequest.getLoadableResourceProfile())) {
                     resultingMatches.add(RequestSlotMatch.createFor(pendingRequest, slot));
                     pendingRequestIterator.remove();
                     break;

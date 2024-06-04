@@ -93,6 +93,8 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
                 + slotBatchAllocatable
                 + ", receivedSlots="
                 + receivedSlots
+                + ", declarativeSlotPoolService="
+                + super.toString()
                 + '}';
     }
 
@@ -148,8 +150,8 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
                             public void run() {
                                 while (true) {
                                     try {
-                                        Thread.sleep(5000L);
-                                        LOG.info("{}", DeclarativeSlotPoolBridge.this);
+                                        Thread.sleep(500L);
+                                        LOG.info("__debug: {}", DeclarativeSlotPoolBridge.this);
                                     } catch (InterruptedException e) {
                                         System.err.println("Error in debug." + e.getMessage());
                                     }
@@ -586,7 +588,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
         final Collection<PendingRequest> pendingBatchRequests = getPendingBatchRequests();
 
         if (!pendingBatchRequests.isEmpty()) {
-            final Set<ResourceProfile> allResourceProfiles = getResourceProfilesFromAllSlots();
+            final Set<LoadableResourceProfile> allResourceProfiles = getResourceProfilesFromAllSlots();
 
             final Map<Boolean, List<PendingRequest>> fulfillableAndUnfulfillableRequests =
                     pendingBatchRequests.stream()
@@ -623,11 +625,11 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
         }
     }
 
-    private Set<ResourceProfile> getResourceProfilesFromAllSlots() {
+    private Set<LoadableResourceProfile> getResourceProfilesFromAllSlots() {
         return Stream.concat(
                         getFreeSlotInfoTracker().getFreeSlotsInformation().stream(),
                         getAllocatedSlotsInformation().stream())
-                .map(SlotInfo::getResourceProfile)
+                .map(SlotInfo::getLoadableResourceProfile)
                 .collect(Collectors.toSet());
     }
 
@@ -638,10 +640,10 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
     }
 
     private static Predicate<PendingRequest> canBeFulfilledWithAnySlot(
-            Set<ResourceProfile> allocatedResourceProfiles) {
+            Set<LoadableResourceProfile> allocatedResourceProfiles) {
         return pendingRequest -> {
-            for (ResourceProfile allocatedResourceProfile : allocatedResourceProfiles) {
-                if (allocatedResourceProfile.isMatching(pendingRequest.getResourceProfile())) {
+            for (LoadableResourceProfile allocatedResourceProfile : allocatedResourceProfiles) {
+                if (allocatedResourceProfile.isMatching(pendingRequest.getLoadableResourceProfile())) {
                     return true;
                 }
             }

@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.jobmaster.slotpool;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 
 import java.util.Collection;
@@ -32,7 +33,7 @@ public interface PhysicalSlotRequestBulk {
      * <p>If a request is pending, it is not fulfilled and vice versa. {@link
      * #getAllocationIdsOfFulfilledRequests()} should not return a pending request.
      */
-    Collection<ResourceProfile> getPendingRequests();
+    Collection<LoadableResourceProfile> getPendingRequests();
 
     /**
      * Returns {@link AllocationID}s of fulfilled physical slot requests.

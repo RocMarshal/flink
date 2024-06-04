@@ -422,8 +422,8 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
                             public void run() {
                                 while (true) {
                                     try {
-                                        Thread.sleep(5000L);
-                                        LOG.info("{}", TaskExecutor.this);
+                                        Thread.sleep(500L);
+                                        LOG.info("__debug: {}", TaskExecutor.this);
                                     } catch (InterruptedException e) {
                                         System.err.println("Error in debug." + e.getMessage());
                                     }
@@ -2198,6 +2198,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
     }
 
     private void freeSlotInternal(AllocationID allocationId, Throwable cause) {
+        LOG.warn("ERROR in freeSlotInternal", cause);
         checkNotNull(allocationId);
 
         // only respond to freeing slots when not shutting down to avoid freeing slot allocation

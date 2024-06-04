@@ -143,13 +143,6 @@ public final class ResourceCounter implements WeightLoadable {
             Iterable<? extends Map.Entry<LoadableResourceProfile, Integer>> entries) {
         final Map<LoadableResourceProfile, Integer> newValues = new HashMap<>(resources);
 
-        // LOG.debug("internalAdd this pre {}", this, new RuntimeException());
-        LOG.debug(
-                "internalAdd resourceCounter param entries {}, newValues {}",
-                entries,
-                newValues,
-                new RuntimeException());
-
         for (Map.Entry<LoadableResourceProfile, Integer> resourceIncrement : entries) {
             final LoadableResourceProfile profileLoading = resourceIncrement.getKey();
             final int newCnt =
@@ -157,7 +150,7 @@ public final class ResourceCounter implements WeightLoadable {
 
             updateNewValue(newValues, profileLoading, newCnt);
         }
-        LOG.debug("internalAdd result newValues: {}", newValues, new RuntimeException());
+        LOG.debug("__debug: internalAdd resourceCounter param entries {}, oldValues {} result: {}", entries, resources, newValues, new RuntimeException("__debug"));
 
         return new ResourceCounter(newValues);
     }
@@ -239,13 +232,6 @@ public final class ResourceCounter implements WeightLoadable {
             Iterable<? extends Map.Entry<LoadableResourceProfile, Integer>> entries) {
         final Map<LoadableResourceProfile, Integer> newValues = new HashMap<>(resources);
 
-        LOG.debug("internalSubtract this pre {}", this, new RuntimeException());
-        LOG.debug(
-                "internalSubtract resourceCounter param entries {}, newValues {}",
-                entries,
-                newValues,
-                new RuntimeException());
-
         for (Map.Entry<LoadableResourceProfile, Integer> resourceDecrement : entries) {
             final LoadableResourceProfile profileLoading = resourceDecrement.getKey();
             final int newValue =
@@ -254,7 +240,7 @@ public final class ResourceCounter implements WeightLoadable {
             updateNewValue(newValues, profileLoading, newValue);
         }
 
-        LOG.debug("internalSubtract result newValues {}", newValues, new RuntimeException());
+        LOG.debug("__debug: internalSubtract resourceCounter param entries {}, oldValues {} result: {}", entries, resources, newValues, new RuntimeException("__debug"));
 
         return new ResourceCounter(newValues);
     }

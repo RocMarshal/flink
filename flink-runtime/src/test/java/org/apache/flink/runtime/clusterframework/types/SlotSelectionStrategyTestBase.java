@@ -22,8 +22,10 @@ import org.apache.flink.runtime.executiongraph.utils.SimpleAckingTaskManagerGate
 import org.apache.flink.runtime.instance.SimpleSlotContext;
 import org.apache.flink.runtime.jobmanager.slots.TaskManagerGateway;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
+import org.apache.flink.runtime.jobmaster.SlotRequestId;
 import org.apache.flink.runtime.jobmaster.slotpool.FreeSlotInfoTracker;
 import org.apache.flink.runtime.jobmaster.slotpool.FreeSlotInfoTrackerTestUtils;
+import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotRequest;
 import org.apache.flink.runtime.jobmaster.slotpool.SlotSelectionStrategy;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
@@ -82,6 +84,6 @@ abstract class SlotSelectionStrategyTestBase {
 
     protected Optional<SlotSelectionStrategy.SlotInfoAndLocality> runMatching(
             SlotProfile slotProfile) {
-        return selectionStrategy.selectBestSlotForProfile(candidates, slotProfile);
+        return selectionStrategy.selectBestSlotForProfile(candidates, new PhysicalSlotRequest(new SlotRequestId(),slotProfile, true));
     }
 }

@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.jobmaster.slotpool;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
 
@@ -32,14 +33,14 @@ import java.util.function.BiConsumer;
 /** Represents a bulk of physical slot requests. */
 class PhysicalSlotRequestBulkImpl implements PhysicalSlotRequestBulk {
 
-    private final Map<SlotRequestId, ResourceProfile> pendingRequests;
+    private final Map<SlotRequestId, LoadableResourceProfile> pendingRequests;
 
     private final Map<SlotRequestId, AllocationID> fulfilledRequests = new HashMap<>();
 
     private final BiConsumer<SlotRequestId, Throwable> canceller;
 
     PhysicalSlotRequestBulkImpl(
-            Map<SlotRequestId, ResourceProfile> physicalSlotRequests,
+            Map<SlotRequestId, LoadableResourceProfile> physicalSlotRequests,
             BiConsumer<SlotRequestId, Throwable> canceller) {
         this.pendingRequests = new HashMap<>(physicalSlotRequests);
         this.canceller = canceller;
@@ -51,7 +52,7 @@ class PhysicalSlotRequestBulkImpl implements PhysicalSlotRequestBulk {
     }
 
     @Override
-    public Collection<ResourceProfile> getPendingRequests() {
+    public Collection<LoadableResourceProfile> getPendingRequests() {
         return pendingRequests.values();
     }
 

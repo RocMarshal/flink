@@ -43,7 +43,9 @@ public abstract class LocationPreferenceSlotSelectionStrategy implements SlotSel
 
     @Override
     public Optional<SlotInfoAndLocality> selectBestSlotForProfile(
-            @Nonnull FreeSlotInfoTracker freeSlotInfoTracker, @Nonnull SlotProfile slotProfile) {
+            @Nonnull FreeSlotInfoTracker freeSlotInfoTracker, @Nonnull PhysicalSlotRequest physicalSlotRequest) {
+
+        final SlotProfile slotProfile = physicalSlotRequest.getSlotProfile();
 
         Collection<TaskManagerLocation> locationPreferences = slotProfile.getPreferredLocations();
 
@@ -55,16 +57,16 @@ public abstract class LocationPreferenceSlotSelectionStrategy implements SlotSel
 
         // if we have no location preferences, we can only filter by the additional requirements.
         return locationPreferences.isEmpty()
-                ? selectWithoutLocationPreference(freeSlotInfoTracker, resourceProfile)
+                ? selectWithoutLocationPreference(freeSlotInfoTracker, physicalSlotRequest)
                 : selectWithLocationPreference(
-                        freeSlotInfoTracker, locationPreferences, resourceProfile);
+                        freeSlotInfoTracker, locationPreferences, physicalSlotRequest);
     }
 
     @Nonnull
     private Optional<SlotInfoAndLocality> selectWithLocationPreference(
             @Nonnull FreeSlotInfoTracker freeSlotInfoTracker,
             @Nonnull Collection<TaskManagerLocation> locationPreferences,
-            @Nonnull ResourceProfile resourceProfile) {
+            @Nonnull PhysicalSlotRequest physicalSlotRequest) {
 
         // we build up two indexes, one for resource id and one for host names of the preferred
         // locations.
@@ -85,7 +87,7 @@ public abstract class LocationPreferenceSlotSelectionStrategy implements SlotSel
         for (AllocationID allocationId : freeSlotInfoTracker.getAvailableSlots()) {
             SlotInfo candidate = freeSlotInfoTracker.getSlotInfo(allocationId);
 
-            if (candidate.getResourceProfile().isMatching(resourceProfile)) {
+            if (candidate.getLoadableResourceProfile().isMatching(physicalSlotRequest.getPhysicalSlotResourceProfile())) {
 
                 // this gets candidate is local-weigh
                 int localWeigh =
@@ -122,7 +124,7 @@ public abstract class LocationPreferenceSlotSelectionStrategy implements SlotSel
     @Nonnull
     protected abstract Optional<SlotInfoAndLocality> selectWithoutLocationPreference(
             @Nonnull FreeSlotInfoTracker freeSlotInfoTracker,
-            @Nonnull ResourceProfile resourceProfile);
+            @Nonnull PhysicalSlotRequest physicalSlotRequest);
 
     protected abstract double calculateCandidateScore(
             int localWeigh, int hostLocalWeigh, Supplier<Double> taskExecutorUtilizationSupplier);

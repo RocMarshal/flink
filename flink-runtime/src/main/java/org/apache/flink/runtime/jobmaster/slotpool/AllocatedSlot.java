@@ -97,6 +97,7 @@ class AllocatedSlot implements PhysicalSlot {
         this.physicalSlotNumber = physicalSlotNumber;
         this.resourceProfile = checkNotNull(resourceProfile);
         this.taskManagerGateway = checkNotNull(taskManagerGateway);
+        // todo add the loading in the first creation.
         this.loadingWeight = LoadingWeight.EMPTY;
 
         payloadReference = new AtomicReference<>(null);

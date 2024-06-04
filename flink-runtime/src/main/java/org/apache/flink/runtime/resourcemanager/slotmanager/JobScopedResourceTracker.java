@@ -86,6 +86,7 @@ class JobScopedResourceTracker {
 
     private Optional<LoadableResourceProfile> findMatchingRequirement(
             LoadableResourceProfile resourceProfile) {
+        LOG.info("__debug: findMatchingRequirement");
         return requirementMatcher.match(
                 resourceProfile,
                 resourceRequirements,

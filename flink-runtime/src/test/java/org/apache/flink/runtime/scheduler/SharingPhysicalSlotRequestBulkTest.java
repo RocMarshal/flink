@@ -20,6 +20,7 @@ package org.apache.flink.runtime.scheduler;
 
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 
@@ -58,7 +59,7 @@ class SharingPhysicalSlotRequestBulkTest {
     @Test
     void testCreation() {
         SharingPhysicalSlotRequestBulk bulk = createBulk();
-        assertThat(bulk.getPendingRequests()).contains(RP1, RP2);
+        assertThat(bulk.getPendingRequests()).contains(RP1.toEmptyLoadsResourceProfile(), RP2.toEmptyLoadsResourceProfile());
         assertThat(bulk.getAllocationIdsOfFulfilledRequests()).isEmpty();
     }
 
@@ -67,7 +68,7 @@ class SharingPhysicalSlotRequestBulkTest {
         SharingPhysicalSlotRequestBulk bulk = createBulk();
         AllocationID allocationId = new AllocationID();
         bulk.markFulfilled(SG1, allocationId);
-        assertThat(bulk.getPendingRequests()).contains(RP2);
+        assertThat(bulk.getPendingRequests()).contains(RP2.toEmptyLoadsResourceProfile());
         assertThat(bulk.getAllocationIdsOfFulfilledRequests()).contains(allocationId);
     }
 
@@ -105,9 +106,9 @@ class SharingPhysicalSlotRequestBulkTest {
 
     private static SharingPhysicalSlotRequestBulk createBulk(
             BiConsumer<ExecutionVertexID, Throwable> canceller) {
-        Map<ExecutionSlotSharingGroup, ResourceProfile> pendingRequests = new IdentityHashMap<>();
-        pendingRequests.put(SG1, RP1);
-        pendingRequests.put(SG2, RP2);
+        Map<ExecutionSlotSharingGroup, LoadableResourceProfile> pendingRequests = new IdentityHashMap<>();
+        pendingRequests.put(SG1, RP1.toEmptyLoadsResourceProfile());
+        pendingRequests.put(SG2, RP2.toEmptyLoadsResourceProfile());
 
         Map<ExecutionSlotSharingGroup, List<ExecutionVertexID>> executions = new HashMap<>();
         executions.put(SG1, Arrays.asList(EV1, EV2));

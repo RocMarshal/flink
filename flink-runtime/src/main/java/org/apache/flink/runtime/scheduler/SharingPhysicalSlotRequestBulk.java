@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.scheduler;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotRequestBulk;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotRequestBulkChecker;
@@ -51,7 +52,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 class SharingPhysicalSlotRequestBulk implements PhysicalSlotRequestBulk {
     private final Map<ExecutionSlotSharingGroup, List<ExecutionVertexID>> executions;
 
-    private final Map<ExecutionSlotSharingGroup, ResourceProfile> pendingRequests;
+    private final Map<ExecutionSlotSharingGroup, LoadableResourceProfile> pendingRequests;
 
     private final Map<ExecutionSlotSharingGroup, AllocationID> fulfilledRequests;
 
@@ -59,7 +60,7 @@ class SharingPhysicalSlotRequestBulk implements PhysicalSlotRequestBulk {
 
     SharingPhysicalSlotRequestBulk(
             Map<ExecutionSlotSharingGroup, List<ExecutionVertexID>> executions,
-            Map<ExecutionSlotSharingGroup, ResourceProfile> pendingRequests,
+            Map<ExecutionSlotSharingGroup, LoadableResourceProfile> pendingRequests,
             BiConsumer<ExecutionVertexID, Throwable> logicalSlotRequestCanceller) {
         this.executions = checkNotNull(executions);
         this.pendingRequests = checkNotNull(pendingRequests);
@@ -68,7 +69,7 @@ class SharingPhysicalSlotRequestBulk implements PhysicalSlotRequestBulk {
     }
 
     @Override
-    public Collection<ResourceProfile> getPendingRequests() {
+    public Collection<LoadableResourceProfile> getPendingRequests() {
         return pendingRequests.values();
     }
 

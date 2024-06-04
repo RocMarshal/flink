@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.scheduler;
 
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.SlotProfile;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
@@ -30,6 +31,7 @@ import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotProvider;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotRequest;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotRequestBulkChecker;
 import org.apache.flink.runtime.scheduler.SharedSlotProfileRetriever.SharedSlotProfileRetrieverFactory;
+import org.apache.flink.runtime.scheduler.loading.DefaultLoadingWeight;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.Preconditions;
@@ -261,13 +263,13 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
         Map<ExecutionSlotSharingGroup, SharedSlot> allocatedSlots = new HashMap<>();
 
         Map<SlotRequestId, ExecutionSlotSharingGroup> requestToGroup = new HashMap<>();
-        Map<SlotRequestId, ResourceProfile> requestToPhysicalResources = new HashMap<>();
+        Map<SlotRequestId, LoadableResourceProfile> requestToPhysicalResources = new HashMap<>();
 
         for (ExecutionSlotSharingGroup group : executionSlotSharingGroups) {
             SlotRequestId physicalSlotRequestId = new SlotRequestId();
-            ResourceProfile physicalSlotResourceProfile = getPhysicalSlotResourceProfile(group);
+            LoadableResourceProfile physicalSlotResourceProfile = getPhysicalSlotResourceProfile(group);
             SlotProfile slotProfile =
-                    sharedSlotProfileRetriever.getSlotProfile(group, physicalSlotResourceProfile);
+                    sharedSlotProfileRetriever.getSlotProfile(group, physicalSlotResourceProfile.getResourceProfile());
             PhysicalSlotRequest request =
                     new PhysicalSlotRequest(
                             physicalSlotRequestId,
@@ -291,7 +293,7 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                     SharedSlot slot =
                             new SharedSlot(
                                     slotRequestId,
-                                    requestToPhysicalResources.get(slotRequestId),
+                                    requestToPhysicalResources.get(slotRequestId).getResourceProfile(),
                                     group,
                                     physicalSlotFuture,
                                     slotWillBeOccupiedIndefinitely,
@@ -316,29 +318,31 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                         "Slot is being returned from SlotSharingExecutionSlotAllocator."));
     }
 
-    private ResourceProfile getPhysicalSlotResourceProfile(
+    private LoadableResourceProfile getPhysicalSlotResourceProfile(
             ExecutionSlotSharingGroup executionSlotSharingGroup) {
         if (!executionSlotSharingGroup.getResourceProfile().equals(ResourceProfile.UNKNOWN)) {
-            return executionSlotSharingGroup.getResourceProfile();
+            return executionSlotSharingGroup.getLoadableResourceProfile();
         } else {
+            int num = executionSlotSharingGroup.getExecutionVertexIds().size();
             return executionSlotSharingGroup.getExecutionVertexIds().stream()
                     .reduce(
                             ResourceProfile.ZERO,
                             (r, e) -> r.merge(resourceProfileRetriever.apply(e)),
-                            ResourceProfile::merge);
+                            ResourceProfile::merge).toLoadableResourceProfile(new DefaultLoadingWeight(num));
         }
     }
 
     private SharingPhysicalSlotRequestBulk createBulk(
             Map<ExecutionSlotSharingGroup, SharedSlot> slots,
             Map<ExecutionSlotSharingGroup, List<ExecutionVertexID>> executions) {
-        Map<ExecutionSlotSharingGroup, ResourceProfile> pendingRequests =
+        Map<ExecutionSlotSharingGroup, LoadableResourceProfile> pendingRequests =
                 executions.keySet().stream()
                         .collect(
                                 Collectors.toMap(
                                         group -> group,
                                         group ->
-                                                slots.get(group).getPhysicalSlotResourceProfile()));
+                                                slots.get(group).getExecutionSlotSharingGroup()
+                                                        .getLoadableResourceProfile()));
         SharingPhysicalSlotRequestBulk bulk =
                 new SharingPhysicalSlotRequestBulk(
                         executions, pendingRequests, this::cancelLogicalSlotRequest);

@@ -230,8 +230,8 @@ public class FineGrainedSlotManager implements SlotManager {
                             public void run() {
                                 while (true) {
                                     try {
-                                        Thread.sleep(5000L);
-                                        LOG.info("{}", FineGrainedSlotManager.this);
+                                        Thread.sleep(500L);
+                                        LOG.info("__debug: {}", FineGrainedSlotManager.this);
                                     } catch (InterruptedException e) {
                                         System.err.println("Error in debug." + e.getMessage());
                                     }
