@@ -19,7 +19,6 @@
 package org.apache.flink.runtime.jobmaster.slotpool;
 
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobmanager.scheduler.Locality;
 
 import javax.annotation.Nonnull;
@@ -37,7 +36,12 @@ class TasksBalancedLocationPreferenceSlotSelectionStrategy
             @Nonnull PhysicalSlotRequest physicalSlotRequest) {
         return freeSlotInfoTracker.getAvailableSlots().stream()
                 .map(freeSlotInfoTracker::getSlotInfo)
-                .filter(slotInfo -> slotInfo.getLoadableResourceProfile().isMatching(physicalSlotRequest.getPhysicalSlotResourceProfile()))
+                .filter(
+                        slotInfo ->
+                                slotInfo.getLoadableResourceProfile()
+                                        .isMatching(
+                                                physicalSlotRequest
+                                                        .getPhysicalSlotResourceProfile()))
                 .map(
                         slot ->
                                 new Tuple2<>(

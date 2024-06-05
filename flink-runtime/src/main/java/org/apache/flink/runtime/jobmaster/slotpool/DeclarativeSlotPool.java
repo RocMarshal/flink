@@ -135,6 +135,10 @@ public interface DeclarativeSlotPool {
         return new HashMap<>();
     }
 
+    default Map<PreferredResourceProfile, Integer> getPreferredResourceProfileCounter() {
+        return new HashMap<>();
+    }
+
     /**
      * Checks whether the slot pool contains a slot with the given {@link AllocationID} and if it is
      * free.

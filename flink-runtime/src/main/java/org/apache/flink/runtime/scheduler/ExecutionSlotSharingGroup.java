@@ -63,7 +63,9 @@ class ExecutionSlotSharingGroup implements WeightLoadable {
 
     @Nonnull
     LoadableResourceProfile getLoadableResourceProfile() {
-        return slotSharingGroup.getResourceProfile().toLoadableResourceProfile(new DefaultLoadingWeight(executionVertexIds.size()));
+        return slotSharingGroup
+                .getResourceProfile()
+                .toLoadableResourceProfile(new DefaultLoadingWeight(executionVertexIds.size()));
     }
 
     Set<ExecutionVertexID> getExecutionVertexIds() {

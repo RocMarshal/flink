@@ -59,7 +59,8 @@ class SharingPhysicalSlotRequestBulkTest {
     @Test
     void testCreation() {
         SharingPhysicalSlotRequestBulk bulk = createBulk();
-        assertThat(bulk.getPendingRequests()).contains(RP1.toEmptyLoadsResourceProfile(), RP2.toEmptyLoadsResourceProfile());
+        assertThat(bulk.getPendingRequests())
+                .contains(RP1.toEmptyLoadsResourceProfile(), RP2.toEmptyLoadsResourceProfile());
         assertThat(bulk.getAllocationIdsOfFulfilledRequests()).isEmpty();
     }
 
@@ -106,7 +107,8 @@ class SharingPhysicalSlotRequestBulkTest {
 
     private static SharingPhysicalSlotRequestBulk createBulk(
             BiConsumer<ExecutionVertexID, Throwable> canceller) {
-        Map<ExecutionSlotSharingGroup, LoadableResourceProfile> pendingRequests = new IdentityHashMap<>();
+        Map<ExecutionSlotSharingGroup, LoadableResourceProfile> pendingRequests =
+                new IdentityHashMap<>();
         pendingRequests.put(SG1, RP1.toEmptyLoadsResourceProfile());
         pendingRequests.put(SG2, RP2.toEmptyLoadsResourceProfile());
 

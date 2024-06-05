@@ -106,7 +106,7 @@ class DefaultAllocatedSlotPoolTest {
         final AllocatedSlot slot2 = createAllocatedSlot(owner);
 
         slotPool.addSlots(Arrays.asList(slot1, slot2), 0);
-        slotPool.reserveFreeSlot(slot1.getAllocationId(), slot1.getLoading());
+        slotPool.reserveFreeSlot(slot1.getAllocationId(), slot1.getExpectedLoading());
 
         final AllocatedSlotPool.AllocatedSlotsAndReservationStatus
                 allocatedSlotsAndReservationStatus = slotPool.removeSlots(owner);
@@ -153,7 +153,7 @@ class DefaultAllocatedSlotPoolTest {
 
         assertThat(
                         slotPool.reserveFreeSlot(
-                                allocatedSlot.getAllocationId(), allocatedSlot.getLoading()))
+                                allocatedSlot.getAllocationId(), allocatedSlot.getExpectedLoading()))
                 .isEqualTo(allocatedSlot);
 
         assertSlotPoolContainsFreeSlots(slotPool, freeSlots);
@@ -167,9 +167,9 @@ class DefaultAllocatedSlotPoolTest {
 
         slotPool.addSlots(Collections.singleton(slot), 0);
 
-        slotPool.reserveFreeSlot(slot.getAllocationId(), slot.getLoading());
+        slotPool.reserveFreeSlot(slot.getAllocationId(), slot.getExpectedLoading());
         assertThatThrownBy(
-                        () -> slotPool.reserveFreeSlot(slot.getAllocationId(), slot.getLoading()))
+                        () -> slotPool.reserveFreeSlot(slot.getAllocationId(), slot.getExpectedLoading()))
                 .isInstanceOf(IllegalStateException.class);
     }
 
@@ -183,7 +183,7 @@ class DefaultAllocatedSlotPoolTest {
 
         final AllocatedSlot slot = slots.iterator().next();
 
-        slotPool.reserveFreeSlot(slot.getAllocationId(), slot.getLoading());
+        slotPool.reserveFreeSlot(slot.getAllocationId(), slot.getExpectedLoading());
 
         final int releaseTime = 1;
         assertThat(slotPool.freeReservedSlot(slot.getAllocationId(), releaseTime)).isPresent();
@@ -239,7 +239,7 @@ class DefaultAllocatedSlotPoolTest {
 
         int numAllocatedSlots = 0;
         for (AllocatedSlot slot : slots) {
-            assertThat(slotPool.reserveFreeSlot(slot.getAllocationId(), slot.getLoading()))
+            assertThat(slotPool.reserveFreeSlot(slot.getAllocationId(), slot.getExpectedLoading()))
                     .isEqualTo(slot);
             freeSlotInfoTracker.reserveSlot(slot.getAllocationId());
             numAllocatedSlots++;
@@ -286,7 +286,7 @@ class DefaultAllocatedSlotPoolTest {
         final AllocatedSlot allocatedSlot = createAllocatedSlot(ResourceID.generate());
 
         slotPool.addSlots(Collections.singleton(allocatedSlot), 0);
-        slotPool.reserveFreeSlot(allocatedSlot.getAllocationId(), allocatedSlot.getLoading());
+        slotPool.reserveFreeSlot(allocatedSlot.getAllocationId(), allocatedSlot.getExpectedLoading());
 
         assertThat(slotPool.containsFreeSlot(allocatedSlot.getAllocationId())).isFalse();
     }

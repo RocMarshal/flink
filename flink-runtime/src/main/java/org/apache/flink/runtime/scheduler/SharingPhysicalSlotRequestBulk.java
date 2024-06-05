@@ -20,7 +20,6 @@ package org.apache.flink.runtime.scheduler;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
-import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotRequestBulk;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotRequestBulkChecker;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;

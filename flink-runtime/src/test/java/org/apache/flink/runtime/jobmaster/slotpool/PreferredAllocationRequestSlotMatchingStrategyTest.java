@@ -67,7 +67,8 @@ class PreferredAllocationRequestSlotMatchingStrategyTest {
                                 Collections.singleton(allocationId1)));
 
         final Collection<RequestSlotMatchingStrategy.RequestSlotMatch> requestSlotMatches =
-                strategy.matchRequestsAndSlots(slots, pendingRequests, new HashMap<>());
+                strategy.matchRequestsAndSlots(
+                        slots, pendingRequests, new HashMap<>(), new HashMap<>());
 
         assertThat(requestSlotMatches).hasSize(2);
 

@@ -38,7 +38,8 @@ public enum SimpleRequestSlotMatchingStrategy implements RequestSlotMatchingStra
     public Collection<RequestSlotMatch> matchRequestsAndSlots(
             Collection<? extends PhysicalSlot> slots,
             Collection<PendingRequest> pendingRequests,
-            Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight) {
+            Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight,
+            Map<PreferredResourceProfile, Integer> preferredResourceProfileCounter) {
         final Collection<RequestSlotMatch> resultingMatches = new ArrayList<>();
 
         // if pendingRequests has a special order, then let's preserve it
@@ -49,7 +50,8 @@ public enum SimpleRequestSlotMatchingStrategy implements RequestSlotMatchingStra
 
             while (pendingRequestIterator.hasNext()) {
                 final PendingRequest pendingRequest = pendingRequestIterator.next();
-                if (slot.getLoadableResourceProfile().isMatchingResource(pendingRequest.getLoadableResourceProfile())) {
+                if (slot.getLoadableResourceProfile()
+                        .isMatchingResource(pendingRequest.getLoadableResourceProfile())) {
                     resultingMatches.add(RequestSlotMatch.createFor(pendingRequest, slot));
                     pendingRequestIterator.remove();
                     break;

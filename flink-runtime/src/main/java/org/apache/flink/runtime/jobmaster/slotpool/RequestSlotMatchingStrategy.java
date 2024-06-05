@@ -38,7 +38,8 @@ public interface RequestSlotMatchingStrategy {
     Collection<RequestSlotMatch> matchRequestsAndSlots(
             Collection<? extends PhysicalSlot> slots,
             Collection<PendingRequest> pendingRequests,
-            Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight);
+            Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight,
+            Map<PreferredResourceProfile, Integer> preferredResourceProfileCounter);
 
     /** Result class representing matches. */
     final class RequestSlotMatch {

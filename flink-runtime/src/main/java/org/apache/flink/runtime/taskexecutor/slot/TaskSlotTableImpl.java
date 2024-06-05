@@ -40,6 +40,7 @@ import org.apache.flink.util.concurrent.FutureUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.time.Duration;
@@ -298,7 +299,7 @@ public class TaskSlotTableImpl<T extends TaskSlotPayload> implements TaskSlotTab
     public boolean allocateSlot(
             int requestedIndex,
             JobID jobId,
-            AllocationID allocationId,
+            @Nonnull AllocationID allocationId,
             LoadableResourceProfile resourceProfile,
             Duration slotTimeout) {
         checkRunning();

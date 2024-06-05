@@ -140,6 +140,8 @@ public interface AllocatedSlotPool {
      */
     Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight();
 
+    Map<PreferredResourceProfile, Integer> getPreferredResourceProfileCounter();
+
     /** Information about a free slot. */
     interface FreeSlotInfo {
         SlotInfo asSlotInfo();

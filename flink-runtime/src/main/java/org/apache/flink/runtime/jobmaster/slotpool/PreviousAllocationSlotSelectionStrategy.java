@@ -48,7 +48,8 @@ public class PreviousAllocationSlotSelectionStrategy implements SlotSelectionStr
 
     @Override
     public Optional<SlotInfoAndLocality> selectBestSlotForProfile(
-            @Nonnull FreeSlotInfoTracker freeSlotInfoTracker, @Nonnull PhysicalSlotRequest physicalSlotRequest) {
+            @Nonnull FreeSlotInfoTracker freeSlotInfoTracker,
+            @Nonnull PhysicalSlotRequest physicalSlotRequest) {
 
         final SlotProfile slotProfile = physicalSlotRequest.getSlotProfile();
         LOG.debug("Select best slot for physical slot request {}.", physicalSlotRequest);

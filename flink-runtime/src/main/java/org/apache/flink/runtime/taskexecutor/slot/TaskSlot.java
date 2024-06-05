@@ -111,7 +111,7 @@ public class TaskSlot<T extends TaskSlotPayload> implements AutoCloseableAsync {
     private final JobID jobId;
 
     /** Allocation id of this slot. */
-    private final AllocationID allocationId;
+    private @Nonnull final AllocationID allocationId;
 
     /** The closing future is completed when the slot is freed and closed. */
     private final CompletableFuture<Void> closingFuture;
@@ -124,7 +124,7 @@ public class TaskSlot<T extends TaskSlotPayload> implements AutoCloseableAsync {
             final LoadableResourceProfile loadableResourceProfile,
             final int memoryPageSize,
             final JobID jobId,
-            final AllocationID allocationId,
+            @Nonnull final AllocationID allocationId,
             final Executor asyncExecutor) {
 
         this.index = index;
@@ -135,7 +135,7 @@ public class TaskSlot<T extends TaskSlotPayload> implements AutoCloseableAsync {
         this.state = TaskSlotState.ALLOCATED;
 
         this.jobId = jobId;
-        this.allocationId = allocationId;
+        this.allocationId = Preconditions.checkNotNull(allocationId);
 
         this.memoryManager =
                 createMemoryManager(resourceProfile.getResourceProfile(), memoryPageSize);

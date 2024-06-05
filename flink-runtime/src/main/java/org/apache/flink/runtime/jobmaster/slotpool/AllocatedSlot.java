@@ -28,8 +28,6 @@ import org.apache.flink.runtime.jobmanager.slots.TaskManagerGateway;
 import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
-import javax.annotation.Nonnull;
-
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -63,7 +61,7 @@ class AllocatedSlot implements PhysicalSlot {
     /** The number of the slot on the TaskManager to which slot belongs. Purely informational. */
     private final int physicalSlotNumber;
 
-    private LoadingWeight loadingWeight;
+    private boolean loaded = false;
 
     private final AtomicReference<Payload> payloadReference;
 
@@ -81,7 +79,6 @@ class AllocatedSlot implements PhysicalSlot {
         this.physicalSlotNumber = physicalSlotNumber;
         this.resourceProfile = checkNotNull(resourceProfile).toEmptyLoadsResourceProfile();
         this.taskManagerGateway = checkNotNull(taskManagerGateway);
-        this.loadingWeight = null;
 
         payloadReference = new AtomicReference<>(null);
     }
@@ -97,8 +94,6 @@ class AllocatedSlot implements PhysicalSlot {
         this.physicalSlotNumber = physicalSlotNumber;
         this.resourceProfile = checkNotNull(resourceProfile);
         this.taskManagerGateway = checkNotNull(taskManagerGateway);
-        // todo add the loading in the first creation.
-        this.loadingWeight = LoadingWeight.EMPTY;
 
         payloadReference = new AtomicReference<>(null);
     }
@@ -138,6 +133,26 @@ class AllocatedSlot implements PhysicalSlot {
     @Override
     public boolean willBeOccupiedIndefinitely() {
         return isUsed() && payloadReference.get().willOccupySlotIndefinitely();
+    }
+
+    @Override
+    public LoadingWeight getCurrentLoading() {
+        return loaded ? resourceProfile.getLoading() : LoadingWeight.EMPTY;
+    }
+
+    @Override
+    public LoadingWeight getExpectedLoading() {
+        return resourceProfile.getLoading();
+    }
+
+    @Override
+    public boolean isLoaded() {
+        return loaded;
+    }
+
+    @Override
+    public void setLoaded(boolean loaded) {
+        this.loaded = loaded;
     }
 
     @Override
@@ -208,15 +223,5 @@ class AllocatedSlot implements PhysicalSlot {
                 + physicalSlotNumber
                 + " resourceProfile="
                 + resourceProfile;
-    }
-
-    @Nonnull
-    @Override
-    public LoadingWeight getLoading() {
-        return loadingWeight;
-    }
-
-    public void setLoading(LoadingWeight loadingWeight) {
-        this.loadingWeight = loadingWeight;
     }
 }

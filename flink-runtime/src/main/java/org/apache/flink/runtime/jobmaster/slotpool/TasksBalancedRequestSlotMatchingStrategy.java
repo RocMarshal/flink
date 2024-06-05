@@ -25,6 +25,7 @@ import org.apache.flink.util.Preconditions;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -43,7 +44,8 @@ public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatch
     public Collection<RequestSlotMatch> matchRequestsAndSlots(
             Collection<? extends PhysicalSlot> slots,
             Collection<PendingRequest> pendingRequests,
-            Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight) {
+            Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight,
+            Map<PreferredResourceProfile, Integer> preferredResourceProfileCounter) {
         if (pendingRequests.isEmpty()) {
             return Collections.emptyList();
         }
@@ -54,12 +56,18 @@ public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatch
                 getSlotsPerTaskExecutor(slots);
 
         for (PendingRequest request : sortedRequests) {
-            ResourceID candidateTaskExecutor = getCandidateTaskExecutor(taskExecutorsLoadingWeight);
+            // 设计： request loading=2, tm1: loading=1+1, tm2: 2, tm3: tm3
+            ResourceID candidateTaskExecutor =
+                    getCandidateTaskExecutor(
+                            request.getLoading(),
+                            taskExecutorsLoadingWeight,
+                            preferredResourceProfileCounter);
 
             List<? extends PhysicalSlot> slotCandidates = availableSlots.get(candidateTaskExecutor);
             Preconditions.checkState(!isNullOrEmpty(slotCandidates));
             for (PhysicalSlot slot : slotCandidates) {
-                if (slot.getLoadableResourceProfile().isMatchingResource(request.getLoadableResourceProfile())) {
+                if (slot.getLoadableResourceProfile()
+                        .isMatching(request.getLoadableResourceProfile())) {
                     resultingMatches.add(RequestSlotMatch.createFor(request, slot));
                     slotCandidates.remove(slot);
                     taskExecutorsLoadingWeight.compute(
@@ -94,11 +102,27 @@ public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatch
     }
 
     private ResourceID getCandidateTaskExecutor(
-            Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight) {
-        Optional<Map.Entry<ResourceID, LoadingWeight>> minOpt =
-                taskExecutorsLoadingWeight.entrySet().stream().min(Map.Entry.comparingByValue());
-        Preconditions.checkState(minOpt.isPresent());
-        return minOpt.get().getKey();
+            LoadingWeight preferredLoading,
+            Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight,
+            Map<PreferredResourceProfile, Integer> preferredResourceProfileCounter) {
+        final Map<ResourceID, LoadingWeight> map = new HashMap<>(taskExecutorsLoadingWeight);
+        while (!map.isEmpty()) {
+            Optional<Map.Entry<ResourceID, LoadingWeight>> minOpt =
+                    map.entrySet().stream().min(Map.Entry.comparingByValue());
+            ResourceID taskExecutorId = minOpt.orElseThrow(IllegalStateException::new).getKey();
+            PreferredResourceProfile preferredResourceProfile =
+                    new PreferredResourceProfile(preferredLoading, taskExecutorId);
+            Integer count =
+                    preferredResourceProfileCounter.getOrDefault(preferredResourceProfile, 0);
+            if (count > 0) {
+                preferredResourceProfileCounter.put(preferredResourceProfile, count - 1);
+                return taskExecutorId;
+            } else {
+                map.remove(taskExecutorId);
+            }
+        }
+        throw new IllegalStateException(
+                "Error in picking the task executor candidate to for assigning slot.");
     }
 
     @Override

@@ -271,7 +271,8 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
                     requestSlotMatchingStrategy.matchRequestsAndSlots(
                             newSlots,
                             pendingRequests.values(),
-                            getDeclarativeSlotPool().getTaskExecutorsLoadingWeight());
+                            getDeclarativeSlotPool().getTaskExecutorsLoadingWeight(),
+                            getDeclarativeSlotPool().getPreferredResourceProfileCounter());
             reserveMatchedFreeSlots(requestSlotMatches);
             fulfillMatchedSlots(requestSlotMatches);
             return;
@@ -287,7 +288,8 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
                 requestSlotMatchingStrategy.matchRequestsAndSlots(
                         receivedSlots,
                         pendingRequests.values(),
-                        getDeclarativeSlotPool().getTaskExecutorsLoadingWeight());
+                        getDeclarativeSlotPool().getTaskExecutorsLoadingWeight(),
+                        getDeclarativeSlotPool().getPreferredResourceProfileCounter());
         if (requestSlotMatches.size() == pendingRequests.size()) {
             reserveMatchedFreeSlots(requestSlotMatches);
             fulfillMatchedSlots(requestSlotMatches);
@@ -588,7 +590,8 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
         final Collection<PendingRequest> pendingBatchRequests = getPendingBatchRequests();
 
         if (!pendingBatchRequests.isEmpty()) {
-            final Set<LoadableResourceProfile> allResourceProfiles = getResourceProfilesFromAllSlots();
+            final Set<LoadableResourceProfile> allResourceProfiles =
+                    getResourceProfilesFromAllSlots();
 
             final Map<Boolean, List<PendingRequest>> fulfillableAndUnfulfillableRequests =
                     pendingBatchRequests.stream()
@@ -643,7 +646,8 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
             Set<LoadableResourceProfile> allocatedResourceProfiles) {
         return pendingRequest -> {
             for (LoadableResourceProfile allocatedResourceProfile : allocatedResourceProfiles) {
-                if (allocatedResourceProfile.isMatching(pendingRequest.getLoadableResourceProfile())) {
+                if (allocatedResourceProfile.isMatching(
+                        pendingRequest.getLoadableResourceProfile())) {
                     return true;
                 }
             }

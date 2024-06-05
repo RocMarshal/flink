@@ -60,7 +60,8 @@ public class PreferredAllocationRequestSlotMatchingStrategy implements RequestSl
     public Collection<RequestSlotMatch> matchRequestsAndSlots(
             Collection<? extends PhysicalSlot> slots,
             Collection<PendingRequest> pendingRequests,
-            Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight) {
+            Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight,
+            Map<PreferredResourceProfile, Integer> preferredResourceProfileCounter) {
         final Collection<RequestSlotMatch> requestSlotMatches = new ArrayList<>();
 
         final Map<AllocationID, PhysicalSlot> freeSlots =
@@ -94,7 +95,8 @@ public class PreferredAllocationRequestSlotMatchingStrategy implements RequestSl
             while (pendingRequestIterator.hasNext()) {
                 final PendingRequest pendingRequest = pendingRequestIterator.next();
 
-                if (freeSlot.getLoadableResourceProfile().isMatching(pendingRequest.getLoadableResourceProfile())
+                if (freeSlot.getLoadableResourceProfile()
+                                .isMatching(pendingRequest.getLoadableResourceProfile())
                         && pendingRequest
                                 .getPreferredAllocations()
                                 .contains(freeSlot.getAllocationId())) {
@@ -114,7 +116,10 @@ public class PreferredAllocationRequestSlotMatchingStrategy implements RequestSl
         if (Objects.nonNull(rollback) && !freeSlots.isEmpty() && !unmatchedRequests.isEmpty()) {
             requestSlotMatches.addAll(
                     rollback.matchRequestsAndSlots(
-                            freeSlots.values(), unmatchedRequests, taskExecutorsLoadingWeight));
+                            freeSlots.values(),
+                            unmatchedRequests,
+                            taskExecutorsLoadingWeight,
+                            preferredResourceProfileCounter));
         }
 
         return requestSlotMatches;

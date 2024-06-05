@@ -150,7 +150,12 @@ public final class ResourceCounter implements WeightLoadable {
 
             updateNewValue(newValues, profileLoading, newCnt);
         }
-        LOG.debug("__debug: internalAdd resourceCounter param entries {}, oldValues {} result: {}", entries, resources, newValues, new RuntimeException("__debug"));
+        LOG.debug(
+                "__debug: internalAdd resourceCounter param entries {}, oldValues {} result: {}",
+                entries,
+                resources,
+                newValues,
+                new RuntimeException("__debug"));
 
         return new ResourceCounter(newValues);
     }
@@ -240,7 +245,12 @@ public final class ResourceCounter implements WeightLoadable {
             updateNewValue(newValues, profileLoading, newValue);
         }
 
-        LOG.debug("__debug: internalSubtract resourceCounter param entries {}, oldValues {} result: {}", entries, resources, newValues, new RuntimeException("__debug"));
+        LOG.debug(
+                "__debug: internalSubtract resourceCounter param entries {}, oldValues {} result: {}",
+                entries,
+                resources,
+                newValues,
+                new RuntimeException("__debug"));
 
         return new ResourceCounter(newValues);
     }

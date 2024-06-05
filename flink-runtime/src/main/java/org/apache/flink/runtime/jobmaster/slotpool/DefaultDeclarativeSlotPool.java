@@ -333,7 +333,8 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
         } else {
             // use ANY as wildcard as there is no practical purpose for a slot with 0 resources
             return Optional.of(
-                    ResourceProfile.ANY.toLoadableResourceProfile(resourceProfileTryAccepted.getLoading()));
+                    ResourceProfile.ANY.toLoadableResourceProfile(
+                            resourceProfileTryAccepted.getLoading()));
         }
     }
 
@@ -417,7 +418,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
                         slotPool.getSlotInformation(allocationId).orElse(null),
                         "No matching resource profile loading weight found for %s",
                         allocationId)
-                .getLoading();
+                .getExpectedLoading();
     }
 
     @Override
@@ -481,7 +482,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
         freedSlot.ifPresent(
                 allocatedSlot -> {
                     // clear loading weight.
-                    allocatedSlot.setLoading(LoadingWeight.EMPTY);
+                    allocatedSlot.setLoaded(false);
                     releasePayload(Collections.singleton(allocatedSlot), cause);
                     newSlotsListener.notifyNewSlotsAreAvailable(
                             Collections.singletonList(allocatedSlot));
@@ -563,15 +564,13 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
             Collection<AllocatedSlot> slots,
             Exception cause) {
 
-        // todo
         ResourceCounter previouslyFulfilledRequirements =
                 getFulfilledRequirements(currentlyReservedSlots);
 
         releasePayload(currentlyReservedSlots, cause);
         releaseSlots(slots, cause);
-        currentlyReservedSlots.forEach(
-                weightLoadable -> weightLoadable.setLoading(LoadingWeight.EMPTY));
-        slots.forEach(weightLoadable -> weightLoadable.setLoading(LoadingWeight.EMPTY));
+        currentlyReservedSlots.forEach(weightLoadable -> weightLoadable.setLoaded(false));
+        slots.forEach(weightLoadable -> weightLoadable.setLoaded(false));
         return previouslyFulfilledRequirements;
     }
 
@@ -648,7 +647,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
             fulfilledResourceRequirements =
                     fulfilledResourceRequirements.subtract(
                             matchingResourceProfile.toLoadableResourceProfile(
-                                    slotToReturn.getLoading()));
+                                    slotToReturn.getExpectedLoading()));
             slotToRequirementProfileMappings.remove(slotToReturn.getAllocationId());
 
             final CompletableFuture<Acknowledge> freeSlotFuture =
@@ -686,6 +685,11 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
     }
 
     @Override
+    public Map<PreferredResourceProfile, Integer> getPreferredResourceProfileCounter() {
+        return slotPool.getPreferredResourceProfileCounter();
+    }
+
+    @Override
     public boolean containsFreeSlot(AllocationID allocationId) {
         return slotPool.containsFreeSlot(allocationId);
     }
@@ -706,7 +710,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
             resourceDecrement =
                     resourceDecrement.add(
                             matchingResourceProfile.toLoadableResourceProfile(
-                                    allocatedSlot.getLoading()));
+                                    allocatedSlot.getExpectedLoading()));
         }
 
         return resourceDecrement;

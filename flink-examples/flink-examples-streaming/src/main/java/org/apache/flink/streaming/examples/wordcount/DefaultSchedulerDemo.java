@@ -41,8 +41,12 @@ public class DefaultSchedulerDemo {
         conf.set(TaskManagerOptions.MINI_CLUSTER_NUM_TASK_MANAGERS, 3);
         conf.set(RestOptions.ENABLE_FLAMEGRAPH, true);
 
-        conf.setString(WebOptions.LOG_PATH,"/Users/yuepeng.pan/acommunity/flink/flink-examples/flink-examples-streaming/src/main/resources/job.log");
-        conf.setString(ConfigConstants.TASK_MANAGER_LOG_PATH_KEY,"/Users/yuepeng.pan/acommunity/flink/flink-examples/flink-examples-streaming/src/main/resources/job.log");
+        conf.setString(
+                WebOptions.LOG_PATH,
+                "/Users/yuepeng.pan/acommunity/flink/flink-examples/flink-examples-streaming/src/main/resources/job.log");
+        conf.setString(
+                ConfigConstants.TASK_MANAGER_LOG_PATH_KEY,
+                "/Users/yuepeng.pan/acommunity/flink/flink-examples/flink-examples-streaming/src/main/resources/job.log");
 
         conf.set(
                 TaskManagerOptions.TASK_MANAGER_LOAD_BALANCE_MODE,

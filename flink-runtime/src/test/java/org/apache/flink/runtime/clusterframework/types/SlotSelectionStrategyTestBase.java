@@ -84,6 +84,7 @@ abstract class SlotSelectionStrategyTestBase {
 
     protected Optional<SlotSelectionStrategy.SlotInfoAndLocality> runMatching(
             SlotProfile slotProfile) {
-        return selectionStrategy.selectBestSlotForProfile(candidates, new PhysicalSlotRequest(new SlotRequestId(),slotProfile, true));
+        return selectionStrategy.selectBestSlotForProfile(
+                candidates, new PhysicalSlotRequest(new SlotRequestId(), slotProfile, true));
     }
 }

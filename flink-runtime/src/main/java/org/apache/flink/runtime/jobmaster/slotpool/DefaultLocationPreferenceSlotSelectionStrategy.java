@@ -19,7 +19,6 @@
 package org.apache.flink.runtime.jobmaster.slotpool;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
-import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobmanager.scheduler.Locality;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
 
@@ -38,7 +37,9 @@ class DefaultLocationPreferenceSlotSelectionStrategy
             @Nonnull PhysicalSlotRequest physicalSlotRequest) {
         for (AllocationID allocationId : freeSlotInfoTracker.getAvailableSlots()) {
             SlotInfo candidate = freeSlotInfoTracker.getSlotInfo(allocationId);
-            if (candidate.getLoadableResourceProfile().isMatching(physicalSlotRequest.getPhysicalSlotResourceProfile())) {
+            if (candidate
+                    .getLoadableResourceProfile()
+                    .isMatching(physicalSlotRequest.getPhysicalSlotResourceProfile())) {
                 return Optional.of(SlotInfoAndLocality.of(candidate, Locality.UNCONSTRAINED));
             }
         }

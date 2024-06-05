@@ -43,7 +43,8 @@ public abstract class LocationPreferenceSlotSelectionStrategy implements SlotSel
 
     @Override
     public Optional<SlotInfoAndLocality> selectBestSlotForProfile(
-            @Nonnull FreeSlotInfoTracker freeSlotInfoTracker, @Nonnull PhysicalSlotRequest physicalSlotRequest) {
+            @Nonnull FreeSlotInfoTracker freeSlotInfoTracker,
+            @Nonnull PhysicalSlotRequest physicalSlotRequest) {
 
         final SlotProfile slotProfile = physicalSlotRequest.getSlotProfile();
 
@@ -87,7 +88,9 @@ public abstract class LocationPreferenceSlotSelectionStrategy implements SlotSel
         for (AllocationID allocationId : freeSlotInfoTracker.getAvailableSlots()) {
             SlotInfo candidate = freeSlotInfoTracker.getSlotInfo(allocationId);
 
-            if (candidate.getLoadableResourceProfile().isMatching(physicalSlotRequest.getPhysicalSlotResourceProfile())) {
+            if (candidate
+                    .getLoadableResourceProfile()
+                    .isMatching(physicalSlotRequest.getPhysicalSlotResourceProfile())) {
 
                 // this gets candidate is local-weigh
                 int localWeigh =

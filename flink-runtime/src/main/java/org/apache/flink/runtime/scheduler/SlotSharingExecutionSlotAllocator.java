@@ -267,9 +267,11 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
 
         for (ExecutionSlotSharingGroup group : executionSlotSharingGroups) {
             SlotRequestId physicalSlotRequestId = new SlotRequestId();
-            LoadableResourceProfile physicalSlotResourceProfile = getPhysicalSlotResourceProfile(group);
+            LoadableResourceProfile physicalSlotResourceProfile =
+                    getPhysicalSlotResourceProfile(group);
             SlotProfile slotProfile =
-                    sharedSlotProfileRetriever.getSlotProfile(group, physicalSlotResourceProfile.getResourceProfile());
+                    sharedSlotProfileRetriever.getSlotProfile(
+                            group, physicalSlotResourceProfile.getResourceProfile());
             PhysicalSlotRequest request =
                     new PhysicalSlotRequest(
                             physicalSlotRequestId,
@@ -293,7 +295,9 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                     SharedSlot slot =
                             new SharedSlot(
                                     slotRequestId,
-                                    requestToPhysicalResources.get(slotRequestId).getResourceProfile(),
+                                    requestToPhysicalResources
+                                            .get(slotRequestId)
+                                            .getResourceProfile(),
                                     group,
                                     physicalSlotFuture,
                                     slotWillBeOccupiedIndefinitely,
@@ -328,7 +332,8 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                     .reduce(
                             ResourceProfile.ZERO,
                             (r, e) -> r.merge(resourceProfileRetriever.apply(e)),
-                            ResourceProfile::merge).toLoadableResourceProfile(new DefaultLoadingWeight(num));
+                            ResourceProfile::merge)
+                    .toLoadableResourceProfile(new DefaultLoadingWeight(num));
         }
     }
 
@@ -341,7 +346,8 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
                                 Collectors.toMap(
                                         group -> group,
                                         group ->
-                                                slots.get(group).getExecutionSlotSharingGroup()
+                                                slots.get(group)
+                                                        .getExecutionSlotSharingGroup()
                                                         .getLoadableResourceProfile()));
         SharingPhysicalSlotRequestBulk bulk =
                 new SharingPhysicalSlotRequestBulk(

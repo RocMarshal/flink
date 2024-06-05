@@ -56,7 +56,7 @@ public class SimpleRequestSlotMatchingStrategyTest {
 
         final Collection<RequestSlotMatchingStrategy.RequestSlotMatch> requestSlotMatches =
                 simpleRequestSlotMatchingStrategy.matchRequestsAndSlots(
-                        slots, pendingRequests, new HashMap<>());
+                        slots, pendingRequests, new HashMap<>(), new HashMap<>());
 
         assertThat(requestSlotMatches).hasSize(1);
         assertThat(
@@ -90,7 +90,7 @@ public class SimpleRequestSlotMatchingStrategyTest {
 
         final Collection<RequestSlotMatchingStrategy.RequestSlotMatch> requestSlotMatches =
                 simpleRequestSlotMatchingStrategy.matchRequestsAndSlots(
-                        slots, pendingRequests, new HashMap<>());
+                        slots, pendingRequests, new HashMap<>(), new HashMap<>());
 
         assertThat(requestSlotMatches).hasSize(1);
         assertThat(

@@ -146,7 +146,7 @@ final class PendingRequest implements WeightLoadable {
     }
 
     boolean fulfill(PhysicalSlot slot) {
-        slot.setLoading(getLoading());
+        slot.setLoaded(true);
         return slotFuture.complete(slot);
     }
 

@@ -35,8 +35,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 /** Default {@link AllocatedSlotPool} implementation. */
 public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
@@ -90,6 +92,7 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
     private void addSlotInternal(AllocatedSlot slot, long currentTime) {
         registeredSlots.put(slot.getAllocationId(), slot);
         freeSlots.addFreeSlot(slot.getAllocationId(), slot.getTaskManagerId(), currentTime);
+        slot.setLoaded(false);
     }
 
     @Override
@@ -179,7 +182,7 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
                 freeSlots.removeFreeSlot(allocationId, slot.getTaskManagerId()) != null,
                 "The slot with id %s was not free.",
                 allocationId);
-        slot.setLoading(loadingWeight);
+        slot.setLoaded(true);
         return registeredSlots.get(allocationId);
     }
 
@@ -189,6 +192,7 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
 
         if (allocatedSlot != null && !freeSlots.contains(allocationId)) {
             freeSlots.addFreeSlot(allocationId, allocatedSlot.getTaskManagerId(), currentTime);
+            allocatedSlot.setLoaded(false);
             return Optional.of(allocatedSlot);
         } else {
             return Optional.empty();
@@ -222,7 +226,7 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
             }
             AllocatedSlot allocatedSlot =
                     Preconditions.checkNotNull(registeredSlots.get(allocationID));
-            result = result.merge(allocatedSlot.getLoading());
+            result = result.merge(allocatedSlot.getCurrentLoading());
         }
 
         return result;
@@ -239,7 +243,28 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
                     (resourceID1, oldLoadingWeight) ->
                             oldLoadingWeight == null
                                     ? LoadingWeight.EMPTY
-                                    : oldLoadingWeight.merge(allocatedSlot.getLoading()));
+                                    : oldLoadingWeight.merge(allocatedSlot.getCurrentLoading()));
+        }
+        return result;
+    }
+
+    @Override
+    public Map<PreferredResourceProfile, Integer> getPreferredResourceProfileCounter() {
+        final Map<PreferredResourceProfile, Integer> result = new HashMap<>();
+        for (AllocationID allocationID : freeSlots.freeSlotsSince.keySet()) {
+            final AllocatedSlot slot =
+                    Preconditions.checkNotNull(registeredSlots.get(allocationID));
+            result.compute(
+                    new PreferredResourceProfile(
+                            slot.getExpectedLoading(), slot.getTaskManagerId()),
+                    new BiFunction<PreferredResourceProfile, Integer, Integer>() {
+                        @Override
+                        public Integer apply(
+                                PreferredResourceProfile preferredResourceProfile,
+                                Integer oldValue) {
+                            return Objects.isNull(oldValue) ? 1 : oldValue + 1;
+                        }
+                    });
         }
         return result;
     }
@@ -288,9 +313,6 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
                             int newCount = count - 1;
                             return newCount == 0 ? null : newCount;
                         });
-            }
-            if (freeSince == null) {
-                System.out.println();
             }
 
             return freeSince;
