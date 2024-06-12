@@ -28,6 +28,7 @@ import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutor;
 import org.apache.flink.runtime.jobmanager.slots.TaskManagerGateway;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.runtime.messages.Acknowledge;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.slots.DefaultRequirementMatcher;
 import org.apache.flink.runtime.slots.RequirementMatcher;
 import org.apache.flink.runtime.slots.ResourceRequirement;
@@ -369,8 +370,10 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
 
     @Override
     public PhysicalSlot reserveFreeSlot(
-            AllocationID allocationId, ResourceProfile requiredSlotProfile) {
-        final AllocatedSlot allocatedSlot = slotPool.reserveFreeSlot(allocationId);
+            AllocationID allocationId,
+            ResourceProfile requiredSlotProfile,
+            LoadingWeight loadingWeight) {
+        final AllocatedSlot allocatedSlot = slotPool.reserveFreeSlot(allocationId, loadingWeight);
 
         Preconditions.checkState(
                 allocatedSlot.getResourceProfile().isMatching(requiredSlotProfile),
@@ -422,6 +425,8 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
 
         freedSlot.ifPresent(
                 allocatedSlot -> {
+                    // clear loading weight.
+                    allocatedSlot.setLoading(LoadingWeight.EMPTY);
                     releasePayload(Collections.singleton(allocatedSlot), cause);
                     newSlotsListener.notifyNewSlotsAreAvailable(
                             Collections.singletonList(allocatedSlot));
@@ -505,7 +510,9 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
 
         releasePayload(currentlyReservedSlots, cause);
         releaseSlots(slots, cause);
-
+        currentlyReservedSlots.forEach(
+                weightLoadable -> weightLoadable.setLoading(LoadingWeight.EMPTY));
+        slots.forEach(weightLoadable -> weightLoadable.setLoading(LoadingWeight.EMPTY));
         return previouslyFulfilledRequirements;
     }
 
@@ -520,6 +527,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
         final Collection<AllocatedSlotPool.FreeSlotInfo> freeSlotsInformation =
                 slotPool.getFreeSlotInfoTracker().getFreeSlotsWithIdleSinceInformation();
 
+        // todo
         ResourceCounter excessResources =
                 fulfilledResourceRequirements.subtract(totalResourceRequirements);
 
@@ -532,9 +540,9 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
             final AllocatedSlotPool.FreeSlotInfo idleSlot = freeSlotIterator.next();
 
             if (currentTimeMillis >= idleSlot.getFreeSince() + idleSlotTimeout.toMilliseconds()) {
+                // todo
                 final ResourceProfile matchingProfile =
                         getMatchingResourceProfile(idleSlot.getAllocationId());
-
                 if (excessResources.containsResource(matchingProfile)) {
                     excessResources = excessResources.subtract(matchingProfile, 1);
                     final Optional<AllocatedSlot> removedSlot =
@@ -569,8 +577,10 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
                 log.info("Releasing slot [{}].", slotToReturn.getAllocationId());
             }
 
+            // todo
             final ResourceProfile matchingResourceProfile =
                     getMatchingResourceProfile(slotToReturn.getAllocationId());
+            // todo
             fulfilledResourceRequirements =
                     fulfilledResourceRequirements.subtract(matchingResourceProfile, 1);
             slotToRequirementProfileMappings.remove(slotToReturn.getAllocationId());
@@ -602,6 +612,11 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
     @Override
     public Collection<? extends SlotInfo> getAllSlotsInformation() {
         return slotPool.getAllSlotsInformation();
+    }
+
+    @Override
+    public Map<TaskManagerLocation, LoadingWeight> getTaskExecutorsLoadingWeight() {
+        return slotPool.getTaskExecutorsLoadingWeight();
     }
 
     @Override

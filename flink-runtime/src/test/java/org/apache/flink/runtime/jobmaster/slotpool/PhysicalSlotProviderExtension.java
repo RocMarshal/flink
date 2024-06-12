@@ -23,6 +23,7 @@ import org.apache.flink.runtime.clusterframework.types.SlotProfileTestingUtils;
 import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutor;
 import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutorServiceAdapter;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -98,7 +99,8 @@ public class PhysicalSlotProviderExtension implements BeforeEachCallback, AfterE
         return new PhysicalSlotRequest(
                 new SlotRequestId(),
                 SlotProfileTestingUtils.noLocality(ResourceProfile.UNKNOWN),
-                false);
+                false,
+                LoadingWeight.EMPTY);
     }
 
     public ComponentMainThreadExecutor getMainThreadExecutor() {
