@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.jobmaster.slotpool;
 
 import org.apache.flink.runtime.jobmaster.SlotContext;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 
 /**
  * The context of an {@link AllocatedSlot}. This represent an interface to classes outside the slot
@@ -34,6 +35,15 @@ public interface PhysicalSlot extends SlotContext {
      * @return true if the payload could be assigned, otherwise false
      */
     boolean tryAssignPayload(Payload payload);
+
+    /**
+     * Set the loading.
+     *
+     * @param loadingWeight loading weight to set.
+     */
+    default void setLoading(LoadingWeight loadingWeight) {
+        throw new UnsupportedOperationException();
+    }
 
     /** Payload which can be assigned to an {@link AllocatedSlot}. */
     interface Payload {
