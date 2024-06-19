@@ -73,7 +73,7 @@ public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatch
     public Collection<RequestSlotMatch> matchRequestsAndSlots(
             Collection<? extends PhysicalSlot> slots,
             Collection<PendingRequest> pendingRequests,
-            Map<TaskManagerLocation, LoadingWeight> taskExecutorsLoading) {
+            Map<TaskManagerLocation, LoadingWeight> taskExecutorsLoad) {
         if (pendingRequests.isEmpty()) {
             return Collections.emptyList();
         }
@@ -81,8 +81,8 @@ public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatch
         final Collection<RequestSlotMatch> resultingMatches = new ArrayList<>();
         final List<PendingRequest> sortedRequests =
                 WeightLoadable.sortByLoadingDescend(pendingRequests);
-        final Map<ResourceProfile, PriorityQueue<PhysicalSlot>> availableSlotsMap =
-                getSlotCandidatesByResourceProfile(slots, taskExecutorsLoading);
+        final Map<ResourceProfile, PriorityQueue<PhysicalSlot>> profileToSlotMap =
+                getSlotCandidatesByResourceProfile(slots, taskExecutorsLoad);
         final Map<TaskManagerLocation, Set<PhysicalSlot>> slotsPerTaskExecutor =
                 slots.stream()
                         .collect(
@@ -90,12 +90,12 @@ public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatch
                                         PhysicalSlot::getTaskManagerLocation, Collectors.toSet()));
 
         for (PendingRequest request : sortedRequests) {
-            tryMatchPhysicalSlot(request, availableSlotsMap, taskExecutorsLoading)
+            tryMatchPhysicalSlot(request, profileToSlotMap, taskExecutorsLoad)
                     .ifPresent(
                             physicalSlot -> {
                                 updateReferenceAfterMatching(
-                                        availableSlotsMap,
-                                        taskExecutorsLoading,
+                                        profileToSlotMap,
+                                        taskExecutorsLoad,
                                         slotsPerTaskExecutor,
                                         physicalSlot,
                                         request.getLoading());
@@ -117,12 +117,12 @@ public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatch
             result.compute(
                     slot.getResourceProfile(),
                     (resourceProfile, oldSlots) -> {
-                        PriorityQueue<PhysicalSlot> valueSet =
+                        PriorityQueue<PhysicalSlot> values =
                                 Objects.isNull(oldSlots)
                                         ? new PriorityQueue<>(comparator)
                                         : oldSlots;
-                        valueSet.add(slot);
-                        return valueSet;
+                        values.add(slot);
+                        return values;
                     });
         }
         return result;
@@ -130,12 +130,12 @@ public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatch
 
     private Optional<PhysicalSlot> tryMatchPhysicalSlot(
             PendingRequest request,
-            Map<ResourceProfile, PriorityQueue<PhysicalSlot>> availableSlotsMap,
-            Map<TaskManagerLocation, LoadingWeight> taskExecutorsLoading) {
+            Map<ResourceProfile, PriorityQueue<PhysicalSlot>> profileToSlotMap,
+            Map<TaskManagerLocation, LoadingWeight> taskExecutorsLoad) {
         final ResourceProfile requestProfile = request.getResourceProfile();
 
         final Set<ResourceProfile> candidateProfiles =
-                availableSlotsMap.keySet().stream()
+                profileToSlotMap.keySet().stream()
                         .filter(slotProfile -> slotProfile.isMatching(requestProfile))
                         .collect(Collectors.toSet());
 
@@ -143,40 +143,50 @@ public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatch
                 .map(
                         candidateProfile -> {
                             PriorityQueue<PhysicalSlot> slots =
-                                    availableSlotsMap.get(candidateProfile);
+                                    profileToSlotMap.get(candidateProfile);
                             return CollectionUtil.isNullOrEmpty(slots) ? null : slots.peek();
                         })
                 .filter(Objects::nonNull)
-                .min(new DynamicSlotLoadingComparator(taskExecutorsLoading));
+                .min(new DynamicSlotLoadingComparator(taskExecutorsLoad));
     }
 
     private void updateReferenceAfterMatching(
-            Map<ResourceProfile, PriorityQueue<PhysicalSlot>> availableSlotsMap,
-            Map<TaskManagerLocation, LoadingWeight> taskExecutorsLoading,
+            Map<ResourceProfile, PriorityQueue<PhysicalSlot>> profileToSlotMap,
+            Map<TaskManagerLocation, LoadingWeight> taskExecutorsLoad,
             Map<TaskManagerLocation, Set<PhysicalSlot>> slotsPerTaskExecutor,
             PhysicalSlot targetSlot,
             LoadingWeight loading) {
         final ResourceProfile slotProfile = targetSlot.getResourceProfile();
 
         // update the loading for the target task executor.
-        taskExecutorsLoading.compute(
+        taskExecutorsLoad.compute(
                 targetSlot.getTaskManagerLocation(),
                 (taskManagerLocation, oldLoading) ->
                         oldLoading == null ? loading : oldLoading.merge(loading));
         // update the sorted set for slots that is located on the same task executor as targetSlot.
-        slotsPerTaskExecutor
-                .getOrDefault(targetSlot.getTaskManagerLocation(), new HashSet<>())
-                .forEach(
-                        slot -> {
-                            PriorityQueue<PhysicalSlot> physicalSlots =
-                                    availableSlotsMap.get(slotProfile);
-                            Preconditions.checkNotNull(physicalSlots);
-                            // Re-add for the latest order.
-                            physicalSlots.remove(slot);
-                            if (!slot.equals(targetSlot)) {
-                                physicalSlots.add(slot);
-                            }
-                        });
+        final TaskManagerLocation tmLocation = targetSlot.getTaskManagerLocation();
+        final Set<PhysicalSlot> slotToReSort = slotsPerTaskExecutor.get(tmLocation);
+        for (PhysicalSlot slot : slotToReSort) {
+            PriorityQueue<PhysicalSlot> slotsOfProfile = profileToSlotMap.get(slot.getResourceProfile());
+            Preconditions.checkNotNull(slotsOfProfile);
+            // Re-add for the latest order.
+            if (!slotsOfProfile.contains(slot)) {
+                System.out.println();
+            }
+            slotsOfProfile.remove(slot);
+//            System.out.println("rpOfTargetSlot "+targetSlot.getResourceProfile() + " slotRP "+slot.getResourceProfile()+" target "+ targetSlot);
+//            System.out.println("remove " + slot.toString() +" from "+slotsOfProfile);
+//            System.out.println();
+            if (!slot.equals(targetSlot)) {
+                slotsOfProfile.add(slot);
+            } else {
+                Set<PhysicalSlot> slotOfTm = slotsPerTaskExecutor.getOrDefault(
+                        targetSlot.getTaskManagerLocation(),
+                        new HashSet<>());
+                slotOfTm.remove(targetSlot);
+
+            }
+        }
     }
 
     @Override
