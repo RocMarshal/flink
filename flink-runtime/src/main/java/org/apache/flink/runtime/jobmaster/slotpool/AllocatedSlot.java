@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.jobmaster.slotpool;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.SlotID;
@@ -28,7 +29,10 @@ import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -65,6 +69,7 @@ class AllocatedSlot implements PhysicalSlot {
     private final AtomicReference<Payload> payloadReference;
 
     private @Nonnull LoadingWeight loadingWeight;
+    private @Nullable LoadingWeight previousLoadingWeight;
 
     // ------------------------------------------------------------------------
 
@@ -163,7 +168,15 @@ class AllocatedSlot implements PhysicalSlot {
 
     @Override
     public void setLoading(LoadingWeight loadingWeight) {
+        this.previousLoadingWeight = this.loadingWeight;
         this.loadingWeight = Preconditions.checkNotNull(loadingWeight);
+    }
+
+    @Override
+    public Optional<LoadableResourceProfile> getPreviousLoadableResourceProfile() {
+        return Objects.isNull(previousLoadingWeight)
+                ? Optional.empty()
+                : Optional.of(resourceProfile.toLoadable(previousLoadingWeight));
     }
 
     @Nonnull

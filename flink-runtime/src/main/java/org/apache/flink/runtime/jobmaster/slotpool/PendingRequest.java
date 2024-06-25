@@ -20,6 +20,7 @@ package org.apache.flink.runtime.jobmaster.slotpool;
 
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
 import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
@@ -105,6 +106,10 @@ final class PendingRequest implements WeightLoadable {
         return slotFuture;
     }
 
+    LoadableResourceProfile getLoadableResourceProfile() {
+        return resourceProfile.toLoadable(loadingWeight);
+    }
+
     void failRequest(Exception cause) {
         slotFuture.completeExceptionally(cause);
     }
@@ -132,7 +137,10 @@ final class PendingRequest implements WeightLoadable {
     }
 
     boolean fulfill(PhysicalSlot slot) {
-        slot.setLoading(loadingWeight);
+        // The loading weight of slot was set when reserving free slot at slot pool side.
+        Preconditions.checkState(
+                slot.getLoading().equals(loadingWeight),
+                "Unexpected loading weight, it may be a bug.");
         return slotFuture.complete(slot);
     }
 

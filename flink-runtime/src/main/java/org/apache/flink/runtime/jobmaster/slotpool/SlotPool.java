@@ -20,8 +20,8 @@ package org.apache.flink.runtime.jobmaster.slotpool;
 
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
-import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutor;
 import org.apache.flink.runtime.jobmanager.slots.TaskManagerGateway;
 import org.apache.flink.runtime.jobmaster.AllocatedSlotReport;
@@ -29,7 +29,6 @@ import org.apache.flink.runtime.jobmaster.JobMasterId;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
 import org.apache.flink.runtime.resourcemanager.ResourceManagerGateway;
-import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.taskexecutor.slot.SlotOffer;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
@@ -139,35 +138,14 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      *
      * @param slotRequestId identifying the requested slot
      * @param allocationID the allocation id of the requested available slot
-     * @param requirementProfile resource profile of the requirement for which to allocate the slot
-     * @return the previously available slot with the given allocation id, if a slot with this
-     *     allocation id exists
-     */
-    default Optional<PhysicalSlot> allocateAvailableSlot(
-            SlotRequestId slotRequestId,
-            AllocationID allocationID,
-            ResourceProfile requirementProfile) {
-        return allocateAvailableSlot(
-                slotRequestId, allocationID, requirementProfile, LoadingWeight.EMPTY);
-    }
-
-    /**
-     * Allocates the available slot with the given allocation id under the given request id for the
-     * given requirement profile. The slot must be able to fulfill the requirement profile,
-     * otherwise an {@link IllegalStateException} will be thrown.
-     *
-     * @param slotRequestId identifying the requested slot
-     * @param allocationID the allocation id of the requested available slot
-     * @param requirementProfile resource profile of the requirement for which to allocate the slot
-     * @param loadingWeight loading weight.
+     * @param loadableResourceProfile resource profile of the requirement with loading for which to allocate the slot
      * @return the previously available slot with the given allocation id, if a slot with this
      *     allocation id exists
      */
     Optional<PhysicalSlot> allocateAvailableSlot(
             SlotRequestId slotRequestId,
             AllocationID allocationID,
-            ResourceProfile requirementProfile,
-            LoadingWeight loadingWeight);
+            LoadableResourceProfile loadableResourceProfile);
 
     /**
      * Request the allocation of a new slot from the resource manager. This method will not return a
@@ -175,17 +153,16 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      * pool that is immediately allocated and returned.
      *
      * @param slotRequestId identifying the requested slot
-     * @param resourceProfile resource profile that specifies the resource requirements for the
+     * @param loadableResourceProfile resource profile with loading that specifies the resource requirements for the
      *     requested slot
      * @param timeout timeout for the allocation procedure
      * @return a newly allocated slot that was previously not available.
      */
     default CompletableFuture<PhysicalSlot> requestNewAllocatedSlot(
-            SlotRequestId slotRequestId, ResourceProfile resourceProfile, @Nullable Time timeout) {
+            SlotRequestId slotRequestId, LoadableResourceProfile loadableResourceProfile, @Nullable Time timeout) {
         return requestNewAllocatedSlot(
                 slotRequestId,
-                resourceProfile,
-                LoadingWeight.EMPTY,
+                loadableResourceProfile,
                 Collections.emptyList(),
                 timeout);
     }
@@ -196,40 +173,17 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      * pool that is immediately allocated and returned.
      *
      * @param slotRequestId identifying the requested slot
-     * @param resourceProfile resource profile that specifies the resource requirements for the
+     * @param loadableResourceProfile resource profile with loading that specifies the resource requirements for the
      *     requested slot
-     * @param loadingWeight loading weight.
      * @param preferredAllocations preferred allocations for the new allocated slot
      * @param timeout timeout for the allocation procedure
      * @return a newly allocated slot that was previously not available.
      */
     CompletableFuture<PhysicalSlot> requestNewAllocatedSlot(
             SlotRequestId slotRequestId,
-            ResourceProfile resourceProfile,
-            LoadingWeight loadingWeight,
+            LoadableResourceProfile loadableResourceProfile,
             Collection<AllocationID> preferredAllocations,
             @Nullable Time timeout);
-
-    /**
-     * Request the allocation of a new slot from the resource manager. This method will not return a
-     * slot from the already available slots from the pool, but instead will add a new slot to that
-     * pool that is immediately allocated and returned.
-     *
-     * @param slotRequestId identifying the requested slot
-     * @param resourceProfile resource profile that specifies the resource requirements for the
-     *     requested slot
-     * @param preferredAllocations preferred allocations for the new allocated slot
-     * @param timeout timeout for the allocation procedure
-     * @return a newly allocated slot that was previously not available.
-     */
-    default CompletableFuture<PhysicalSlot> requestNewAllocatedSlot(
-            SlotRequestId slotRequestId,
-            ResourceProfile resourceProfile,
-            Collection<AllocationID> preferredAllocations,
-            @Nullable Time timeout) {
-        return requestNewAllocatedSlot(
-                slotRequestId, resourceProfile, LoadingWeight.EMPTY, preferredAllocations, timeout);
-    }
 
     /**
      * Requests the allocation of a new batch slot from the resource manager. Unlike the normal
@@ -237,19 +191,18 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      * Moreover, it won't react to failure signals from the resource manager.
      *
      * @param slotRequestId identifying the requested slot
-     * @param resourceProfile resource profile that specifies the resource requirements for the
-     *     requested batch slot
+     * @param loadableResourceProfile resource profile with loading that specifies the resource requirements for the requested batch slot
      * @return a future which is completed with newly allocated batch slot
      */
     default CompletableFuture<PhysicalSlot> requestNewAllocatedBatchSlot(
-            SlotRequestId slotRequestId, ResourceProfile resourceProfile) {
+            SlotRequestId slotRequestId, LoadableResourceProfile loadableResourceProfile) {
         return requestNewAllocatedBatchSlot(
-                slotRequestId, resourceProfile, Collections.emptyList());
+                slotRequestId, loadableResourceProfile, Collections.emptyList());
     }
 
     CompletableFuture<PhysicalSlot> requestNewAllocatedBatchSlot(
             SlotRequestId slotRequestId,
-            ResourceProfile resourceProfile,
+            LoadableResourceProfile loadableResourceProfile,
             Collection<AllocationID> preferredAllocations);
 
     /**

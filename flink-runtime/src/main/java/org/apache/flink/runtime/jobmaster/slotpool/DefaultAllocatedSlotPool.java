@@ -80,7 +80,6 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
     private void addSlotInternal(AllocatedSlot slot, long currentTime) {
         registeredSlots.put(slot.getAllocationId(), slot);
         freeSlots.addFreeSlot(slot.getAllocationId(), slot.getTaskManagerId(), currentTime);
-        slot.setLoading(LoadingWeight.EMPTY);
     }
 
     @Override
@@ -170,6 +169,8 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
                 freeSlots.removeFreeSlot(allocationId, slot.getTaskManagerId()) != null,
                 "The slot with id %s was not free.",
                 allocationId);
+        // We must set the loading weight info to keep the latest loading view instead of setting it
+        // when fulfill slot request.
         slot.setLoading(loadingWeight);
         return registeredSlots.get(allocationId);
     }
@@ -181,7 +182,7 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
         if (allocatedSlot != null && !freeSlots.contains(allocationId)) {
             freeSlots.addFreeSlot(allocationId, allocatedSlot.getTaskManagerId(), currentTime);
             // clear loading weight.
-            allocatedSlot.setLoading(LoadingWeight.EMPTY);
+            allocatedSlot.resetLoading();
             return Optional.of(allocatedSlot);
         } else {
             return Optional.empty();
@@ -226,6 +227,7 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
         final Map<TaskManagerLocation, LoadingWeight> result =
                 new HashMap<>(slotsPerTaskExecutor.size());
         Collection<AllocatedSlot> allocatedSlots = registeredSlots.values();
+        LOG.debug("getTaskExecutorsLoadingWeight: {}", registeredSlots);
         for (AllocatedSlot allocatedSlot : allocatedSlots) {
             final TaskManagerLocation taskManagerLocation = allocatedSlot.getTaskManagerLocation();
             result.compute(

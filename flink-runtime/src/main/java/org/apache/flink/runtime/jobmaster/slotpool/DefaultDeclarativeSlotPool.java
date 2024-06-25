@@ -509,9 +509,6 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
 
         releasePayload(currentlyReservedSlots, cause);
         releaseSlots(slots, cause);
-        currentlyReservedSlots.forEach(
-                weightLoadable -> weightLoadable.setLoading(LoadingWeight.EMPTY));
-        slots.forEach(weightLoadable -> weightLoadable.setLoading(LoadingWeight.EMPTY));
         return previouslyFulfilledRequirements;
     }
 

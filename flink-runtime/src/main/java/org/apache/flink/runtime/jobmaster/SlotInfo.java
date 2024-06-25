@@ -19,10 +19,13 @@
 package org.apache.flink.runtime.jobmaster;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.scheduler.loading.WeightLoadable;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
+
+import java.util.Optional;
 
 /** Interface that provides basic information in the context of a slot. */
 public interface SlotInfo extends WeightLoadable {
@@ -62,6 +65,22 @@ public interface SlotInfo extends WeightLoadable {
      * @param loadingWeight loading weight to set.
      */
     default void setLoading(LoadingWeight loadingWeight) {
+        throw new UnsupportedOperationException();
+    }
+
+    /** Reset the loading as {@link LoadingWeight#EMPTY}. */
+    default void resetLoading() {
+        setLoading(LoadingWeight.EMPTY);
+    }
+
+    /**
+     * Get the resource profile with the previous laoding weight that was assigned in the last
+     * profile matching. Note: only used in the {@link
+     * org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotProviderImpl}.
+     *
+     * @return the resource profile with the previous laoding weight.
+     */
+    default Optional<LoadableResourceProfile> getPreviousLoadableResourceProfile() {
         throw new UnsupportedOperationException();
     }
 

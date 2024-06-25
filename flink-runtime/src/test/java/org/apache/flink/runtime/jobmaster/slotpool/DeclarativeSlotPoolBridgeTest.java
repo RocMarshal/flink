@@ -107,7 +107,7 @@ class DeclarativeSlotPoolBridgeTest extends DeclarativeSlotPoolBridgeTestBase {
                                     () ->
                                             declarativeSlotPoolBridge.requestNewAllocatedSlot(
                                                     slotRequestId,
-                                                    ResourceProfile.UNKNOWN,
+                                                    ResourceProfile.UNKNOWN.toEmptyLoadable(),
                                                     Time.minutes(5)),
                                     mainThreadExecutor)
                             .get();

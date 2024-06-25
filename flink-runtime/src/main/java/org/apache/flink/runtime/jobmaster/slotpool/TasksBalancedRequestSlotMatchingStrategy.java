@@ -25,6 +25,9 @@ import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.util.CollectionUtil;
 import org.apache.flink.util.Preconditions;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
@@ -46,6 +49,9 @@ import java.util.stream.Collectors;
  */
 public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatchingStrategy {
     INSTANCE;
+
+    public static final Logger LOG =
+            LoggerFactory.getLogger(TasksBalancedRequestSlotMatchingStrategy.class);
 
     /** The comparator to compare loading. */
     static final class DynamicSlotLoadingComparator implements Comparator<PhysicalSlot> {
@@ -80,6 +86,11 @@ public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatch
         final Collection<RequestSlotMatch> resultingMatches = new ArrayList<>();
         final List<PendingRequest> sortedRequests =
                 WeightLoadable.sortByLoadingDescend(pendingRequests);
+        LOG.debug(
+                "Available slots: {}, sortedRequests: {}, taskExecutorsLoad: {}",
+                slots,
+                sortedRequests,
+                taskExecutorsLoad);
         final Map<ResourceProfile, PriorityQueue<PhysicalSlot>> profileToSlotMap =
                 getSlotCandidatesByResourceProfile(slots, taskExecutorsLoad);
         final Map<TaskManagerLocation, Set<PhysicalSlot>> slotsPerTaskExecutor =

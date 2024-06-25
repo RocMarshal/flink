@@ -747,6 +747,19 @@ public class MiniCluster implements AutoCloseableAsync {
         for (int i = 0; i < numTaskManagers; i++) {
             startTaskManager();
         }
+        //        CompletableFuture.runAsync(new Runnable() {
+        //            @Override
+        //            public void run() {
+        //                try {
+        //                    Thread.sleep(100_000L);
+        //                    taskManagers.get(2).close();
+        //                    Thread.sleep(20_000L);
+        //                    startTaskManager();
+        //                } catch (Exception e) {
+        //                    throw new RuntimeException(e);
+        //                }
+        //            }
+        //        });
     }
 
     /**

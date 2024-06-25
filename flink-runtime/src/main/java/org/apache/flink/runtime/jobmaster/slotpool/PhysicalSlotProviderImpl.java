@@ -23,7 +23,6 @@ import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.SlotProfile;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
 import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
-import org.apache.flink.runtime.scheduler.loading.WeightLoadable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,7 +83,6 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
                                     SlotProfile slotProfile = physicalSlotRequest.getSlotProfile();
                                     ResourceProfile resourceProfile =
                                             slotProfile.getPhysicalSlotResourceProfile();
-                                    LoadingWeight loadingWeight = physicalSlotRequest.getLoading();
 
                                     CompletableFuture<PhysicalSlot> slotFuture =
                                             availablePhysicalSlot
@@ -98,7 +96,7 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
                                                                                     .getPreferredAllocations(),
                                                                             physicalSlotRequest
                                                                                     .willSlotBeOccupiedIndefinitely(),
-                                                                            loadingWeight));
+                                                                            physicalSlotRequest.getLoading()));
 
                                     return slotFuture.thenApply(
                                             physicalSlot ->
@@ -112,19 +110,17 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
             for (PhysicalSlotRequest physicalSlotRequest : physicalSlotRequests) {
                 LOG.debug(
                         "Received slot request [{}] with resource requirements: {}",
-                        physicalSlotRequest.getSlotRequestId(),
+                        physicalSlotRequest,
                         physicalSlotRequest.getSlotProfile().getPhysicalSlotResourceProfile());
             }
         }
     }
 
     private Map<SlotRequestId, Optional<PhysicalSlot>> tryAllocateFromAvailable(
-            Collection<PhysicalSlotRequest> rawSlotRequests) {
+            Collection<PhysicalSlotRequest> slotRequests) {
         FreeSlotInfoTracker freeSlotInfoTracker = slotPool.getFreeSlotInfoTracker();
 
         Map<SlotRequestId, Optional<PhysicalSlot>> allocateResult = new HashMap<>();
-        final Collection<PhysicalSlotRequest> slotRequests =
-                sortByLoadingDescendIfNeeded(rawSlotRequests);
         for (PhysicalSlotRequest request : slotRequests) {
             Optional<SlotSelectionStrategy.SlotInfoAndLocality> slot =
                     slotSelectionStrategy.selectBestSlotForProfile(
@@ -143,15 +139,6 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
                             }));
         }
         return allocateResult;
-    }
-
-    private Collection<PhysicalSlotRequest> sortByLoadingDescendIfNeeded(
-            Collection<PhysicalSlotRequest> rawSlotRequests) {
-        if (!(slotSelectionStrategy
-                instanceof TasksBalancedLocationPreferenceSlotSelectionStrategy)) {
-            return rawSlotRequests;
-        }
-        return WeightLoadable.sortByLoadingDescend(rawSlotRequests);
     }
 
     private CompletableFuture<PhysicalSlot> requestNewSlot(
