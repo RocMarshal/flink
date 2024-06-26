@@ -18,8 +18,8 @@
 
 package org.apache.flink.runtime.jobmaster.slotpool;
 
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
-import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
 import java.util.Collection;
 import java.util.Map;
@@ -38,7 +38,7 @@ public interface RequestSlotMatchingStrategy {
     Collection<RequestSlotMatch> matchRequestsAndSlots(
             Collection<? extends PhysicalSlot> slots,
             Collection<PendingRequest> pendingRequests,
-            Map<TaskManagerLocation, LoadingWeight> taskExecutorsLoadingWeight);
+            Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight);
 
     /** Result class representing matches. */
     final class RequestSlotMatch {

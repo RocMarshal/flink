@@ -18,38 +18,47 @@
 
 package org.apache.flink.runtime.jobmaster.slotpool;
 
-import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
+import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.jobmanager.scheduler.Locality;
+import org.apache.flink.runtime.jobmaster.SlotInfo;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 
-import java.util.Comparator;
 import java.util.Optional;
 
 /**
- * This class implements a {@link SlotSelectionStrategy} that is based on location preference hints.
+ * This class implements a {@link SlotSelectionStrategy} that is based on the tasks balanced
+ * strategy.
  */
 public class TasksBalancedLocationPreferenceSlotSelectionStrategy
         extends EvenlySpreadOutLocationPreferenceSlotSelectionStrategy {
+    public static final Logger LOG =
+            LoggerFactory.getLogger(TasksBalancedLocationPreferenceSlotSelectionStrategy.class);
 
     @Nonnull
     @Override
     protected Optional<SlotInfoAndLocality> selectWithoutLocationPreference(
             @Nonnull FreeSlotInfoTracker freeSlotInfoTracker,
-            @Nonnull ResourceProfile resourceProfile) {
-        return freeSlotInfoTracker.getAvailableSlots().stream()
-                .map(freeSlotInfoTracker::getSlotInfo)
-                .filter(slotInfo -> slotInfo.getResourceProfile().isMatching(resourceProfile))
-                .map(
-                        slot ->
-                                new Tuple2<>(
-                                        slot,
-                                        freeSlotInfoTracker.getTaskExecutorLoadingWeight(slot)))
-                .min(Comparator.comparingDouble(tuple -> tuple.f1.getLoading()))
-                .map(
-                        slotInfoWithTmLoading ->
-                                SlotInfoAndLocality.of(
-                                        slotInfoWithTmLoading.f0, Locality.UNCONSTRAINED));
+            @Nonnull LoadableResourceProfile loadableResourceProfile) {
+
+        for (AllocationID allocationId : freeSlotInfoTracker.getAvailableSlots()) {
+            SlotInfo candidate = freeSlotInfoTracker.getSlotInfo(allocationId);
+            Optional<LoadableResourceProfile> previousLoadableProfile =
+                    candidate.getPreviousLoadableResourceProfile();
+            if (previousLoadableProfile
+                    .map(resourceProfile -> resourceProfile.isMatching(loadableResourceProfile))
+                    .orElse(false)) {
+                LOG.debug(
+                        "Matched slot request {} with {} from available slots.",
+                        loadableResourceProfile,
+                        candidate);
+                return Optional.of(SlotInfoAndLocality.of(candidate, Locality.UNCONSTRAINED));
+            }
+        }
+        return Optional.empty();
     }
 }

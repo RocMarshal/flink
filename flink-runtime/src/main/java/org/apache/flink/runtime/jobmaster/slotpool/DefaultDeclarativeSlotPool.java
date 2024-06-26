@@ -608,7 +608,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
     }
 
     @Override
-    public Map<TaskManagerLocation, LoadingWeight> getTaskExecutorsLoadingWeight() {
+    public Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight() {
         return slotPool.getTaskExecutorsLoadingWeight();
     }
 

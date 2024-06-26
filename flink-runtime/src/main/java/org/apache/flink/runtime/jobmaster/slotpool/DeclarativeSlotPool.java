@@ -129,7 +129,7 @@ public interface DeclarativeSlotPool {
      *
      * @return map of loading weight per task executor.
      */
-    default Map<TaskManagerLocation, LoadingWeight> getTaskExecutorsLoadingWeight() {
+    default Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight() {
         return new HashMap<>();
     }
 

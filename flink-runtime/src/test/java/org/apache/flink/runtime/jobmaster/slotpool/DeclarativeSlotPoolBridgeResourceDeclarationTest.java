@@ -99,7 +99,7 @@ class DeclarativeSlotPoolBridgeResourceDeclarationTest extends DeclarativeSlotPo
 
         // requesting the allocation of a new slot should increase the requirements
         declarativeSlotPoolBridge.requestNewAllocatedSlot(
-                new SlotRequestId(), ResourceProfile.UNKNOWN, Time.minutes(5));
+                new SlotRequestId(), ResourceProfile.UNKNOWN.toEmptyLoadable(), Time.minutes(5));
 
         declarativeSlotPoolBridge.tryWaitSlotRequestMaxIntervalTimeout();
 
@@ -123,7 +123,7 @@ class DeclarativeSlotPoolBridgeResourceDeclarationTest extends DeclarativeSlotPo
                                     () ->
                                             declarativeSlotPoolBridge.requestNewAllocatedSlot(
                                                     new SlotRequestId(),
-                                                    ResourceProfile.UNKNOWN,
+                                                    ResourceProfile.UNKNOWN.toEmptyLoadable(),
                                                     Time.milliseconds(50)),
                                     mainThreadExecutor)
                             .get();
@@ -170,7 +170,9 @@ class DeclarativeSlotPoolBridgeResourceDeclarationTest extends DeclarativeSlotPo
         // allocating (==reserving) an available (==free) slot should increase the requirements
         final SlotRequestId slotRequestId = new SlotRequestId();
         declarativeSlotPoolBridge.allocateAvailableSlot(
-                slotRequestId, newSlot.getAllocationId(), ResourceProfile.UNKNOWN);
+                slotRequestId,
+                newSlot.getAllocationId(),
+                ResourceProfile.UNKNOWN.toEmptyLoadable());
 
         declarativeSlotPoolBridge.tryWaitSlotRequestMaxIntervalTimeout();
 
@@ -187,7 +189,9 @@ class DeclarativeSlotPoolBridgeResourceDeclarationTest extends DeclarativeSlotPo
 
         final SlotRequestId slotRequestId = new SlotRequestId();
         declarativeSlotPoolBridge.allocateAvailableSlot(
-                slotRequestId, newSlot.getAllocationId(), ResourceProfile.UNKNOWN);
+                slotRequestId,
+                newSlot.getAllocationId(),
+                ResourceProfile.UNKNOWN.toEmptyLoadable());
 
         declarativeSlotPoolBridge.tryWaitSlotRequestMaxIntervalTimeout();
 
@@ -206,7 +210,9 @@ class DeclarativeSlotPoolBridgeResourceDeclarationTest extends DeclarativeSlotPo
         declarativeSlotPoolBridge.newSlotsAreAvailable(Collections.singleton(newSlot));
 
         declarativeSlotPoolBridge.allocateAvailableSlot(
-                new SlotRequestId(), newSlot.getAllocationId(), ResourceProfile.UNKNOWN);
+                new SlotRequestId(),
+                newSlot.getAllocationId(),
+                ResourceProfile.UNKNOWN.toEmptyLoadable());
 
         declarativeSlotPoolBridge.tryWaitSlotRequestMaxIntervalTimeout();
 

@@ -140,6 +140,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -747,19 +748,22 @@ public class MiniCluster implements AutoCloseableAsync {
         for (int i = 0; i < numTaskManagers; i++) {
             startTaskManager();
         }
-        //        CompletableFuture.runAsync(new Runnable() {
-        //            @Override
-        //            public void run() {
-        //                try {
-        //                    Thread.sleep(100_000L);
-        //                    taskManagers.get(2).close();
-        //                    Thread.sleep(20_000L);
-        //                    startTaskManager();
-        //                } catch (Exception e) {
-        //                    throw new RuntimeException(e);
-        //                }
-        //            }
-        //        });
+        ScheduledExecutorService scheduledExecutorService =
+                Executors.newSingleThreadScheduledExecutor();
+        scheduledExecutorService.scheduleWithFixedDelay(
+                () -> {
+                    try {
+                        TaskExecutor tm = taskManagers.remove(2);
+                        tm.close();
+                        Thread.sleep(15_000L);
+                        startTaskManager();
+                    } catch (Throwable e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                20,
+                30,
+                TimeUnit.SECONDS);
     }
 
     /**

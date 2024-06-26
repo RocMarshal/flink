@@ -32,6 +32,7 @@ import org.apache.flink.runtime.resourcemanager.ResourceManagerGateway;
 import org.apache.flink.runtime.taskexecutor.slot.SlotOffer;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.util.Collection;
@@ -138,7 +139,8 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      *
      * @param slotRequestId identifying the requested slot
      * @param allocationID the allocation id of the requested available slot
-     * @param loadableResourceProfile resource profile of the requirement with loading for which to allocate the slot
+     * @param loadableResourceProfile resource profile of the requirement with loading for which to
+     *     allocate the slot
      * @return the previously available slot with the given allocation id, if a slot with this
      *     allocation id exists
      */
@@ -153,18 +155,17 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      * pool that is immediately allocated and returned.
      *
      * @param slotRequestId identifying the requested slot
-     * @param loadableResourceProfile resource profile with loading that specifies the resource requirements for the
-     *     requested slot
+     * @param loadableResourceProfile resource profile with loading that specifies the resource
+     *     requirements for the requested slot
      * @param timeout timeout for the allocation procedure
      * @return a newly allocated slot that was previously not available.
      */
     default CompletableFuture<PhysicalSlot> requestNewAllocatedSlot(
-            SlotRequestId slotRequestId, LoadableResourceProfile loadableResourceProfile, @Nullable Time timeout) {
+            SlotRequestId slotRequestId,
+            LoadableResourceProfile loadableResourceProfile,
+            @Nullable Time timeout) {
         return requestNewAllocatedSlot(
-                slotRequestId,
-                loadableResourceProfile,
-                Collections.emptyList(),
-                timeout);
+                slotRequestId, loadableResourceProfile, Collections.emptyList(), timeout);
     }
 
     /**
@@ -173,8 +174,8 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      * pool that is immediately allocated and returned.
      *
      * @param slotRequestId identifying the requested slot
-     * @param loadableResourceProfile resource profile with loading that specifies the resource requirements for the
-     *     requested slot
+     * @param loadableResourceProfile resource profile with loading that specifies the resource
+     *     requirements for the requested slot
      * @param preferredAllocations preferred allocations for the new allocated slot
      * @param timeout timeout for the allocation procedure
      * @return a newly allocated slot that was previously not available.
@@ -191,7 +192,8 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      * Moreover, it won't react to failure signals from the resource manager.
      *
      * @param slotRequestId identifying the requested slot
-     * @param loadableResourceProfile resource profile with loading that specifies the resource requirements for the requested batch slot
+     * @param loadableResourceProfile resource profile with loading that specifies the resource
+     *     requirements for the requested batch slot
      * @return a future which is completed with newly allocated batch slot
      */
     default CompletableFuture<PhysicalSlot> requestNewAllocatedBatchSlot(
@@ -225,4 +227,14 @@ public interface SlotPool extends AllocatedSlotActions, AutoCloseable {
      * @param isJobRestarting whether the job is restarting or not
      */
     void setIsJobRestarting(boolean isJobRestarting);
+
+    /**
+     * Remove the specialized slot from the received slots.
+     *
+     * @param physicalSlot the specialized slot.
+     * @return <code>true</code> if success, <code>false</code> else.
+     */
+    default boolean removeSlot(@Nonnull SlotInfo physicalSlot) {
+        throw new UnsupportedOperationException();
+    }
 }

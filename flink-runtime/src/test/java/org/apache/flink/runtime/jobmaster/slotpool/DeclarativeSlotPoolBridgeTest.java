@@ -78,7 +78,7 @@ class DeclarativeSlotPoolBridgeTest extends DeclarativeSlotPoolBridgeTestBase {
 
             CompletableFuture<PhysicalSlot> slotAllocationFuture =
                     declarativeSlotPoolBridge.requestNewAllocatedSlot(
-                            slotRequestId, ResourceProfile.UNKNOWN, null);
+                            slotRequestId, ResourceProfile.UNKNOWN.toEmptyLoadable(), null);
 
             declarativeSlotPoolBridge.tryWaitSlotRequestMaxIntervalTimeout();
 
@@ -154,7 +154,9 @@ class DeclarativeSlotPoolBridgeTest extends DeclarativeSlotPoolBridgeTestBase {
             final SlotRequestId slotRequestId = new SlotRequestId();
 
             declarativeSlotPoolBridge.allocateAvailableSlot(
-                    slotRequestId, expectedAllocationId, allocatedSlot.getResourceProfile());
+                    slotRequestId,
+                    expectedAllocationId,
+                    allocatedSlot.getResourceProfile().toEmptyLoadable());
 
             declarativeSlotPoolBridge.tryWaitSlotRequestMaxIntervalTimeout();
 
@@ -184,7 +186,7 @@ class DeclarativeSlotPoolBridgeTest extends DeclarativeSlotPoolBridgeTestBase {
                                         final CompletableFuture<PhysicalSlot> slotFuture =
                                                 declarativeSlotPoolBridge.requestNewAllocatedSlot(
                                                         slotRequestId,
-                                                        ResourceProfile.UNKNOWN,
+                                                        ResourceProfile.UNKNOWN.toEmptyLoadable(),
                                                         rpcTimeout);
                                         slotFuture.whenComplete(
                                                 (physicalSlot, throwable) -> {
@@ -219,7 +221,9 @@ class DeclarativeSlotPoolBridgeTest extends DeclarativeSlotPoolBridgeTestBase {
 
             final CompletableFuture<PhysicalSlot> slotFuture =
                     declarativeSlotPoolBridge.requestNewAllocatedSlot(
-                            new SlotRequestId(), ResourceProfile.UNKNOWN, rpcTimeout);
+                            new SlotRequestId(),
+                            ResourceProfile.UNKNOWN.toEmptyLoadable(),
+                            rpcTimeout);
 
             declarativeSlotPoolBridge.tryWaitSlotRequestMaxIntervalTimeout();
 

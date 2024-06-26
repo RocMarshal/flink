@@ -18,12 +18,11 @@
 
 package org.apache.flink.runtime.jobmaster.slotpool;
 
-import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.runtime.clusterframework.types.LoadableResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.SlotProfile;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
 import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.scheduler.loading.WeightLoadable;
-import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nonnull;
 
@@ -36,25 +35,13 @@ public class PhysicalSlotRequest implements WeightLoadable {
 
     private final boolean slotWillBeOccupiedIndefinitely;
 
-    private @Nonnull final LoadingWeight loadingWeight;
-
-    public PhysicalSlotRequest(
-            final SlotRequestId slotRequestId,
-            final SlotProfile slotProfile,
-            final boolean slotWillBeOccupiedIndefinitely,
-            final @Nonnull LoadingWeight loadingWeight) {
-        this.slotRequestId = slotRequestId;
-        this.slotProfile = slotProfile;
-        this.slotWillBeOccupiedIndefinitely = slotWillBeOccupiedIndefinitely;
-        this.loadingWeight = Preconditions.checkNotNull(loadingWeight);
-    }
-
-    @VisibleForTesting
     public PhysicalSlotRequest(
             final SlotRequestId slotRequestId,
             final SlotProfile slotProfile,
             final boolean slotWillBeOccupiedIndefinitely) {
-        this(slotRequestId, slotProfile, slotWillBeOccupiedIndefinitely, LoadingWeight.EMPTY);
+        this.slotRequestId = slotRequestId;
+        this.slotProfile = slotProfile;
+        this.slotWillBeOccupiedIndefinitely = slotWillBeOccupiedIndefinitely;
     }
 
     public SlotRequestId getSlotRequestId() {
@@ -65,13 +52,21 @@ public class PhysicalSlotRequest implements WeightLoadable {
         return slotProfile;
     }
 
+    /**
+     * Returns the desired resource profile with the loading for the physical slot to host this task
+     * slot.
+     */
+    public LoadableResourceProfile getPhysicalSlotLoadableResourceProfile() {
+        return slotProfile.getLoadablePhysicalSlotResourceProfile();
+    }
+
     public boolean willSlotBeOccupiedIndefinitely() {
         return slotWillBeOccupiedIndefinitely;
     }
 
     @Override
     public @Nonnull LoadingWeight getLoading() {
-        return loadingWeight;
+        return slotProfile.getLoading();
     }
 
     /** Result of a {@link PhysicalSlotRequest}. */

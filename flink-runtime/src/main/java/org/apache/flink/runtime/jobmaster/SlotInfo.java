@@ -76,9 +76,10 @@ public interface SlotInfo extends WeightLoadable {
     /**
      * Get the resource profile with the previous laoding weight that was assigned in the last
      * profile matching. Note: only used in the {@link
-     * org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotProviderImpl}.
+     * org.apache.flink.runtime.jobmaster.slotpool.TasksBalancedLocationPreferenceSlotSelectionStrategy}
+     * of {@link org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotProviderImpl}.
      *
-     * @return the resource profile with the previous laoding weight.
+     * @return the resource profile with the previous loading weight.
      */
     default Optional<LoadableResourceProfile> getPreviousLoadableResourceProfile() {
         throw new UnsupportedOperationException();

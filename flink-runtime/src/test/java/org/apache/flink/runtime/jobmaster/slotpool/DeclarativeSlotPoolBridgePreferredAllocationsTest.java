@@ -101,6 +101,9 @@ class DeclarativeSlotPoolBridgePreferredAllocationsTest {
             DeclarativeSlotPoolBridge declarativeSlotPoolBridge,
             Set<AllocationID> preferredAllocations) {
         return declarativeSlotPoolBridge.requestNewAllocatedSlot(
-                new SlotRequestId(), ResourceProfile.UNKNOWN, preferredAllocations, null);
+                new SlotRequestId(),
+                ResourceProfile.UNKNOWN.toEmptyLoadable(),
+                preferredAllocations,
+                null);
     }
 }

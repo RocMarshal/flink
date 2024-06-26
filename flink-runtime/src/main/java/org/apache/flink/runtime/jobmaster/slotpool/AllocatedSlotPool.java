@@ -22,7 +22,6 @@ import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
-import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
 import java.util.Collection;
 import java.util.Map;
@@ -128,18 +127,11 @@ public interface AllocatedSlotPool {
     Collection<? extends SlotInfo> getAllSlotsInformation();
 
     /**
-     * Return the loading weight for the task executor.
-     *
-     * @return Loading weight on the task executor.
-     */
-    LoadingWeight getTaskExecutorLoadingWeight(ResourceID resourceID);
-
-    /**
      * Return the loading weight per task executor.
      *
      * @return map of loading weight per task executor.
      */
-    Map<TaskManagerLocation, LoadingWeight> getTaskExecutorsLoadingWeight();
+    Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight();
 
     /** Information about a free slot. */
     interface FreeSlotInfo {

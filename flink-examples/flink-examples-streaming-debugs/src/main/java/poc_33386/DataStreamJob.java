@@ -19,8 +19,10 @@
 package poc_33386;
 
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
+import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.TaskManagerOptions;
+import org.apache.flink.configuration.WebOptions;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 /**
@@ -46,13 +48,19 @@ public class DataStreamJob {
         conf.set(
                 TaskManagerOptions.TASK_MANAGER_LOAD_BALANCE_MODE,
                 TaskManagerOptions.TaskManagerLoadBalanceMode.TASKS);
+        conf.setString(
+                WebOptions.LOG_PATH,
+                "/Users/yuepeng.pan/acommunity/flink/flink-examples/flink-examples-streaming-debugs/src/main/resources/job.log");
+        conf.setString(
+                ConfigConstants.TASK_MANAGER_LOG_PATH_KEY,
+                "/Users/yuepeng.pan/acommunity/flink/flink-examples/flink-examples-streaming-debugs/src/main/resources/job.log");
         final StreamExecutionEnvironment env =
                 StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(conf);
         env.setRestartStrategy(RestartStrategies.fallBackRestart());
         env.enableCheckpointing(5000L);
         boolean sourceManualError = false;
         boolean sinkManualError = false;
-        args = new String[] {"source", "30", "2"};
+        //        args = new String[] {"source", "30", "2"};
         int recordsIntervalCount = 1800;
         int subIndex = 0;
         if (args != null && args.length == 3) {

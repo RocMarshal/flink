@@ -18,8 +18,8 @@
 
 package org.apache.flink.runtime.jobmaster.slotpool;
 
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
-import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,7 +38,7 @@ public enum SimpleRequestSlotMatchingStrategy implements RequestSlotMatchingStra
     public Collection<RequestSlotMatch> matchRequestsAndSlots(
             Collection<? extends PhysicalSlot> slots,
             Collection<PendingRequest> pendingRequests,
-            Map<TaskManagerLocation, LoadingWeight> taskExecutorsLoadingWeight) {
+            Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight) {
         final Collection<RequestSlotMatch> resultingMatches = new ArrayList<>();
 
         // if pendingRequests has a special order, then let's preserve it

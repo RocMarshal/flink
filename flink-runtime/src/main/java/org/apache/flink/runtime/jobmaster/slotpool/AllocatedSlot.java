@@ -69,6 +69,8 @@ class AllocatedSlot implements PhysicalSlot {
     private final AtomicReference<Payload> payloadReference;
 
     private @Nonnull LoadingWeight loadingWeight;
+    // The field is used to matching the slots from the available slots that was matched and freed
+    // only.
     private @Nullable LoadingWeight previousLoadingWeight;
 
     // ------------------------------------------------------------------------
@@ -207,7 +209,14 @@ class AllocatedSlot implements PhysicalSlot {
                 + taskManagerLocation
                 + " - "
                 + physicalSlotNumber
-                + " - "
-                + loadingWeight;
+                + " - loadingWeight("
+                + loadingWeight
+                + ")"
+                + " - previousLoadingWeight("
+                + previousLoadingWeight
+                + ")"
+                + " - resourceProfile("
+                + resourceProfile
+                + ")";
     }
 }

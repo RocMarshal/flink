@@ -20,7 +20,6 @@ package org.apache.flink.runtime.jobmaster.slotpool;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
-import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 
 import java.util.Collection;
 import java.util.Set;
@@ -68,11 +67,6 @@ public interface FreeSlotInfoTracker {
      * @return task executor utilization of this slot
      */
     double getTaskExecutorUtilization(SlotInfo slotInfo);
-
-    /** Get task executor tasks loading of this slot that locates on. */
-    default LoadingWeight getTaskExecutorLoadingWeight(SlotInfo slotInfo) {
-        return LoadingWeight.EMPTY;
-    }
 
     /**
      * Reserve free slot when it is used.
