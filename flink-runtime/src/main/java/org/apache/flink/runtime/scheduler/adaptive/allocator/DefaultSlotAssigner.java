@@ -20,8 +20,8 @@ package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
+import org.apache.flink.runtime.scheduler.ExecutionSlotSharingGroup;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
-import org.apache.flink.runtime.scheduler.adaptive.allocator.SlotSharingSlotAllocator.ExecutionSlotSharingGroup;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 
 import java.util.ArrayList;
@@ -44,6 +44,7 @@ public class DefaultSlotAssigner implements SlotAssigner {
             VertexParallelism vertexParallelism,
             JobAllocationsInformation previousAllocations) {
         List<ExecutionSlotSharingGroup> allGroups = new ArrayList<>();
+        Collection<SlotSharingGroup> slotSharingGroups = jobInformation.getSlotSharingGroups();
         for (SlotSharingGroup slotSharingGroup : jobInformation.getSlotSharingGroups()) {
             allGroups.addAll(createExecutionSlotSharingGroups(vertexParallelism, slotSharingGroup));
         }
@@ -59,6 +60,7 @@ public class DefaultSlotAssigner implements SlotAssigner {
     static List<ExecutionSlotSharingGroup> createExecutionSlotSharingGroups(
             VertexParallelism vertexParallelism, SlotSharingGroup slotSharingGroup) {
         final Map<Integer, Set<ExecutionVertexID>> sharedSlotToVertexAssignment = new HashMap<>();
+        // task -> essg
         slotSharingGroup
                 .getJobVertexIds()
                 .forEach(

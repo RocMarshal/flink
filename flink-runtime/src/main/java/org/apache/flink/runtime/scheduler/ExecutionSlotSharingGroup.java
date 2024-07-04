@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.scheduler;
 
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.util.Preconditions;
@@ -25,20 +26,33 @@ import org.apache.flink.util.Preconditions;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 /** Represents execution vertices that will run the same shared slot. */
-class ExecutionSlotSharingGroup {
+@Internal
+public class ExecutionSlotSharingGroup {
 
     private final Set<ExecutionVertexID> executionVertexIds;
+    private final String id;
 
     private ResourceProfile resourceProfile = ResourceProfile.UNKNOWN;
 
     ExecutionSlotSharingGroup() {
         this.executionVertexIds = new HashSet<>();
+        this.id = UUID.randomUUID().toString();
+    }
+
+    public ExecutionSlotSharingGroup(Set<ExecutionVertexID> executionVertexIds) {
+        this.executionVertexIds = executionVertexIds;
+        this.id = UUID.randomUUID().toString();
     }
 
     void addVertex(final ExecutionVertexID executionVertexId) {
         executionVertexIds.add(executionVertexId);
+    }
+
+    public String getId() {
+        return id;
     }
 
     void setResourceProfile(ResourceProfile resourceProfile) {
@@ -53,10 +67,16 @@ class ExecutionSlotSharingGroup {
         return Collections.unmodifiableSet(executionVertexIds);
     }
 
+    public Set<ExecutionVertexID> getContainedExecutionVertices() {
+        return Collections.unmodifiableSet(executionVertexIds);
+    }
+
     @Override
     public String toString() {
         return "ExecutionSlotSharingGroup{"
-                + "executionVertexIds="
+                + "id="
+                + id
+                + ", executionVertexIds="
                 + executionVertexIds
                 + ", resourceProfile="
                 + resourceProfile
