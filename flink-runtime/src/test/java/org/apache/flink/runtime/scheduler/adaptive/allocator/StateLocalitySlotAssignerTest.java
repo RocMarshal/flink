@@ -26,7 +26,6 @@ import org.apache.flink.runtime.scheduler.adaptive.allocator.JobInformation.Vert
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyGroupRangeAssignment;
 
-import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -39,14 +38,13 @@ import java.util.stream.IntStream;
 
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
-import static org.hamcrest.Matchers.hasItems;
-import static org.hamcrest.Matchers.hasSize;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** {@link StateLocalitySlotAssigner} test. */
 class StateLocalitySlotAssignerTest {
 
     @Test
-    public void testDownScaleWithUnevenStateSize() {
+    void testDownScaleWithUnevenStateSize() {
         int newParallelism = 1;
         VertexInformation vertex = createVertex(newParallelism);
         AllocationID allocationWith100bytes = new AllocationID();
@@ -160,12 +158,12 @@ class StateLocalitySlotAssignerTest {
             Collection<SlotAssignment> assignments,
             int expectedSize,
             AllocationID... mustHaveAllocationID) {
-        MatcherAssert.assertThat(assignments, hasSize(expectedSize));
-        MatcherAssert.assertThat(
-                assignments.stream()
-                        .map(e -> e.getSlotInfo().getAllocationId())
-                        .collect(Collectors.toSet()),
-                hasItems(mustHaveAllocationID));
+        assertThat(assignments).hasSize(expectedSize);
+        assertThat(
+                        assignments.stream()
+                                .map(e -> e.getSlotInfo().getAllocationId())
+                                .collect(Collectors.toSet()))
+                .contains(mustHaveAllocationID);
     }
 
     private static Collection<SlotAssignment> assign(
