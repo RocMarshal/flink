@@ -18,7 +18,9 @@
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
@@ -38,7 +40,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.function.Function.identity;
@@ -113,6 +117,9 @@ public class StateLocalitySlotAssigner implements SlotAssigner {
                 allGroups.stream().collect(toMap(ExecutionSlotSharingGroup::getId, identity()));
         final Map<AllocationID, SlotInfo> slotsById =
                 freeSlots.stream().collect(toMap(SlotInfo::getAllocationId, identity()));
+
+        evictSpareSlotsByMinimalTaskExecutors(freeSlots, allGroups, scores, slotsById);
+
         AllocationScore score;
         final Collection<SlotAssignment> assignments = new ArrayList<>();
         while ((score = scores.poll()) != null) {
@@ -137,6 +144,84 @@ public class StateLocalitySlotAssigner implements SlotAssigner {
         }
 
         return assignments;
+    }
+
+    /** Evict some redundant slots for the available slots in minimum task executors. */
+    @VisibleForTesting
+    public static void evictSpareSlotsByMinimalTaskExecutors(
+            Collection<? extends SlotInfo> freeSlots,
+            List<ExecutionSlotSharingGroup> allGroups,
+            PriorityQueue<AllocationScore> scores,
+            Map<AllocationID, SlotInfo> slotsById) {
+
+        int redundantSlots = freeSlots.size() - allGroups.size();
+        if (redundantSlots <= 0) {
+            return;
+        }
+
+        Map<ResourceID, ? extends Set<? extends SlotInfo>> slotsByTaskExecutor =
+                freeSlots.stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        slotInfo ->
+                                                slotInfo.getTaskManagerLocation().getResourceID(),
+                                        Collectors.mapping(identity(), Collectors.toSet())));
+
+        List<ResourceID> orderedTaskExecutors =
+                getSortedTaskExecutors(freeSlots, scores, slotsByTaskExecutor);
+
+        for (ResourceID resourceID : orderedTaskExecutors) {
+            Set<? extends SlotInfo> slotInfos = slotsByTaskExecutor.get(resourceID);
+            if (redundantSlots >= slotInfos.size()) {
+                redundantSlots -= slotInfos.size();
+                slotInfos.forEach(slotInfo -> slotsById.remove(slotInfo.getAllocationId()));
+            }
+        }
+    }
+
+    /**
+     * Get task executors in the special ascending order, which is sorted by the number of slots and
+     * the summary allocation scores.
+     */
+    private static List<ResourceID> getSortedTaskExecutors(
+            Collection<? extends SlotInfo> freeSlots,
+            PriorityQueue<AllocationScore> scores,
+            Map<ResourceID, ? extends Set<? extends SlotInfo>> slotsByTaskExecutor) {
+
+        final Map<AllocationID, ResourceID> allocationIdToResourceId =
+                freeSlots.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        SlotInfo::getAllocationId,
+                                        slotInfo ->
+                                                slotInfo.getTaskManagerLocation().getResourceID()));
+
+        Map<ResourceID, Long> resourceScores = new HashMap<>(slotsByTaskExecutor.size());
+        for (AllocationScore allocScore : scores) {
+            final ResourceID resourceID = allocationIdToResourceId.get(allocScore.allocationId);
+            if (Objects.nonNull(resourceID)) {
+                resourceScores.compute(
+                        resourceID,
+                        (rid, oldVal) ->
+                                Objects.isNull(oldVal)
+                                        ? allocScore.score
+                                        : oldVal + allocScore.score);
+            }
+        }
+        return slotsByTaskExecutor.keySet().stream()
+                .sorted(
+                        (left, right) -> {
+                            int diff =
+                                    slotsByTaskExecutor.get(left).size()
+                                            - slotsByTaskExecutor.get(right).size();
+                            if (diff == 0) {
+                                return Long.compare(
+                                        resourceScores.getOrDefault(left, 0L),
+                                        resourceScores.getOrDefault(right, 0L));
+                            }
+                            return diff > 0 ? 1 : -1;
+                        })
+                .collect(Collectors.toList());
     }
 
     @Nonnull
