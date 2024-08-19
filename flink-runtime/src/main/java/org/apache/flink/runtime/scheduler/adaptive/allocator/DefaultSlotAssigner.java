@@ -26,6 +26,7 @@ import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -35,7 +36,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /** Simple {@link SlotAssigner} that treats all slots and slot sharing groups equally. */
-public class DefaultSlotAssigner implements SlotAssigner {
+public class DefaultSlotAssigner extends SlotAssigner {
+
+    public DefaultSlotAssigner() {
+        super(new MinimalTaskExecutorSlotsFilter(false));
+    }
 
     @Override
     public Collection<SlotAssignment> assignSlots(
@@ -48,7 +53,8 @@ public class DefaultSlotAssigner implements SlotAssigner {
             allGroups.addAll(createExecutionSlotSharingGroups(vertexParallelism, slotSharingGroup));
         }
 
-        Iterator<? extends SlotInfo> iterator = freeSlots.iterator();
+        Iterator<? extends SlotInfo> iterator =
+                slotsFilter.filterSlots(freeSlots, allGroups, Collections.emptyList()).iterator();
         Collection<SlotAssignment> assignments = new ArrayList<>();
         for (ExecutionSlotSharingGroup group : allGroups) {
             assignments.add(new SlotAssignment(iterator.next(), group));

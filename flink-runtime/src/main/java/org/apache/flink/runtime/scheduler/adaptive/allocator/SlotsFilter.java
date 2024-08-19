@@ -17,25 +17,21 @@
 
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
-import org.apache.flink.annotation.Internal;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
-import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
+import org.apache.flink.runtime.scheduler.adaptive.allocator.SlotSharingSlotAllocator.ExecutionSlotSharingGroup;
+import org.apache.flink.runtime.scheduler.adaptive.allocator.StateLocalitySlotAssigner.AllocationScore;
 
 import java.util.Collection;
 
-/** The abstract class for assigning slots to slot sharing groups. */
-@Internal
-public abstract class SlotAssigner {
+/**
+ * The interface to define the filter how to filter the potential target slots as slots candidates
+ * before matching.
+ */
+public interface SlotsFilter {
 
-    protected SlotsFilter slotsFilter;
-
-    public SlotAssigner(SlotsFilter slotsFilter) {
-        this.slotsFilter = slotsFilter;
-    }
-
-    public abstract Collection<SlotAssignment> assignSlots(
-            JobInformation jobInformation,
-            Collection<? extends SlotInfo> freeSlots,
-            VertexParallelism vertexParallelism,
-            JobAllocationsInformation previousAllocations);
+    /** Evict some redundant slots for the available slots and keep the slots candidates. */
+    Collection<? extends SlotInfo> filterSlots(
+            Collection<? extends SlotInfo> slots,
+            Collection<ExecutionSlotSharingGroup> groups,
+            Collection<AllocationScore> scores);
 }
