@@ -43,10 +43,21 @@ public class TestingSlot implements PhysicalSlot {
         this(new AllocationID(), resourceProfile);
     }
 
+    public TestingSlot(TaskManagerLocation tml) {
+        this(new AllocationID(), ResourceProfile.ANY, tml);
+    }
+
     public TestingSlot(AllocationID allocationId, ResourceProfile resourceProfile) {
+        this(allocationId, resourceProfile, new LocalTaskManagerLocation());
+    }
+
+    public TestingSlot(
+            AllocationID allocationId,
+            ResourceProfile resourceProfile,
+            TaskManagerLocation taskManagerLocation) {
         this.allocationId = allocationId;
         this.resourceProfile = resourceProfile;
-        this.taskManagerLocation = new LocalTaskManagerLocation();
+        this.taskManagerLocation = taskManagerLocation;
     }
 
     @Override
