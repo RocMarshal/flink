@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.flink.runtime.scheduler.adaptive.allocator.SlotSharingSlotAllocator.ExecutionSlotSharingGroup;
 
-/** Interface for assigning slots to slot sharing groups. */
+/** The Interface for assigning slots to slot sharing groups. */
 @Internal
 public interface SlotAssigner {
 
