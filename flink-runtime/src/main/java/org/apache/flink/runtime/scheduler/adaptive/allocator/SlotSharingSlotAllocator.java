@@ -30,6 +30,7 @@ import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.runtime.util.ResourceCounter;
+import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nonnull;
 
@@ -279,15 +280,29 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
     static class ExecutionSlotSharingGroup {
         private final String id;
         private final Set<ExecutionVertexID> containedExecutionVertices;
+        private final SlotSharingGroup slotSharingGroup;
 
-        public ExecutionSlotSharingGroup(Set<ExecutionVertexID> containedExecutionVertices) {
-            this(containedExecutionVertices, UUID.randomUUID().toString());
+        public ExecutionSlotSharingGroup(
+                SlotSharingGroup slotSharingGroup,
+                Set<ExecutionVertexID> containedExecutionVertices) {
+            this(slotSharingGroup, containedExecutionVertices, UUID.randomUUID().toString());
         }
 
         public ExecutionSlotSharingGroup(
-                Set<ExecutionVertexID> containedExecutionVertices, String id) {
+                SlotSharingGroup slotSharingGroup,
+                Set<ExecutionVertexID> containedExecutionVertices,
+                String id) {
             this.containedExecutionVertices = containedExecutionVertices;
             this.id = id;
+            this.slotSharingGroup = Preconditions.checkNotNull(slotSharingGroup);
+        }
+
+        public ResourceProfile getResourceProfile() {
+            return slotSharingGroup.getResourceProfile();
+        }
+
+        public SlotSharingGroup getSlotSharingGroup() {
+            return slotSharingGroup;
         }
 
         public String getId() {
@@ -296,6 +311,19 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
 
         public Collection<ExecutionVertexID> getContainedExecutionVertices() {
             return containedExecutionVertices;
+        }
+
+        @Override
+        public String toString() {
+            return "ExecutionSlotSharingGroup{"
+                    + "id='"
+                    + id
+                    + "'"
+                    + ", containedExecutionVertices="
+                    + containedExecutionVertices
+                    + ", slotSharingGroup="
+                    + slotSharingGroup
+                    + '}';
         }
     }
 

@@ -71,7 +71,9 @@ public class DefaultSlotAssigner implements SlotAssigner {
                             }
                         });
         return sharedSlotToVertexAssignment.values().stream()
-                .map(ExecutionSlotSharingGroup::new)
+                .map(
+                        executionVertexIDs ->
+                                new ExecutionSlotSharingGroup(slotSharingGroup, executionVertexIDs))
                 .collect(Collectors.toList());
     }
 }
