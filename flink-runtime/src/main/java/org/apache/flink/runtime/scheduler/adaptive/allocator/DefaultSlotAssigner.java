@@ -23,9 +23,11 @@ import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.SlotSharingSlotAllocator.ExecutionSlotSharingGroup;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
+import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -48,12 +50,28 @@ public class DefaultSlotAssigner implements SlotAssigner {
             allGroups.addAll(createExecutionSlotSharingGroups(vertexParallelism, slotSharingGroup));
         }
 
-        Iterator<? extends SlotInfo> iterator = freeSlots.iterator();
+        Iterator<? extends SlotInfo> iterator =
+                selectSlotsInMinimalTaskExecutors(freeSlots, allGroups, Collections.emptyList())
+                        .iterator();
         Collection<SlotAssignment> assignments = new ArrayList<>();
         for (ExecutionSlotSharingGroup group : allGroups) {
             assignments.add(new SlotAssignment(iterator.next(), group));
         }
         return assignments;
+    }
+
+    @Override
+    public List<TaskManagerLocation> sortPrioritizedTaskExecutors(
+            Collection<? extends SlotInfo> slots, Collection<AllocationScore> scores) {
+        Map<TaskManagerLocation, ? extends Set<? extends SlotInfo>> slotsByTaskExecutor =
+                SlotAssigner.getSlotsPerTaskExecutor(slots);
+        return slotsByTaskExecutor.keySet().stream()
+                .sorted(
+                        (left, right) ->
+                                Integer.compare(
+                                        slotsByTaskExecutor.get(right).size(),
+                                        slotsByTaskExecutor.get(left).size()))
+                .collect(Collectors.toList());
     }
 
     static List<ExecutionSlotSharingGroup> createExecutionSlotSharingGroups(
