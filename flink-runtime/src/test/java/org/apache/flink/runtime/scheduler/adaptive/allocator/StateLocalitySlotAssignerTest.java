@@ -18,6 +18,7 @@
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
@@ -25,8 +26,14 @@ import org.apache.flink.runtime.scheduler.adaptive.allocator.JobAllocationsInfor
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobInformation.VertexInformation;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyGroupRangeAssignment;
+import org.apache.flink.runtime.taskmanager.LocalTaskManagerLocation;
+import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
+import org.apache.flink.util.Preconditions;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,6 +42,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
@@ -96,17 +104,9 @@ class StateLocalitySlotAssignerTest {
         final VertexInformation vertex = createVertex(newParallelism);
         final List<AllocationID> allocationIDs = createAllocationIDS(numFreeSlots);
 
-        List<VertexAllocationInformation> prevAllocations = new ArrayList<>();
         Iterator<AllocationID> iterator = allocationIDs.iterator();
-        for (int i = 0; i < oldParallelism; i++) {
-            prevAllocations.add(
-                    new VertexAllocationInformation(
-                            iterator.next(),
-                            vertex.getJobVertexID(),
-                            KeyGroupRangeAssignment.computeKeyGroupRangeForOperatorIndex(
-                                    vertex.getMaxParallelism(), oldParallelism, i),
-                            1));
-        }
+        List<VertexAllocationInformation> prevAllocations =
+                initUpScalePreAllocationInfo(oldParallelism, iterator, vertex);
 
         Collection<SlotAssignment> assignments = assign(vertex, allocationIDs, prevAllocations);
 
@@ -126,12 +126,72 @@ class StateLocalitySlotAssignerTest {
         final VertexInformation vertex = createVertex(newParallelism);
         final List<AllocationID> allocationIDs = createAllocationIDS(numFreeSlots);
 
+        final Iterator<AllocationID> iterator = allocationIDs.iterator();
+        final AllocationID biggestAllocation = iterator.next();
+        final List<VertexAllocationInformation> prevAllocations =
+                initDownScalePreAllocationInfo(biggestAllocation, vertex, oldParallelism, iterator);
+
+        Collection<SlotAssignment> assignments = assign(vertex, allocationIDs, prevAllocations);
+
+        verifyAssignments(assignments, newParallelism, biggestAllocation);
+    }
+
+    @ParameterizedTest(
+            name =
+                    "oldParallelism={0}, newParallelism={1}, slotNumOfTaskExecutors={2}, expectedMinimalTaskExecutorNum={3}")
+    @MethodSource("getTestingArguments")
+    void testMinimalTaskExecutorsAfterRescale(
+            int oldParallelism,
+            int newParallelism,
+            int[] slotNumOfTaskExecutors,
+            int expectedMinimalTaskExecutorNum) {
+
+        Preconditions.checkArgument(newParallelism != oldParallelism);
+        final int numFreeSlots = Arrays.stream(slotNumOfTaskExecutors).sum();
+        final VertexInformation vertex = createVertex(newParallelism);
+        final List<AllocationID> allocationIDs = createAllocationIDS(numFreeSlots);
+
         // pretend that the 1st (0) subtask had half of key groups ...
         final Iterator<AllocationID> iterator = allocationIDs.iterator();
         final AllocationID biggestAllocation = iterator.next();
-        final List<VertexAllocationInformation> prevAllocations = new ArrayList<>();
+        final int diffParallelism = newParallelism - oldParallelism;
+        List<VertexAllocationInformation> prevAllocations =
+                diffParallelism < 0
+                        ? initDownScalePreAllocationInfo(
+                                biggestAllocation, vertex, oldParallelism, iterator)
+                        : initUpScalePreAllocationInfo(oldParallelism, iterator, vertex);
+        Collection<SlotAssignment> assigns =
+                assign(vertex, allocationIDs, prevAllocations, slotNumOfTaskExecutors);
+        assertThat(
+                        assigns.stream()
+                                .map(
+                                        assign ->
+                                                assign.getSlotInfo()
+                                                        .getTaskManagerLocation()
+                                                        .getResourceID())
+                                .collect(Collectors.toSet()))
+                .hasSize(expectedMinimalTaskExecutorNum);
+    }
+
+    private static Stream<Arguments> getTestingArguments() {
+        return Stream.of(
+                Arguments.of(1, 3, new int[] {2, 2, 2}, 2),
+                Arguments.of(3, 1, new int[] {2, 2, 2}, 1),
+                Arguments.of(3, 13, new int[] {1, 2, 3, 5, 5, 8}, 2),
+                Arguments.of(13, 3, new int[] {1, 2, 3, 5, 5, 8}, 1),
+                Arguments.of(13, 11, new int[] {2, 3, 3, 3, 3, 3}, 4),
+                Arguments.of(11, 13, new int[] {3, 3, 3, 3, 3, 3}, 5));
+    }
+
+    private static List<VertexAllocationInformation> initDownScalePreAllocationInfo(
+            AllocationID biggestAllocation,
+            VertexInformation vertex,
+            int oldParallelism,
+            Iterator<AllocationID> iterator) {
+        List<VertexAllocationInformation> result = new ArrayList<>();
         final int halfOfKeyGroupRange = vertex.getMaxParallelism() / 2;
-        prevAllocations.add(
+        // pretend that the 1st (0) subtask had half of key groups ...
+        result.add(
                 new VertexAllocationInformation(
                         biggestAllocation,
                         vertex.getJobVertexID(),
@@ -141,17 +201,29 @@ class StateLocalitySlotAssignerTest {
         // and the remaining subtasks had only one key group each
         for (int subtaskIdx = 1; subtaskIdx < oldParallelism; subtaskIdx++) {
             int keyGroup = halfOfKeyGroupRange + subtaskIdx;
-            prevAllocations.add(
+            result.add(
                     new VertexAllocationInformation(
                             iterator.next(),
                             vertex.getJobVertexID(),
                             KeyGroupRange.of(keyGroup, keyGroup),
                             1));
         }
+        return result;
+    }
 
-        Collection<SlotAssignment> assignments = assign(vertex, allocationIDs, prevAllocations);
-
-        verifyAssignments(assignments, newParallelism, biggestAllocation);
+    private static List<VertexAllocationInformation> initUpScalePreAllocationInfo(
+            int oldParallelism, Iterator<AllocationID> iterator, VertexInformation vertex) {
+        List<VertexAllocationInformation> result = new ArrayList<>();
+        for (int i = 0; i < oldParallelism; i++) {
+            result.add(
+                    new VertexAllocationInformation(
+                            iterator.next(),
+                            vertex.getJobVertexID(),
+                            KeyGroupRangeAssignment.computeKeyGroupRangeForOperatorIndex(
+                                    vertex.getMaxParallelism(), oldParallelism, i),
+                            1));
+        }
+        return result;
     }
 
     private static void verifyAssignments(
@@ -170,16 +242,41 @@ class StateLocalitySlotAssignerTest {
             VertexInformation vertexInformation,
             List<AllocationID> allocationIDs,
             List<VertexAllocationInformation> allocations) {
+        int[] slotNumOfTaskExecutors = new int[allocationIDs.size()];
+        Arrays.fill(slotNumOfTaskExecutors, 1);
+        return assign(vertexInformation, allocationIDs, allocations, slotNumOfTaskExecutors);
+    }
+
+    private static Collection<SlotAssignment> assign(
+            VertexInformation vertexInformation,
+            List<AllocationID> allocationIDs,
+            List<VertexAllocationInformation> allocations,
+            int[] slotNumOfTaskExecutors) {
+
+        List<TestingSlot> slots = new ArrayList<>(allocationIDs.size());
+        int index = 0;
+        for (int slotNum : slotNumOfTaskExecutors) {
+            TaskManagerLocation tmLocation = new LocalTaskManagerLocation();
+            for (int i = 0; i < slotNum; i++) {
+                slots.add(createSlot(allocationIDs.get(index), tmLocation));
+                index++;
+            }
+        }
         return new StateLocalitySlotAssigner()
                 .assignSlots(
                         new TestJobInformation(singletonList(vertexInformation)),
-                        allocationIDs.stream().map(TestingSlot::new).collect(Collectors.toList()),
+                        slots,
                         new VertexParallelism(
                                 singletonMap(
                                         vertexInformation.getJobVertexID(),
                                         vertexInformation.getParallelism())),
                         new JobAllocationsInformation(
                                 singletonMap(vertexInformation.getJobVertexID(), allocations)));
+    }
+
+    private static TestingSlot createSlot(
+            AllocationID allocationID, TaskManagerLocation tmLocation) {
+        return new TestingSlot(allocationID, ResourceProfile.ANY, tmLocation);
     }
 
     private static VertexInformation createVertex(int parallelism) {
