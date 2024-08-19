@@ -34,7 +34,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /** Represents execution vertices that will run the same shared slot. */
-class ExecutionSlotSharingGroup implements WeightLoadable {
+public class ExecutionSlotSharingGroup implements WeightLoadable {
 
     private final Set<ExecutionVertexID> executionVertexIds;
 
@@ -51,7 +51,7 @@ class ExecutionSlotSharingGroup implements WeightLoadable {
 
     @VisibleForTesting
     @Nonnull
-    SlotSharingGroup getSlotSharingGroup() {
+    public SlotSharingGroup getSlotSharingGroup() {
         return slotSharingGroup;
     }
 
@@ -60,7 +60,7 @@ class ExecutionSlotSharingGroup implements WeightLoadable {
         return slotSharingGroup.getResourceProfile();
     }
 
-    Set<ExecutionVertexID> getExecutionVertexIds() {
+    public Set<ExecutionVertexID> getExecutionVertexIds() {
         return Collections.unmodifiableSet(executionVertexIds);
     }
 

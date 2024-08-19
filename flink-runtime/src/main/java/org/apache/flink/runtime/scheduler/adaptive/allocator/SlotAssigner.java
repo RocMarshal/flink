@@ -18,18 +18,52 @@
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.configuration.TaskManagerOptions.TaskManagerLoadBalanceMode;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
+import org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadingUtilization;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
+import org.apache.flink.util.Preconditions;
 
 import java.util.Collection;
 
-/** Interface for assigning slots to slot sharing groups. */
+/** Abstract class for assigning slots to slot sharing groups. */
 @Internal
-public interface SlotAssigner {
+public abstract class SlotAssigner {
 
-    Collection<SlotAssignment> assignSlots(
+    protected final TaskManagerLoadBalanceMode loadBalanceMode;
+    protected final SlotSharingPolicy slotSharingPolicy;
+    protected final SlotsFilter slotsFilter;
+    protected final RequestSlotMatcher requestSlotMatcher;
+
+    public SlotAssigner(TaskManagerLoadBalanceMode loadBalanceMode, SlotsFilter slotsFilter) {
+        this.loadBalanceMode = Preconditions.checkNotNull(loadBalanceMode);
+        this.slotSharingPolicy = getSlotSharingPolicy();
+        this.slotsFilter = Preconditions.checkNotNull(slotsFilter);
+        this.requestSlotMatcher = getRequestSlotMatcher();
+    }
+
+    private SlotSharingPolicy getSlotSharingPolicy() {
+        return loadBalanceMode == TaskManagerLoadBalanceMode.TASKS
+                ? TaskBalancedSlotSharingPolicy.INSTANCE
+                : DefaultSlotSharingPolicy.INSTANCE;
+    }
+
+    private RequestSlotMatcher getRequestSlotMatcher() {
+        switch (loadBalanceMode) {
+            case TASKS:
+                return new TaskBalancedRequestSlotMatcher();
+            case SLOTS:
+                return new EvenlySpreadOutRequestSlotMatcher();
+            case NONE:
+            default:
+                return new DefaultRequestSlotMatcher();
+        }
+    }
+
+    public abstract Collection<SlotAssignment> assignSlots(
             JobInformation jobInformation,
             Collection<? extends SlotInfo> freeSlots,
             VertexParallelism vertexParallelism,
+            TaskExecutorsLoadingUtilization taskExecutorsLoadingUtilization,
             JobAllocationsInformation previousAllocations);
 }

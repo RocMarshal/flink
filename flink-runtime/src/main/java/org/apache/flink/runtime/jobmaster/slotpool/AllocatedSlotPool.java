@@ -24,7 +24,6 @@ import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 
 import java.util.Collection;
-import java.util.Map;
 import java.util.Optional;
 
 /** The slot pool is responsible for maintaining a set of {@link AllocatedSlot AllocatedSlots}. */
@@ -126,12 +125,8 @@ public interface AllocatedSlotPool {
      */
     Collection<? extends SlotInfo> getAllSlotsInformation();
 
-    /**
-     * Return the loading weight for per task executor.
-     *
-     * @return map of loading weight for per task executor.
-     */
-    Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight();
+    /** Get the task executors loading and utilization. */
+    TaskExecutorsLoadingUtilization getTaskExecutorLoadingUtilization();
 
     /** Information about a free slot. */
     interface FreeSlotInfo {
