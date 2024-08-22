@@ -53,6 +53,10 @@ public class VertexParallelism {
         return Collections.unmodifiableSet(parallelismForVertices.keySet());
     }
 
+    public Map<JobVertexID, Integer> getParallelismForVertices() {
+        return Collections.unmodifiableMap(parallelismForVertices);
+    }
+
     @Override
     public String toString() {
         return "VertexParallelism: " + parallelismForVertices;

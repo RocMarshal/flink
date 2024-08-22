@@ -17,6 +17,7 @@
 
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
+import org.apache.flink.configuration.TaskManagerOptions.TaskManagerLoadBalanceMode;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
@@ -31,9 +32,15 @@ import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.topology.VertexID;
 import org.apache.flink.runtime.util.ResourceCounter;
+import org.apache.flink.testutils.junit.extensions.parameterized.Parameter;
+import org.apache.flink.testutils.junit.extensions.parameterized.ParameterizedTestExtension;
+import org.apache.flink.testutils.junit.extensions.parameterized.Parameters;
 
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.assertj.core.util.Lists;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestTemplate;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,6 +57,7 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Tests for the {@link SlotSharingSlotAllocator}. */
+@ExtendWith(ParameterizedTestExtension.class)
 class SlotSharingSlotAllocatorTest {
 
     private static final FreeSlotFunction TEST_FREE_SLOT_FUNCTION = (a, c, t) -> {};
@@ -71,13 +79,26 @@ class SlotSharingSlotAllocatorTest {
     private static final JobInformation.VertexInformation vertex3 =
             new TestVertexInformation(new JobVertexID(), 3, slotSharingGroup2);
 
-    @Test
-    void testCalculateRequiredSlots() {
-        final SlotSharingSlotAllocator slotAllocator =
+    @Parameter private TaskManagerLoadBalanceMode loadBalanceMode;
+    private SlotSharingSlotAllocator slotAllocator;
+
+    @Parameters(name = "loadBalanceMode={0}")
+    private static Collection<TaskManagerLoadBalanceMode> getLoadBalanceModes() {
+        return Lists.newArrayList(TaskManagerLoadBalanceMode.values());
+    }
+
+    @BeforeEach
+    void setup() {
+        this.slotAllocator =
                 SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
                         TEST_RESERVE_SLOT_FUNCTION,
                         TEST_FREE_SLOT_FUNCTION,
-                        TEST_IS_SLOT_FREE_FUNCTION);
+                        TEST_IS_SLOT_FREE_FUNCTION,
+                        loadBalanceMode);
+    }
+
+    @TestTemplate
+    void testCalculateRequiredSlots() {
 
         final ResourceCounter resourceCounter =
                 slotAllocator.calculateRequiredSlots(Arrays.asList(vertex1, vertex2, vertex3));
@@ -89,13 +110,8 @@ class SlotSharingSlotAllocatorTest {
                                 + vertex3.getParallelism());
     }
 
-    @Test
+    @TestTemplate
     void testDetermineParallelismWithMinimumSlots() {
-        final SlotSharingSlotAllocator slotAllocator =
-                SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                        TEST_RESERVE_SLOT_FUNCTION,
-                        TEST_FREE_SLOT_FUNCTION,
-                        TEST_IS_SLOT_FREE_FUNCTION);
 
         final JobInformation jobInformation =
                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3));
@@ -108,13 +124,8 @@ class SlotSharingSlotAllocatorTest {
         assertThat(vertexParallelism.getParallelism(vertex3.getJobVertexID())).isOne();
     }
 
-    @Test
+    @TestTemplate
     void testDetermineParallelismWithManySlots() {
-        final SlotSharingSlotAllocator slotAllocator =
-                SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                        TEST_RESERVE_SLOT_FUNCTION,
-                        TEST_FREE_SLOT_FUNCTION,
-                        TEST_IS_SLOT_FREE_FUNCTION);
 
         final JobInformation jobInformation =
                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3));
@@ -130,13 +141,8 @@ class SlotSharingSlotAllocatorTest {
                 .isEqualTo(vertex3.getParallelism());
     }
 
-    @Test
+    @TestTemplate
     void testDetermineParallelismWithVariedParallelism() {
-        final SlotSharingSlotAllocator slotAllocator =
-                SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                        TEST_RESERVE_SLOT_FUNCTION,
-                        TEST_FREE_SLOT_FUNCTION,
-                        TEST_IS_SLOT_FREE_FUNCTION);
         final SlotSharingGroup slotSharingGroup1 = new SlotSharingGroup();
         final JobInformation.VertexInformation vertex11 =
                 new TestVertexInformation(new JobVertexID(), 4, slotSharingGroup1);
@@ -163,13 +169,8 @@ class SlotSharingSlotAllocatorTest {
                 .isEqualTo(vertex2.getParallelism());
     }
 
-    @Test
+    @TestTemplate
     void testDetermineParallelismUnsuccessfulWithLessSlotsThanSlotSharingGroups() {
-        final SlotSharingSlotAllocator slotAllocator =
-                SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                        TEST_RESERVE_SLOT_FUNCTION,
-                        TEST_FREE_SLOT_FUNCTION,
-                        TEST_IS_SLOT_FREE_FUNCTION);
 
         final JobInformation jobInformation =
                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3));
@@ -180,13 +181,8 @@ class SlotSharingSlotAllocatorTest {
         assertThat(vertexParallelism).isNotPresent();
     }
 
-    @Test
+    @TestTemplate
     void testDetermineParallelismWithPartiallyEqualLowerUpperBound() {
-        final SlotSharingSlotAllocator slotAllocator =
-                SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                        TEST_RESERVE_SLOT_FUNCTION,
-                        TEST_FREE_SLOT_FUNCTION,
-                        TEST_IS_SLOT_FREE_FUNCTION);
         final JobInformation.VertexInformation vertex1 =
                 new TestVertexInformation(new JobVertexID(), 1, 8, new SlotSharingGroup());
         final JobInformation.VertexInformation vertex2 =
@@ -208,13 +204,8 @@ class SlotSharingSlotAllocatorTest {
                         });
     }
 
-    @Test
+    @TestTemplate
     void testDetermineParallelismWithLowerBoundsInsufficientSlots() {
-        final SlotSharingSlotAllocator slotAllocator =
-                SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                        TEST_RESERVE_SLOT_FUNCTION,
-                        TEST_FREE_SLOT_FUNCTION,
-                        TEST_IS_SLOT_FREE_FUNCTION);
         final JobInformation.VertexInformation vertex1 =
                 new TestVertexInformation(new JobVertexID(), 4, 4, new SlotSharingGroup());
         final JobInformation.VertexInformation vertex2 =
@@ -229,13 +220,8 @@ class SlotSharingSlotAllocatorTest {
         assertThat(vertexParallelism).isNotPresent();
     }
 
-    @Test
+    @TestTemplate
     void testDetermineParallelismWithLowerBoundsInsufficientSlotsForPartialVertices() {
-        final SlotSharingSlotAllocator slotAllocator =
-                SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                        TEST_RESERVE_SLOT_FUNCTION,
-                        TEST_FREE_SLOT_FUNCTION,
-                        TEST_IS_SLOT_FREE_FUNCTION);
         SlotSharingGroup slotSharingGroup = new SlotSharingGroup();
         final JobInformation.VertexInformation vertex1 =
                 new TestVertexInformation(new JobVertexID(), 2, 2, slotSharingGroup);
@@ -250,13 +236,8 @@ class SlotSharingSlotAllocatorTest {
         assertThat(vertexParallelism).isNotPresent();
     }
 
-    @Test
+    @TestTemplate
     void testDetermineParallelismWithAllEqualLowerUpperBoundFreSlots() {
-        final SlotSharingSlotAllocator slotAllocator =
-                SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                        TEST_RESERVE_SLOT_FUNCTION,
-                        TEST_FREE_SLOT_FUNCTION,
-                        TEST_IS_SLOT_FREE_FUNCTION);
         final JobInformation.VertexInformation vertex1 =
                 new TestVertexInformation(new JobVertexID(), 4, 10, new SlotSharingGroup());
         final JobInformation.VertexInformation vertex2 =
@@ -280,13 +261,8 @@ class SlotSharingSlotAllocatorTest {
                         });
     }
 
-    @Test
+    @TestTemplate
     void testDetermineParallelismWithAllEqualLowerUpperBoundManySlots() {
-        final SlotSharingSlotAllocator slotAllocator =
-                SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                        TEST_RESERVE_SLOT_FUNCTION,
-                        TEST_FREE_SLOT_FUNCTION,
-                        TEST_IS_SLOT_FREE_FUNCTION);
         final JobInformation.VertexInformation vertex1 =
                 new TestVertexInformation(new JobVertexID(), 4, 4, new SlotSharingGroup());
         final JobInformation.VertexInformation vertex2 =
@@ -310,13 +286,8 @@ class SlotSharingSlotAllocatorTest {
                         });
     }
 
-    @Test
+    @TestTemplate
     void testReserveAvailableResources() {
-        final SlotSharingSlotAllocator slotAllocator =
-                SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                        TEST_RESERVE_SLOT_FUNCTION,
-                        TEST_FREE_SLOT_FUNCTION,
-                        TEST_IS_SLOT_FREE_FUNCTION);
 
         final JobInformation jobInformation =
                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3));
@@ -353,11 +324,14 @@ class SlotSharingSlotAllocatorTest {
         }
     }
 
-    @Test
+    @TestTemplate
     void testReserveUnavailableResources() {
         final SlotSharingSlotAllocator slotSharingSlotAllocator =
                 SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                        TEST_RESERVE_SLOT_FUNCTION, TEST_FREE_SLOT_FUNCTION, ignored -> false);
+                        TEST_RESERVE_SLOT_FUNCTION,
+                        TEST_FREE_SLOT_FUNCTION,
+                        ignored -> false,
+                        loadBalanceMode);
 
         final JobInformation jobInformation =
                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3));
@@ -378,7 +352,7 @@ class SlotSharingSlotAllocatorTest {
      * Basic test to verify that allocation takes previous allocations into account to facilitate
      * Local Recovery.
      */
-    @Test
+    @TestTemplate
     void testStickyAllocation() {
         Map<JobVertexID, List<VertexAllocationInformation>> locality = new HashMap<>();
 
@@ -422,7 +396,8 @@ class SlotSharingSlotAllocatorTest {
                                 (allocationId, resourceProfile) ->
                                         TestingPhysicalSlot.builder().build(),
                                 (allocationID, cause, ts) -> {},
-                                id -> false)
+                                id -> false,
+                                loadBalanceMode)
                         .determineParallelismAndCalculateAssignment(
                                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3)),
                                 freeSlots,

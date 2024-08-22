@@ -29,8 +29,7 @@ class TestVertexInformation implements JobInformation.VertexInformation {
     private final int minParallelism;
     private final int parallelism;
     private final SlotSharingGroup slotSharingGroup;
-    @Nullable
-    private final CoLocationGroup coLocationGroup;
+    @Nullable private final CoLocationGroup coLocationGroup;
 
     TestVertexInformation(
             JobVertexID jobVertexId, int parallelism, SlotSharingGroup slotSharingGroup) {

@@ -18,16 +18,27 @@
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.configuration.TaskManagerOptions.TaskManagerLoadBalanceMode;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
+import org.apache.flink.util.Preconditions;
 
 import java.util.Collection;
 
-/** Interface for assigning slots to slot sharing groups. */
+/** Abstract class for assigning slots to slot sharing groups. */
 @Internal
-public interface SlotAssigner {
+public abstract class SlotAssigner {
 
-    Collection<SlotAssignment> assignSlots(
+    protected TaskManagerLoadBalanceMode loadBalanceMode;
+    protected SlotSharingStrategy slotSharingStrategy;
+
+    public SlotAssigner(TaskManagerLoadBalanceMode loadBalanceMode) {
+        this.loadBalanceMode = Preconditions.checkNotNull(loadBalanceMode);
+        // TODO....
+        this.slotSharingStrategy = Preconditions.checkNotNull(DefaultSlotSharingStrategy.INSTANCE);
+    }
+
+    public abstract Collection<SlotAssignment> assignSlots(
             JobInformation jobInformation,
             Collection<? extends SlotInfo> freeSlots,
             VertexParallelism vertexParallelism,

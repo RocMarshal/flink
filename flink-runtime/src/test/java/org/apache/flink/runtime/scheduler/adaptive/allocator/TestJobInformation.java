@@ -34,7 +34,6 @@ class TestJobInformation implements JobInformation {
     private final Collection<SlotSharingGroup> slotSharingGroups;
     private final Collection<CoLocationGroup> coLocationGroups;
 
-
     TestJobInformation(Collection<? extends VertexInformation> vertexIdToInformation) {
         this.vertexIdToInformation =
                 vertexIdToInformation.stream()
@@ -45,7 +44,12 @@ class TestJobInformation implements JobInformation {
                 vertexIdToInformation.stream()
                         .map(VertexInformation::getSlotSharingGroup)
                         .collect(Collectors.toSet());
-        this.coLocationGroups = Collections.unmodifiableSet(vertexIdToInformation.stream().map(VertexInformation::getCoLocationGroup).filter(Objects::nonNull).collect(Collectors.toSet()));
+        this.coLocationGroups =
+                Collections.unmodifiableSet(
+                        vertexIdToInformation.stream()
+                                .map(VertexInformation::getCoLocationGroup)
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toSet()));
     }
 
     @Override

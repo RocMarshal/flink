@@ -17,6 +17,7 @@
 
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
+import org.apache.flink.configuration.TaskManagerOptions.TaskManagerLoadBalanceMode;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.instance.SlotSharingGroupId;
@@ -53,22 +54,29 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
     private final ReserveSlotFunction reserveSlotFunction;
     private final FreeSlotFunction freeSlotFunction;
     private final IsSlotAvailableAndFreeFunction isSlotAvailableAndFreeFunction;
+    private final TaskManagerLoadBalanceMode taskManagerLoadBalanceMode;
 
     private SlotSharingSlotAllocator(
             ReserveSlotFunction reserveSlot,
             FreeSlotFunction freeSlotFunction,
-            IsSlotAvailableAndFreeFunction isSlotAvailableAndFreeFunction) {
+            IsSlotAvailableAndFreeFunction isSlotAvailableAndFreeFunction,
+            TaskManagerLoadBalanceMode taskManagerLoadBalanceMode) {
         this.reserveSlotFunction = reserveSlot;
         this.freeSlotFunction = freeSlotFunction;
         this.isSlotAvailableAndFreeFunction = isSlotAvailableAndFreeFunction;
+        this.taskManagerLoadBalanceMode = taskManagerLoadBalanceMode;
     }
 
     public static SlotSharingSlotAllocator createSlotSharingSlotAllocator(
             ReserveSlotFunction reserveSlot,
             FreeSlotFunction freeSlotFunction,
-            IsSlotAvailableAndFreeFunction isSlotAvailableAndFreeFunction) {
+            IsSlotAvailableAndFreeFunction isSlotAvailableAndFreeFunction,
+            TaskManagerLoadBalanceMode taskManagerLoadBalanceMode) {
         return new SlotSharingSlotAllocator(
-                reserveSlot, freeSlotFunction, isSlotAvailableAndFreeFunction);
+                reserveSlot,
+                freeSlotFunction,
+                isSlotAvailableAndFreeFunction,
+                taskManagerLoadBalanceMode);
     }
 
     @Override
@@ -128,13 +136,15 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
             JobInformation jobInformation,
             Collection<? extends SlotInfo> slots,
             JobAllocationsInformation jobAllocationsInformation) {
+        final SlotSharingStrategy slotSharingStrategy = DefaultSlotSharingStrategy.INSTANCE;
         return determineParallelism(jobInformation, slots)
                 .map(
                         parallelism -> {
                             SlotAssigner slotAssigner =
                                     jobAllocationsInformation.isEmpty()
-                                            ? new DefaultSlotAssigner()
-                                            : new StateLocalitySlotAssigner();
+                                            ? new DefaultSlotAssigner(taskManagerLoadBalanceMode)
+                                            : new StateLocalitySlotAssigner(
+                                                    taskManagerLoadBalanceMode);
                             return new JobSchedulingPlan(
                                     parallelism,
                                     slotAssigner.assignSlots(

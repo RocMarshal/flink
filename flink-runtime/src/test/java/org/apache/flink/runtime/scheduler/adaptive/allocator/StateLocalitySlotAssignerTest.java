@@ -17,6 +17,7 @@
 
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
+import org.apache.flink.configuration.TaskManagerOptions.TaskManagerLoadBalanceMode;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
@@ -25,9 +26,14 @@ import org.apache.flink.runtime.scheduler.adaptive.allocator.JobAllocationsInfor
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobInformation.VertexInformation;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyGroupRangeAssignment;
+import org.apache.flink.testutils.junit.extensions.parameterized.Parameter;
+import org.apache.flink.testutils.junit.extensions.parameterized.ParameterizedTestExtension;
+import org.apache.flink.testutils.junit.extensions.parameterized.Parameters;
 
+import org.assertj.core.util.Lists;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,7 +49,15 @@ import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 
 /** {@link StateLocalitySlotAssigner} test. */
+@ExtendWith(ParameterizedTestExtension.class)
 class StateLocalitySlotAssignerTest {
+
+    @Parameter private TaskManagerLoadBalanceMode loadBalanceMode;
+
+    @Parameters(name = "loadBalanceMode={0}")
+    private static Collection<TaskManagerLoadBalanceMode> getTaskManagerLoadBalanceMode() {
+        return Lists.newArrayList(TaskManagerLoadBalanceMode.values());
+    }
 
     @Test
     public void testDownScaleWithUnevenStateSize() {
@@ -168,11 +182,11 @@ class StateLocalitySlotAssignerTest {
                 hasItems(mustHaveAllocationID));
     }
 
-    private static Collection<SlotAssignment> assign(
+    private Collection<SlotAssignment> assign(
             VertexInformation vertexInformation,
             List<AllocationID> allocationIDs,
             List<VertexAllocationInformation> allocations) {
-        return new StateLocalitySlotAssigner()
+        return new StateLocalitySlotAssigner(loadBalanceMode)
                 .assignSlots(
                         new TestJobInformation(singletonList(vertexInformation)),
                         allocationIDs.stream().map(TestingSlot::new).collect(Collectors.toList()),
