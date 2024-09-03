@@ -55,7 +55,7 @@ import static org.apache.flink.util.Preconditions.checkState;
 @Internal
 public class StateLocalitySlotAssigner implements SlotAssigner {
 
-    private static class AllocationScore implements Comparable<AllocationScore> {
+    public static class AllocationScore implements Comparable<AllocationScore> {
 
         private final String groupId;
         private final AllocationID allocationId;
