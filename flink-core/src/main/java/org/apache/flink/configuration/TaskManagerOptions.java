@@ -709,10 +709,11 @@ public class TaskManagerOptions {
                                                     code("TaskManagers")),
                                             text(
                                                     "The %s mode tries to schedule evenly all tasks based on its' number across all available %s. "
-                                                            + "Note: Currently, enabling this parameter can only achieve the balancing effect of the slot level dimension of %s.",
+                                                            + "Note: Currently, enabling this parameter can only achieve the balancing effect of the slot level dimension of %s and %s.",
                                                     code(TaskManagerLoadBalanceMode.TASKS.name()),
                                                     code("TaskManagers"),
-                                                    code("DefaultScheduler")),
+                                                    code("DefaultScheduler"),
+                                                    code("AdaptiveScheduler")),
                                             text(
                                                     "The %s mode is the default mode without any specified strategy.",
                                                     code(TaskManagerLoadBalanceMode.NONE.name())))

@@ -272,7 +272,9 @@ public class AdaptiveSchedulerBuilder {
                 slotAllocator == null
                         ? AdaptiveSchedulerFactory.createSlotSharingSlotAllocator(
                                 declarativeSlotPool,
-                                jobMasterConfiguration.get(StateRecoveryOptions.LOCAL_RECOVERY))
+                                jobMasterConfiguration.get(StateRecoveryOptions.LOCAL_RECOVERY),
+                                AdaptiveSchedulerFactory.getSlotSharingStrategy(
+                                        jobMasterConfiguration))
                         : slotAllocator,
                 executorService,
                 userCodeLoader,
