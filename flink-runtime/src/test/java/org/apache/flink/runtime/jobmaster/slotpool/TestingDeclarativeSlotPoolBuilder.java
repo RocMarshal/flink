@@ -42,6 +42,8 @@ import java.util.function.Function;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
+import static org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadingUtilization.SlotsUtilization;
+
 /** Builder for {@link TestingDeclarativeSlotPool}. */
 public class TestingDeclarativeSlotPoolBuilder {
 
@@ -84,6 +86,8 @@ public class TestingDeclarativeSlotPoolBuilder {
             registerSlotsFunction =
                     (slotOffers, ignoredB, ignoredC, ignoredD) -> new ArrayList<>(slotOffers);
     private Supplier<Map<ResourceID, LoadingWeight>> taskExecutorsLoadingWeightSupplier =
+            HashMap::new;
+    private Supplier<Map<ResourceID, SlotsUtilization>> taskExecutorsSlotsUtilizationSupplier =
             HashMap::new;
 
     public TestingDeclarativeSlotPoolBuilder setIncreaseResourceRequirementsByConsumer(
@@ -213,6 +217,7 @@ public class TestingDeclarativeSlotPoolBuilder {
                 containsFreeSlotFunction,
                 returnIdleSlotsConsumer,
                 setResourceRequirementsConsumer,
-                taskExecutorsLoadingWeightSupplier);
+                taskExecutorsLoadingWeightSupplier,
+                taskExecutorsSlotsUtilizationSupplier);
     }
 }

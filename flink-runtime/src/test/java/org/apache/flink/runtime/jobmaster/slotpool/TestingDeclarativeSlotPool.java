@@ -41,6 +41,8 @@ import java.util.function.Function;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
+import static org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadingUtilization.SlotsUtilization;
+
 /** Testing {@link DeclarativeSlotPool} implementation. */
 final class TestingDeclarativeSlotPool implements DeclarativeSlotPool {
 
@@ -91,6 +93,7 @@ final class TestingDeclarativeSlotPool implements DeclarativeSlotPool {
     private final Consumer<ResourceCounter> setResourceRequirementsConsumer;
 
     private final Supplier<Map<ResourceID, LoadingWeight>> taskExecutorsLoadingWeightSupplier;
+    private final Supplier<Map<ResourceID, SlotsUtilization>> taskExecutorsSlotsUtilizationSupplier;
 
     TestingDeclarativeSlotPool(
             Consumer<ResourceCounter> increaseResourceRequirementsByConsumer,
@@ -122,7 +125,8 @@ final class TestingDeclarativeSlotPool implements DeclarativeSlotPool {
             Function<AllocationID, Boolean> containsFreeSlotFunction,
             LongConsumer releaseIdleSlotsConsumer,
             Consumer<ResourceCounter> setResourceRequirementsConsumer,
-            Supplier<Map<ResourceID, LoadingWeight>> taskExecutorsLoadingWeightSupplier) {
+            Supplier<Map<ResourceID, LoadingWeight>> taskExecutorsLoadingWeightSupplier,
+            Supplier<Map<ResourceID, SlotsUtilization>> taskExecutorsSlotsUtilizationSupplier) {
         this.increaseResourceRequirementsByConsumer = increaseResourceRequirementsByConsumer;
         this.decreaseResourceRequirementsByConsumer = decreaseResourceRequirementsByConsumer;
         this.getResourceRequirementsSupplier = getResourceRequirementsSupplier;
@@ -140,6 +144,7 @@ final class TestingDeclarativeSlotPool implements DeclarativeSlotPool {
         this.releaseIdleSlotsConsumer = releaseIdleSlotsConsumer;
         this.setResourceRequirementsConsumer = setResourceRequirementsConsumer;
         this.taskExecutorsLoadingWeightSupplier = taskExecutorsLoadingWeightSupplier;
+        this.taskExecutorsSlotsUtilizationSupplier = taskExecutorsSlotsUtilizationSupplier;
     }
 
     @Override
@@ -193,8 +198,18 @@ final class TestingDeclarativeSlotPool implements DeclarativeSlotPool {
     }
 
     @Override
-    public Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight() {
-        return taskExecutorsLoadingWeightSupplier.get();
+    public TaskExecutorsLoadingUtilization getTaskExecutorLoadingUtilization() {
+        return new TaskExecutorsLoadingUtilization() {
+            @Override
+            public Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight() {
+                return taskExecutorsLoadingWeightSupplier.get();
+            }
+
+            @Override
+            public Map<ResourceID, SlotsUtilization> getTaskExecutorsSlotsUtilization() {
+                return taskExecutorsSlotsUtilizationSupplier.get();
+            }
+        };
     }
 
     @Override

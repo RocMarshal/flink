@@ -39,6 +39,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+import static org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadingUtilization.SlotsUtilization;
+
 /** Default {@link AllocatedSlotPool} implementation. */
 public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
 
@@ -204,7 +206,21 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
     }
 
     @Override
-    public Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight() {
+    public TaskExecutorsLoadingUtilization getTaskExecutorLoadingUtilization() {
+        return new TaskExecutorsLoadingUtilization() {
+            @Override
+            public Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight() {
+                return DefaultAllocatedSlotPool.this.getTaskExecutorsLoadingWeight();
+            }
+
+            @Override
+            public Map<ResourceID, SlotsUtilization> getTaskExecutorsSlotsUtilization() {
+                return DefaultAllocatedSlotPool.this.getTaskExecutorsSlotsUtilization();
+            }
+        };
+    }
+
+    private Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight() {
         final Map<ResourceID, LoadingWeight> result = new HashMap<>(slotsPerTaskExecutor.size());
         Collection<AllocatedSlot> allocatedSlots = registeredSlots.values();
         for (AllocatedSlot allocatedSlot : allocatedSlots) {
@@ -215,6 +231,22 @@ public class DefaultAllocatedSlotPool implements AllocatedSlotPool {
                             Objects.isNull(oldLoading)
                                     ? allocatedSlot.getLoading()
                                     : oldLoading.merge(allocatedSlot.getLoading()));
+        }
+        return result;
+    }
+
+    private Map<ResourceID, SlotsUtilization> getTaskExecutorsSlotsUtilization() {
+        final Map<ResourceID, SlotsUtilization> result = new HashMap<>();
+        for (ResourceID resourceId : slotsPerTaskExecutor.keySet()) {
+            Set<AllocationID> slots = slotsPerTaskExecutor.get(resourceId);
+            if (Objects.isNull(slots) || slots.isEmpty()) {
+                continue;
+            }
+            result.put(
+                    resourceId,
+                    new SlotsUtilization(
+                            slots.size(),
+                            slots.size() - freeSlots.getFreeSlotsNumberOfTaskExecutor(resourceId)));
         }
         return result;
     }

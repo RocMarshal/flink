@@ -18,10 +18,12 @@
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.annotation.Internal;
-import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.configuration.TaskManagerOptions.TaskManagerLoadBalanceMode;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
+import org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadingUtilization;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
+import org.apache.flink.util.Preconditions;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -33,55 +35,43 @@ import java.util.stream.Collectors;
 import static java.util.function.Function.identity;
 import static org.apache.flink.runtime.scheduler.adaptive.allocator.SlotSharingSlotAllocator.ExecutionSlotSharingGroup;
 
-/** The Interface for assigning slots to slot sharing groups. */
+/** The abstract class for assigning slots to slot sharing groups. */
 @Internal
-public interface SlotAssigner {
+public abstract class SlotAssigner {
 
-    /**
-     * The helper class to represent the allocation score on the specified group and allocated slot.
-     */
-    class AllocationScore implements Comparable<AllocationScore> {
+    protected final TaskManagerLoadBalanceMode loadBalanceMode;
+    protected final SlotSharingPolicy slotSharingPolicy;
+    protected final RequestSlotMatcher requestSlotMatcher;
 
-        private final String groupId;
-        private final AllocationID allocationId;
-        private final long score;
+    public SlotAssigner(TaskManagerLoadBalanceMode loadBalanceMode) {
+        this.loadBalanceMode = Preconditions.checkNotNull(loadBalanceMode);
+        this.slotSharingPolicy = getSlotSharingPolicy();
+        this.requestSlotMatcher = getRequestSlotMatcher();
+    }
 
-        public AllocationScore(String groupId, AllocationID allocationId, long score) {
-            this.groupId = groupId;
-            this.allocationId = allocationId;
-            this.score = score;
-        }
+    private SlotSharingPolicy getSlotSharingPolicy() {
+        return loadBalanceMode == TaskManagerLoadBalanceMode.TASKS
+                ? TaskBalancedSlotSharingPolicy.INSTANCE
+                : DefaultSlotSharingPolicy.INSTANCE;
+    }
 
-        public String getGroupId() {
-            return groupId;
-        }
-
-        public AllocationID getAllocationId() {
-            return allocationId;
-        }
-
-        public long getScore() {
-            return score;
-        }
-
-        @Override
-        public int compareTo(StateLocalitySlotAssigner.AllocationScore other) {
-            int result = Long.compare(score, other.score);
-            if (result != 0) {
-                return result;
-            }
-            result = other.allocationId.compareTo(allocationId);
-            if (result != 0) {
-                return result;
-            }
-            return other.groupId.compareTo(groupId);
+    private RequestSlotMatcher getRequestSlotMatcher() {
+        switch (loadBalanceMode) {
+            case TASKS:
+                return new TaskBalancedRequestSlotMatcher();
+            case SLOTS:
+                return new EvenlySpreadOutRequestSlotMatcher();
+            case NONE:
+            default:
+                return new DefaultRequestSlotMatcher();
         }
     }
 
-    Collection<SlotAssignment> assignSlots(
+    public abstract Collection<SlotAssignment> assignSlots(
             JobInformation jobInformation,
             Collection<? extends SlotInfo> freeSlots,
             VertexParallelism vertexParallelism,
+            TaskExecutorsLoadingUtilization taskExecutorsLoadingUtilization,
             JobAllocationsInformation previousAllocations);
 
     /**
@@ -92,7 +82,7 @@ public interface SlotAssigner {
      * @param scores the allocation scores.
      * @return the target slots that are distributed on the minimal task executors.
      */
-    default Collection<? extends SlotInfo> selectSlotsInMinimalTaskExecutors(
+    Collection<? extends SlotInfo> selectSlotsInMinimalTaskExecutors(
             Collection<? extends SlotInfo> slots,
             Collection<ExecutionSlotSharingGroup> groups,
             Collection<AllocationScore> scores) {
@@ -126,7 +116,7 @@ public interface SlotAssigner {
      * @return the task executors with the order that aims to priority assigning requested groups on
      *     it.
      */
-    List<TaskManagerLocation> sortPrioritizedTaskExecutors(
+    protected abstract List<TaskManagerLocation> sortPrioritizedTaskExecutors(
             Collection<? extends SlotInfo> slots, Collection<AllocationScore> scores);
 
     static Map<TaskManagerLocation, ? extends Set<? extends SlotInfo>> getSlotsPerTaskExecutor(

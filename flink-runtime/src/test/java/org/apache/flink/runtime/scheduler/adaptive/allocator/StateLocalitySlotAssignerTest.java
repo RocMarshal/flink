@@ -17,10 +17,12 @@
 
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
+import org.apache.flink.configuration.TaskManagerOptions.TaskManagerLoadBalanceMode;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
+import org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadingUtilization;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobAllocationsInformation.VertexAllocationInformation;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobInformation.VertexInformation;
@@ -28,9 +30,14 @@ import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyGroupRangeAssignment;
 import org.apache.flink.runtime.taskmanager.LocalTaskManagerLocation;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
+import org.apache.flink.testutils.junit.extensions.parameterized.Parameter;
+import org.apache.flink.testutils.junit.extensions.parameterized.ParameterizedTestExtension;
+import org.apache.flink.testutils.junit.extensions.parameterized.Parameters;
 import org.apache.flink.util.Preconditions;
 
-import org.junit.jupiter.api.Test;
+import org.assertj.core.util.Lists;
+import org.junit.jupiter.api.TestTemplate;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -49,9 +56,17 @@ import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** {@link StateLocalitySlotAssigner} test. */
+@ExtendWith(ParameterizedTestExtension.class)
 class StateLocalitySlotAssignerTest {
 
-    @Test
+    @Parameter private TaskManagerLoadBalanceMode loadBalanceMode;
+
+    @Parameters(name = "loadBalanceMode={0}")
+    private static Collection<TaskManagerLoadBalanceMode> getTaskManagerLoadBalanceMode() {
+        return Lists.newArrayList(TaskManagerLoadBalanceMode.values());
+    }
+
+    @TestTemplate
     void testDownScaleWithUnevenStateSize() {
         int newParallelism = 1;
         VertexInformation vertex = createVertex(newParallelism);
@@ -80,7 +95,7 @@ class StateLocalitySlotAssignerTest {
         verifyAssignments(assignments, newParallelism, allocationWith200bytes);
     }
 
-    @Test
+    @TestTemplate
     void testSlotsAreNotWasted() {
         VertexInformation vertex = createVertex(2);
         AllocationID alloc1 = new AllocationID();
@@ -96,7 +111,7 @@ class StateLocalitySlotAssignerTest {
         assign(vertex, Arrays.asList(alloc1, alloc2), allocations);
     }
 
-    @Test
+    @TestTemplate
     void testUpScaling() {
         final int oldParallelism = 3;
         final int newParallelism = 7;
@@ -118,7 +133,7 @@ class StateLocalitySlotAssignerTest {
                         .toArray(AllocationID[]::new));
     }
 
-    @Test
+    @TestTemplate
     void testDownScaling() {
         final int oldParallelism = 5;
         final int newParallelism = 1;
@@ -136,10 +151,10 @@ class StateLocalitySlotAssignerTest {
         verifyAssignments(assignments, newParallelism, biggestAllocation);
     }
 
+    @MethodSource("getTestingArguments")
     @ParameterizedTest(
             name =
                     "oldParallelism={0}, newParallelism={1}, slotNumOfTaskExecutors={2}, expectedMinimalTaskExecutorNum={3}")
-    @MethodSource("getTestingArguments")
     void testMinimalTaskExecutorsAfterRescale(
             int oldParallelism,
             int newParallelism,
@@ -161,7 +176,12 @@ class StateLocalitySlotAssignerTest {
                                 biggestAllocation, vertex, oldParallelism, iterator)
                         : initUpScalePreAllocationInfo(oldParallelism, iterator, vertex);
         Collection<SlotAssignment> assigns =
-                assign(vertex, allocationIDs, prevAllocations, slotNumOfTaskExecutors);
+                assign(
+                        TaskManagerLoadBalanceMode.NONE,
+                        vertex,
+                        allocationIDs,
+                        prevAllocations,
+                        slotNumOfTaskExecutors);
         assertThat(
                         assigns.stream()
                                 .map(
@@ -238,16 +258,22 @@ class StateLocalitySlotAssignerTest {
                 .contains(mustHaveAllocationID);
     }
 
-    private static Collection<SlotAssignment> assign(
+    private Collection<SlotAssignment> assign(
             VertexInformation vertexInformation,
             List<AllocationID> allocationIDs,
             List<VertexAllocationInformation> allocations) {
         int[] slotNumOfTaskExecutors = new int[allocationIDs.size()];
         Arrays.fill(slotNumOfTaskExecutors, 1);
-        return assign(vertexInformation, allocationIDs, allocations, slotNumOfTaskExecutors);
+        return assign(
+                loadBalanceMode,
+                vertexInformation,
+                allocationIDs,
+                allocations,
+                slotNumOfTaskExecutors);
     }
 
-    private static Collection<SlotAssignment> assign(
+    private Collection<SlotAssignment> assign(
+            TaskManagerLoadBalanceMode loadBalanceMode,
             VertexInformation vertexInformation,
             List<AllocationID> allocationIDs,
             List<VertexAllocationInformation> allocations,
@@ -262,7 +288,7 @@ class StateLocalitySlotAssignerTest {
                 index++;
             }
         }
-        return new StateLocalitySlotAssigner()
+        return new StateLocalitySlotAssigner(loadBalanceMode)
                 .assignSlots(
                         new TestJobInformation(singletonList(vertexInformation)),
                         slots,
@@ -270,6 +296,7 @@ class StateLocalitySlotAssignerTest {
                                 singletonMap(
                                         vertexInformation.getJobVertexID(),
                                         vertexInformation.getParallelism())),
+                        TaskExecutorsLoadingUtilization.EMPTY,
                         new JobAllocationsInformation(
                                 singletonMap(vertexInformation.getJobVertexID(), allocations)));
     }
