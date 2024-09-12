@@ -22,7 +22,6 @@ import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.scheduler.loading.DefaultLoadingWeight;
 import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
-import org.apache.flink.runtime.scheduler.loading.WeightLoadable;
 import org.apache.flink.runtime.state.PriorityComparator;
 import org.apache.flink.runtime.state.heap.AbstractHeapPriorityQueueElement;
 import org.apache.flink.runtime.state.heap.HeapPriorityQueue;
@@ -42,6 +41,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.flink.runtime.scheduler.loading.WeightLoadable.sortByLoadingDescend;
 
 /**
  * The tasks balanced based implementation of {@link RequestSlotMatchingStrategy} that matches the
@@ -169,14 +170,6 @@ public enum TasksBalancedRequestSlotMatchingStrategy implements RequestSlotMatch
                                                 .getTaskManagerLocation()
                                                 .getResourceID(),
                                 Collectors.toSet()));
-    }
-
-    private <T extends WeightLoadable> List<T> sortByLoadingDescend(Collection<T> pendingRequests) {
-        return pendingRequests.stream()
-                .sorted(
-                        (leftReq, rightReq) ->
-                                rightReq.getLoading().compareTo(leftReq.getLoading()))
-                .collect(Collectors.toList());
     }
 
     private Map<ResourceProfile, HeapPriorityQueue<PhysicalSlotElement>> getSlotCandidatesByProfile(

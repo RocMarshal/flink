@@ -19,6 +19,7 @@ package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
+import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.runtime.taskmanager.LocalTaskManagerLocation;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
@@ -37,7 +38,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.flink.runtime.scheduler.adaptive.allocator.SlotAssigner.AllocationScore;
 import static org.apache.flink.runtime.scheduler.adaptive.allocator.SlotSharingSlotAllocator.ExecutionSlotSharingGroup;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -172,7 +172,8 @@ class SlotAssignerTest {
     private static List<ExecutionSlotSharingGroup> createGroups(int num) {
         final List<ExecutionSlotSharingGroup> result = new ArrayList<>(num);
         for (int i = 0; i < num; i++) {
-            result.add(new ExecutionSlotSharingGroup(Collections.emptySet()));
+            result.add(
+                    new ExecutionSlotSharingGroup(new SlotSharingGroup(), Collections.emptySet()));
         }
         return result;
     }

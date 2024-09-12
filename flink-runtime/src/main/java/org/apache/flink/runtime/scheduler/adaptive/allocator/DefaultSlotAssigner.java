@@ -18,46 +18,47 @@
 
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
-import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
+import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.configuration.TaskManagerOptions.TaskManagerLoadBalanceMode;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
+import org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadingUtilization;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.SlotSharingSlotAllocator.ExecutionSlotSharingGroup;
-import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /** Simple {@link SlotAssigner} that treats all slots and slot sharing groups equally. */
-public class DefaultSlotAssigner implements SlotAssigner {
+public class DefaultSlotAssigner extends SlotAssigner {
+
+    @VisibleForTesting
+    public DefaultSlotAssigner() {
+        this(TaskManagerLoadBalanceMode.NONE);
+    }
+
+    public DefaultSlotAssigner(TaskManagerLoadBalanceMode loadBalanceMode) {
+        super(loadBalanceMode);
+    }
 
     @Override
     public Collection<SlotAssignment> assignSlots(
             JobInformation jobInformation,
             Collection<? extends SlotInfo> freeSlots,
             VertexParallelism vertexParallelism,
+            TaskExecutorsLoadingUtilization taskExecutorsLoadingUtilization,
             JobAllocationsInformation previousAllocations) {
-        List<ExecutionSlotSharingGroup> allGroups = new ArrayList<>();
-        for (SlotSharingGroup slotSharingGroup : jobInformation.getSlotSharingGroups()) {
-            allGroups.addAll(createExecutionSlotSharingGroups(vertexParallelism, slotSharingGroup));
-        }
-
-        Iterator<? extends SlotInfo> iterator =
-                selectSlotsInMinimalTaskExecutors(freeSlots, allGroups, Collections.emptyList())
-                        .iterator();
-        Collection<SlotAssignment> assignments = new ArrayList<>();
-        for (ExecutionSlotSharingGroup group : allGroups) {
-            assignments.add(new SlotAssignment(iterator.next(), group));
-        }
-        return assignments;
+        List<ExecutionSlotSharingGroup> allGroups =
+                slotSharingStrategy.getExecutionSlotSharingGroups(
+                        jobInformation, vertexParallelism);
+        return requestSlotMatcher.matchRequestsWithSlots(
+                allGroups,
+                selectSlotsInMinimalTaskExecutors(freeSlots, allGroups, Collections.emptyList()),
+                taskExecutorsLoadingUtilization);
     }
 
     @Override
@@ -71,25 +72,6 @@ public class DefaultSlotAssigner implements SlotAssigner {
                                 Integer.compare(
                                         slotsByTaskExecutor.get(right).size(),
                                         slotsByTaskExecutor.get(left).size()))
-                .collect(Collectors.toList());
-    }
-
-    static List<ExecutionSlotSharingGroup> createExecutionSlotSharingGroups(
-            VertexParallelism vertexParallelism, SlotSharingGroup slotSharingGroup) {
-        final Map<Integer, Set<ExecutionVertexID>> sharedSlotToVertexAssignment = new HashMap<>();
-        slotSharingGroup
-                .getJobVertexIds()
-                .forEach(
-                        jobVertexId -> {
-                            int parallelism = vertexParallelism.getParallelism(jobVertexId);
-                            for (int subtaskIdx = 0; subtaskIdx < parallelism; subtaskIdx++) {
-                                sharedSlotToVertexAssignment
-                                        .computeIfAbsent(subtaskIdx, ignored -> new HashSet<>())
-                                        .add(new ExecutionVertexID(jobVertexId, subtaskIdx));
-                            }
-                        });
-        return sharedSlotToVertexAssignment.values().stream()
-                .map(ExecutionSlotSharingGroup::new)
                 .collect(Collectors.toList());
     }
 }
