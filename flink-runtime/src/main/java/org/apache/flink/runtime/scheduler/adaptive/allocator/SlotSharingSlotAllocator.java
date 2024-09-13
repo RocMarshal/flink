@@ -306,7 +306,7 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
         }
     }
 
-    private static class SlotSharingGroupMetaInfo {
+    public static class SlotSharingGroupMetaInfo {
 
         private final int minLowerBound;
         private final int maxLowerBound;
