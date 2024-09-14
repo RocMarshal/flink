@@ -106,9 +106,9 @@ public class StateLocalitySlotAssigner implements SlotAssigner {
 
     @Override
     public List<TaskManagerLocation> sortPrioritizedTaskExecutors(
-            Collection<? extends SlotInfo> slots, Collection<AllocationScore> scores) {
-        Map<TaskManagerLocation, ? extends Set<? extends SlotInfo>> slotsByTaskExecutor =
-                SlotAssigner.getSlotsPerTaskExecutor(slots);
+            Collection<? extends SlotInfo> slots,
+            Map<TaskManagerLocation, ? extends Set<? extends SlotInfo>> slotsByTaskExecutor,
+            Collection<AllocationScore> scores) {
         final Map<AllocationID, TaskManagerLocation> allocIdToTaskExecutor =
                 slots.stream()
                         .collect(
@@ -123,8 +123,8 @@ public class StateLocalitySlotAssigner implements SlotAssigner {
                         (left, right) -> {
                             int diff =
                                     Integer.compare(
-                                            slotsByTaskExecutor.get(right).size(),
-                                            slotsByTaskExecutor.get(left).size());
+                                            slotsByTaskExecutor.get(left).size(),
+                                            slotsByTaskExecutor.get(right).size());
                             return diff != 0
                                     ? diff
                                     : Long.compare(

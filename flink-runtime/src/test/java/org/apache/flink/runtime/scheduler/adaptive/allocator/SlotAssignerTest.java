@@ -17,8 +17,7 @@
 
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
-import org.apache.flink.runtime.clusterframework.types.AllocationID;
-import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.runtime.taskmanager.LocalTaskManagerLocation;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
@@ -29,11 +28,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -45,128 +42,107 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SlotAssignerTest {
 
     private static final TaskManagerLocation tml1 = new LocalTaskManagerLocation();
-    private static final AllocationID allocationId1OfTml1 = new AllocationID();
-    private static final AllocationID allocationId2OfTml1 = new AllocationID();
-    private static final AllocationID allocationId3OfTml1 = new AllocationID();
-    private static final List<TestingSlot> slotsOfTml1 =
-            createSlots(tml1, allocationId1OfTml1, allocationId2OfTml1, allocationId3OfTml1);
+    private static final SlotInfo slot1OfTml1 = new TestingSlot(tml1);
+    private static final SlotInfo slot2OfTml1 = new TestingSlot(tml1);
+    private static final SlotInfo slot3OfTml1 = new TestingSlot(tml1);
 
     private static final TaskManagerLocation tml2 = new LocalTaskManagerLocation();
-    private static final AllocationID allocationId1OfTml2 = new AllocationID();
-    private static final AllocationID allocationId2OfTml2 = new AllocationID();
-    private static final List<TestingSlot> slotsOfTml2 =
-            createSlots(tml2, allocationId1OfTml2, allocationId2OfTml2);
+    private static final SlotInfo slot1OfTml2 = new TestingSlot(tml2);
+    private static final SlotInfo slot2OfTml2 = new TestingSlot(tml2);
+    private static final SlotInfo slot3OfTml2 = new TestingSlot(tml2);
 
     private static final TaskManagerLocation tml3 = new LocalTaskManagerLocation();
-    private static final AllocationID allocationId1OfTml3 = new AllocationID();
-    private static final AllocationID allocationId2OfTml3 = new AllocationID();
-    private static final List<TestingSlot> slotsOfTml3 =
-            createSlots(tml3, allocationId1OfTml3, allocationId2OfTml3);
+    private static final SlotInfo slot1OfTml3 = new TestingSlot(tml3);
+    private static final SlotInfo slot2OfTml3 = new TestingSlot(tml3);
 
-    /** Helper class. */
-    private static class AllocationIdScore {
-        AllocationID allocationID;
-        long score;
-
-        public AllocationIdScore(AllocationID allocationID, long score) {
-            this.allocationID = allocationID;
-            this.score = score;
-        }
-
-        @Override
-        public String toString() {
-            return "AllocationIdScore{" + "allocationID=" + allocationID + ", score=" + score + '}';
-        }
-    }
+    private static final List<SlotInfo> allSlots =
+            Arrays.asList(
+                    slot1OfTml1,
+                    slot2OfTml1,
+                    slot3OfTml1,
+                    slot1OfTml2,
+                    slot2OfTml2,
+                    slot3OfTml2,
+                    slot1OfTml3,
+                    slot2OfTml3);
 
     private static Stream<Arguments> getTestingParameters() {
         return Stream.of(
                 Arguments.of(
                         new StateLocalitySlotAssigner(),
-                        5,
-                        Arrays.asList(
-                                new AllocationIdScore(allocationId1OfTml2, 2),
-                                new AllocationIdScore(allocationId1OfTml3, 1)),
-                        Arrays.asList(tml1, tml2)),
-                Arguments.of(
-                        new StateLocalitySlotAssigner(),
-                        5,
-                        Arrays.asList(
-                                new AllocationIdScore(allocationId1OfTml3, 2),
-                                new AllocationIdScore(allocationId1OfTml3, 1)),
+                        3,
+                        allSlots,
+                        createTestingScores(Tuple2.of(slot1OfTml1, 2L), Tuple2.of(slot1OfTml2, 1L)),
                         Arrays.asList(tml1, tml3)),
                 Arguments.of(
                         new StateLocalitySlotAssigner(),
-                        3,
-                        Collections.emptyList(),
-                        Collections.singletonList(tml1)),
+                        2,
+                        allSlots,
+                        createTestingScores(Tuple2.of(slot1OfTml1, 2L), Tuple2.of(slot1OfTml2, 2L)),
+                        Collections.singletonList(tml3)),
                 Arguments.of(
                         new StateLocalitySlotAssigner(),
                         6,
-                        Collections.singletonList(new AllocationIdScore(allocationId1OfTml2, 2)),
+                        allSlots,
+                        createTestingScores(Tuple2.of(slot1OfTml2, 2L)),
                         Arrays.asList(tml1, tml2, tml3)),
                 Arguments.of(
                         new StateLocalitySlotAssigner(),
-                        6,
-                        Collections.emptyList(),
-                        Arrays.asList(tml1, tml2, tml3)),
-                Arguments.of(
-                        new DefaultSlotAssigner(),
-                        3,
-                        Collections.emptyList(),
-                        Collections.singletonList(tml1)),
+                        4,
+                        Arrays.asList(
+                                slot1OfTml1,
+                                slot2OfTml1,
+                                slot1OfTml2,
+                                slot2OfTml2,
+                                slot1OfTml3,
+                                slot2OfTml3),
+                        createTestingScores(Tuple2.of(slot1OfTml2, 2L), Tuple2.of(slot2OfTml3, 1L)),
+                        Arrays.asList(tml2, tml3)),
                 Arguments.of(
                         new DefaultSlotAssigner(),
                         2,
-                        Collections.singletonList(new AllocationIdScore(allocationId1OfTml2, 2)),
-                        Collections.singletonList(tml1)));
+                        allSlots,
+                        Collections.emptyList(),
+                        Collections.singletonList(tml3)),
+                Arguments.of(
+                        new DefaultSlotAssigner(),
+                        3,
+                        Arrays.asList(slot1OfTml1, slot1OfTml2, slot2OfTml2, slot3OfTml2),
+                        Collections.emptyList(),
+                        Arrays.asList(tml1, tml2)),
+                Arguments.of(
+                        new DefaultSlotAssigner(),
+                        7,
+                        allSlots,
+                        createTestingScores(Tuple2.of(slot1OfTml2, 2L)),
+                        Arrays.asList(tml1, tml2, tml3)));
     }
 
     @MethodSource("getTestingParameters")
     @ParameterizedTest(
-            name = "slotAssigner={0}, group={1}, scoredAllocations={2}, minimalTaskExecutors={3}")
+            name =
+                    "slotAssigner={0}, group={1}, allSlots={2}, scoredAllocations={3}, minimalTaskExecutors={4}")
     void testSelectSlotsInMinimalTaskExecutors(
             SlotAssigner slotAssigner,
-            int groups,
-            List<AllocationIdScore> scoredAllocations,
+            int requestGroups,
+            List<SlotInfo> allSlots,
+            List<AllocationScore> scores,
             List<TaskManagerLocation> minimalTaskExecutors) {
-        List<TestingSlot> slots = new ArrayList<>();
-        slots.addAll(slotsOfTml1);
-        slots.addAll(slotsOfTml2);
-        slots.addAll(slotsOfTml3);
 
-        final List<ExecutionSlotSharingGroup> groupsPlaceholders = createGroups(groups);
-        Collection<AllocationScore> scores = getAllocationScores(scoredAllocations);
+        final List<ExecutionSlotSharingGroup> groupsPlaceholders = createGroups(requestGroups);
         Set<TaskManagerLocation> keptTaskExecutors =
-                slotAssigner.selectSlotsInMinimalTaskExecutors(slots, groupsPlaceholders, scores)
+                slotAssigner.selectSlotsInMinimalTaskExecutors(allSlots, groupsPlaceholders, scores)
                         .stream()
                         .map(SlotInfo::getTaskManagerLocation)
                         .collect(Collectors.toSet());
         assertThat(minimalTaskExecutors).containsAll(keptTaskExecutors);
     }
 
-    private static Collection<AllocationScore> getAllocationScores(
-            List<AllocationIdScore> scoredAllocations) {
-        if (scoredAllocations == null) {
-            return new ArrayList<>();
-        }
-        return scoredAllocations.stream()
-                .map(
-                        allocationIdScore ->
-                                new AllocationScore(
-                                        UUID.randomUUID().toString(),
-                                        allocationIdScore.allocationID,
-                                        allocationIdScore.score))
+    @SafeVarargs
+    private static List<AllocationScore> createTestingScores(Tuple2<SlotInfo, Long>... scorePairs) {
+        return Arrays.stream(scorePairs)
+                .map(t2 -> new AllocationScore("noUsageGid", t2.f0.getAllocationId(), t2.f1))
                 .collect(Collectors.toList());
-    }
-
-    private static List<TestingSlot> createSlots(
-            TaskManagerLocation tmLocation, AllocationID... allocationIDs) {
-        final List<TestingSlot> result = new ArrayList<>(allocationIDs.length);
-        for (AllocationID allocationID : allocationIDs) {
-            result.add(new TestingSlot(allocationID, ResourceProfile.ANY, tmLocation));
-        }
-        return result;
     }
 
     private static List<ExecutionSlotSharingGroup> createGroups(int num) {

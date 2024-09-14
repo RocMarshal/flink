@@ -28,6 +28,7 @@ import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -62,15 +63,11 @@ public class DefaultSlotAssigner implements SlotAssigner {
 
     @Override
     public List<TaskManagerLocation> sortPrioritizedTaskExecutors(
-            Collection<? extends SlotInfo> slots, Collection<AllocationScore> scores) {
-        Map<TaskManagerLocation, ? extends Set<? extends SlotInfo>> slotsByTaskExecutor =
-                SlotAssigner.getSlotsPerTaskExecutor(slots);
+            Collection<? extends SlotInfo> slots,
+            Map<TaskManagerLocation, ? extends Set<? extends SlotInfo>> slotsByTaskExecutor,
+            Collection<AllocationScore> scores) {
         return slotsByTaskExecutor.keySet().stream()
-                .sorted(
-                        (left, right) ->
-                                Integer.compare(
-                                        slotsByTaskExecutor.get(right).size(),
-                                        slotsByTaskExecutor.get(left).size()))
+                .sorted(Comparator.comparingInt(tml -> slotsByTaskExecutor.get(tml).size()))
                 .collect(Collectors.toList());
     }
 

@@ -65,7 +65,7 @@ public interface SlotAssigner {
         }
 
         @Override
-        public int compareTo(StateLocalitySlotAssigner.AllocationScore other) {
+        public int compareTo(AllocationScore other) {
             int result = Long.compare(score, other.score);
             if (result != 0) {
                 return result;
@@ -100,10 +100,10 @@ public interface SlotAssigner {
             return slots;
         }
 
-        List<TaskManagerLocation> orderedTaskExecutors =
-                sortPrioritizedTaskExecutors(slots, scores);
         Map<TaskManagerLocation, ? extends Set<? extends SlotInfo>> slotsByTaskExecutor =
-                SlotAssigner.getSlotsPerTaskExecutor(slots);
+                getSlotsPerTaskExecutor(slots);
+        List<TaskManagerLocation> orderedTaskExecutors =
+                sortPrioritizedTaskExecutors(slots, slotsByTaskExecutor, scores);
 
         int requestedSlots = groups.size();
         final List<SlotInfo> result = new ArrayList<>();
@@ -122,12 +122,15 @@ public interface SlotAssigner {
      * Get the task executors with the order that aims to priority assigning requested groups on it.
      *
      * @param slots the all slots.
+     * @param slotsByTaskExecutor slots per task executor.
      * @param scores the allocation scores.
      * @return the task executors with the order that aims to priority assigning requested groups on
      *     it.
      */
     List<TaskManagerLocation> sortPrioritizedTaskExecutors(
-            Collection<? extends SlotInfo> slots, Collection<AllocationScore> scores);
+            Collection<? extends SlotInfo> slots,
+            Map<TaskManagerLocation, ? extends Set<? extends SlotInfo>> slotsByTaskExecutor,
+            Collection<AllocationScore> scores);
 
     static Map<TaskManagerLocation, ? extends Set<? extends SlotInfo>> getSlotsPerTaskExecutor(
             Collection<? extends SlotInfo> slots) {
