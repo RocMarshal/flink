@@ -27,7 +27,6 @@ import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -52,8 +51,7 @@ public class DefaultSlotAssigner implements SlotAssigner {
         }
 
         Iterator<? extends SlotInfo> iterator =
-                selectSlotsInMinimalTaskExecutors(freeSlots, allGroups, Collections.emptyList())
-                        .iterator();
+                selectSlotsInMinimalTaskExecutors(freeSlots, allGroups).iterator();
         Collection<SlotAssignment> assignments = new ArrayList<>();
         for (ExecutionSlotSharingGroup group : allGroups) {
             assignments.add(new SlotAssignment(iterator.next(), group));
@@ -62,10 +60,32 @@ public class DefaultSlotAssigner implements SlotAssigner {
     }
 
     @Override
-    public List<TaskManagerLocation> sortPrioritizedTaskExecutors(
-            Collection<? extends SlotInfo> slots,
-            Map<TaskManagerLocation, ? extends Set<? extends SlotInfo>> slotsByTaskExecutor,
-            Collection<AllocationScore> scores) {
+    public Collection<? extends SlotInfo> selectSlotsInMinimalTaskExecutors(
+            Collection<? extends SlotInfo> slots, Collection<ExecutionSlotSharingGroup> groups) {
+        if (slots.size() - groups.size() <= 0) {
+            return slots;
+        }
+
+        Map<TaskManagerLocation, ? extends Set<? extends SlotInfo>> slotsByTaskExecutor =
+                SlotAssigner.getSlotsPerTaskExecutor(slots);
+        List<TaskManagerLocation> orderedTaskExecutors =
+                sortPrioritizedTaskExecutors(slotsByTaskExecutor);
+
+        int requestedSlots = groups.size();
+        final List<SlotInfo> result = new ArrayList<>();
+        for (TaskManagerLocation tml : orderedTaskExecutors) {
+            if (requestedSlots <= 0) {
+                break;
+            }
+            final Set<? extends SlotInfo> slotInfos = slotsByTaskExecutor.get(tml);
+            requestedSlots -= slotInfos.size();
+            result.addAll(slotInfos);
+        }
+        return result;
+    }
+
+    private static List<TaskManagerLocation> sortPrioritizedTaskExecutors(
+            Map<TaskManagerLocation, ? extends Set<? extends SlotInfo>> slotsByTaskExecutor) {
         return slotsByTaskExecutor.keySet().stream()
                 .sorted(Comparator.comparingInt(tml -> slotsByTaskExecutor.get(tml).size()))
                 .collect(Collectors.toList());

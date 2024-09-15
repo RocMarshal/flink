@@ -18,10 +18,13 @@
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.runtime.taskmanager.LocalTaskManagerLocation;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -30,12 +33,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.flink.runtime.scheduler.adaptive.allocator.SlotAssigner.AllocationScore;
 import static org.apache.flink.runtime.scheduler.adaptive.allocator.SlotSharingSlotAllocator.ExecutionSlotSharingGroup;
+import static org.apache.flink.runtime.scheduler.adaptive.allocator.StateLocalitySlotAssigner.AllocationScore;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Test for {@link SlotAssigner}. */
@@ -66,28 +72,40 @@ class SlotAssignerTest {
                     slot1OfTml3,
                     slot2OfTml3);
 
+    @SafeVarargs
+    private static StateLocalitySlotAssigner createTestingStateLocalitySlotAssigner(Tuple2<SlotInfo, Long>... slotScores) {
+        return new StateLocalitySlotAssigner() {
+            @NotNull
+            @Override
+            Queue<AllocationScore> calculateScores(
+                    JobInformation jobInformation,
+                    JobAllocationsInformation previousAllocations,
+                    List<ExecutionSlotSharingGroup> allGroups,
+                    Map<JobVertexID, Integer> parallelism) {
+                return createTestingScores(slotScores);
+            }
+        };
+    }
+
     private static Stream<Arguments> getTestingParameters() {
         return Stream.of(
                 Arguments.of(
-                        new StateLocalitySlotAssigner(),
+                        createTestingStateLocalitySlotAssigner(Tuple2.of(slot1OfTml1, 2L), Tuple2.of(slot1OfTml2, 1L)),
                         3,
                         allSlots,
-                        createTestingScores(Tuple2.of(slot1OfTml1, 2L), Tuple2.of(slot1OfTml2, 1L)),
                         Arrays.asList(tml1, tml3)),
                 Arguments.of(
-                        new StateLocalitySlotAssigner(),
+                        createTestingStateLocalitySlotAssigner(Tuple2.of(slot1OfTml1, 2L), Tuple2.of(slot1OfTml2, 2L)),
                         2,
                         allSlots,
-                        createTestingScores(Tuple2.of(slot1OfTml1, 2L), Tuple2.of(slot1OfTml2, 2L)),
                         Collections.singletonList(tml3)),
                 Arguments.of(
-                        new StateLocalitySlotAssigner(),
+                        createTestingStateLocalitySlotAssigner(Tuple2.of(slot1OfTml2, 2L)),
                         6,
                         allSlots,
-                        createTestingScores(Tuple2.of(slot1OfTml2, 2L)),
                         Arrays.asList(tml1, tml2, tml3)),
                 Arguments.of(
-                        new StateLocalitySlotAssigner(),
+                        createTestingStateLocalitySlotAssigner(Tuple2.of(slot1OfTml2, 2L), Tuple2.of(slot2OfTml3, 1L)),
                         4,
                         Arrays.asList(
                                 slot1OfTml1,
@@ -96,42 +114,37 @@ class SlotAssignerTest {
                                 slot2OfTml2,
                                 slot1OfTml3,
                                 slot2OfTml3),
-                        createTestingScores(Tuple2.of(slot1OfTml2, 2L), Tuple2.of(slot2OfTml3, 1L)),
                         Arrays.asList(tml2, tml3)),
                 Arguments.of(
                         new DefaultSlotAssigner(),
                         2,
                         allSlots,
-                        Collections.emptyList(),
                         Collections.singletonList(tml3)),
                 Arguments.of(
                         new DefaultSlotAssigner(),
                         3,
                         Arrays.asList(slot1OfTml1, slot1OfTml2, slot2OfTml2, slot3OfTml2),
-                        Collections.emptyList(),
                         Arrays.asList(tml1, tml2)),
                 Arguments.of(
                         new DefaultSlotAssigner(),
                         7,
                         allSlots,
-                        createTestingScores(Tuple2.of(slot1OfTml2, 2L)),
                         Arrays.asList(tml1, tml2, tml3)));
     }
 
     @MethodSource("getTestingParameters")
     @ParameterizedTest(
             name =
-                    "slotAssigner={0}, group={1}, allSlots={2}, scoredAllocations={3}, minimalTaskExecutors={4}")
+                    "slotAssigner={0}, group={1}, allSlots={2}, minimalTaskExecutors={3}")
     void testSelectSlotsInMinimalTaskExecutors(
             SlotAssigner slotAssigner,
             int requestGroups,
             List<SlotInfo> allSlots,
-            List<AllocationScore> scores,
             List<TaskManagerLocation> minimalTaskExecutors) {
 
         final List<ExecutionSlotSharingGroup> groupsPlaceholders = createGroups(requestGroups);
         Set<TaskManagerLocation> keptTaskExecutors =
-                slotAssigner.selectSlotsInMinimalTaskExecutors(allSlots, groupsPlaceholders, scores)
+                slotAssigner.selectSlotsInMinimalTaskExecutors(allSlots, groupsPlaceholders)
                         .stream()
                         .map(SlotInfo::getTaskManagerLocation)
                         .collect(Collectors.toSet());
@@ -139,10 +152,10 @@ class SlotAssignerTest {
     }
 
     @SafeVarargs
-    private static List<AllocationScore> createTestingScores(Tuple2<SlotInfo, Long>... scorePairs) {
-        return Arrays.stream(scorePairs)
-                .map(t2 -> new AllocationScore("noUsageGid", t2.f0.getAllocationId(), t2.f1))
-                .collect(Collectors.toList());
+    private static Queue<AllocationScore> createTestingScores(Tuple2<SlotInfo, Long>... scorePairs) {
+        Queue<AllocationScore> scores = new PriorityQueue<>();
+        Arrays.stream(scorePairs).map(t2 -> new AllocationScore("unUsedGid", t2.f0.getAllocationId(), t2.f1)).forEach(scores::add);
+        return scores;
     }
 
     private static List<ExecutionSlotSharingGroup> createGroups(int num) {
