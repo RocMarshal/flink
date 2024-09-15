@@ -22,6 +22,8 @@ import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.util.Preconditions;
 
+import javax.annotation.Nullable;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +38,14 @@ import static org.apache.flink.runtime.scheduler.adaptive.allocator.SlotSharingS
 
 /** The utils class to compute the matching between requested resource and allocated resource. */
 public class AdaptiveResourceComputer {
+    /***
+     * Request:
+     * UNKNOWN;FINE_GRAIN-i
+     * Allocated:
+     * FINE_GRAINED-i
+     * FINE_GRAINED-default
+     */
+    @Nullable
 
     final Map<SlotSharingGroup, SlotSharingGroupMetaInfo> slotSharingGroupsMetaInfo;
     final List<SlotInfo> allocatedSlots;
