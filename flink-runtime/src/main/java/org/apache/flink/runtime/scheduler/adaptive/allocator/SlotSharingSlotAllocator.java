@@ -201,6 +201,8 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
             case NONE:
             case MIN_RESOURCES:
                 return SimpleRequestSlotMatchingStrategy.INSTANCE;
+            case SLOTS:
+                return SlotsBalancedRequestSlotMatchingStrategy.INSTANCE;
             case TASKS:
                 return TasksBalancedRequestSlotMatchingStrategy.INSTANCE;
             default:
