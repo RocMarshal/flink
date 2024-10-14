@@ -63,7 +63,7 @@ public class DefaultSlotAssigner implements SlotAssigner {
             RequestSlotMatchingStrategy requestSlotMatchingStrategy) {
         this.executionTarget = executionTarget;
         this.minimalTaskManagerPreferred = minimalTaskManagerPreferred;
-        this.slotSharingStrategy = slotSharingStrategy;
+        this.slotSharingStrategy = Preconditions.checkNotNull(slotSharingStrategy);
         this.requestSlotMatchingStrategy = Preconditions.checkNotNull(requestSlotMatchingStrategy);
     }
 
