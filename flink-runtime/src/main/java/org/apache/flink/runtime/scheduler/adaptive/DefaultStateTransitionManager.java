@@ -150,6 +150,7 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
 
     private void triggerTransitionToSubsequentState() {
         progressToPhase(new Transitioning(clock, this));
+        // todo
         transitionContext.transitionToSubsequentState();
     }
 
@@ -345,6 +346,7 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
 
         private void transitionToSubSequentStateForDesiredResources() {
             if (hasDesiredResources()) {
+                // TODO
                 context().triggerTransitionToSubsequentState();
             } else {
                 LOG.debug(
@@ -373,6 +375,7 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
         @Override
         void onTrigger() {
             if (hasSufficientResources()) {
+                // TODO
                 context().triggerTransitionToSubsequentState();
             } else {
                 LOG.debug("Sufficient resources are not met, progressing to idling.");

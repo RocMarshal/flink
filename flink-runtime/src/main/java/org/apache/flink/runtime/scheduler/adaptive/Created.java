@@ -39,6 +39,7 @@ class Created extends StateWithoutExecutionGraph {
 
     /** Starts the scheduling by going into the {@link WaitingForResources} state. */
     void startScheduling() {
+        //
         context.goToWaitingForResources(null);
     }
 

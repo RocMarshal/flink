@@ -113,8 +113,10 @@ class Restarting extends StateWithExecutionGraph {
 
     private void goToSubsequentState() {
         if (forcedRestart) {
+            // 完全重启 同时会发生 rescale 完全重启
             context.goToCreatingExecutionGraph(getExecutionGraph());
         } else {
+            // 包括失败，同时会发生 rescale 完全重启
             context.goToWaitingForResources(getExecutionGraph());
         }
     }

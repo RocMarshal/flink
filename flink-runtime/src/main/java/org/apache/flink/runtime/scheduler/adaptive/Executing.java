@@ -95,6 +95,7 @@ class Executing extends StateWithExecutionGraph
         this.rescaleOnFailedCheckpointCount = rescaleOnFailedCheckpointCount;
         this.failedCheckpointCountdown = null;
 
+        // TODO 成功
         deploy();
 
         // check if new resources have come available in the meantime
@@ -149,6 +150,18 @@ class Executing extends StateWithExecutionGraph
 
     @Override
     public void transitionToSubsequentState() {
+        // TODO
+        context.goToRestarting(
+                getExecutionGraph(),
+                getExecutionGraphHandler(),
+                getOperatorCoordinatorHandler(),
+                Duration.ofMillis(0L),
+                true,
+                getFailures());
+    }
+
+    @Override
+    public void transitionToSubsequentState(String statePhase, String from, String to, String cause) {
         context.goToRestarting(
                 getExecutionGraph(),
                 getExecutionGraphHandler(),

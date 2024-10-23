@@ -607,7 +607,7 @@ public class JobManagerOptions {
     public static final ConfigOption<Duration> SCHEDULER_SUBMISSION_RESOURCE_WAIT_TIMEOUT =
             key("jobmanager.adaptive-scheduler.submission.resource-wait-timeout")
                     .durationType()
-                    .defaultValue(Duration.ofMinutes(5))
+                    .defaultValue(Duration.ofMinutes(1))
                     .withDeprecatedKeys(RESOURCE_WAIT_TIMEOUT.key())
                     .withDescription(
                             Description.builder()

@@ -1066,6 +1066,7 @@ public class AdaptiveScheduler
 
     @Override
     public void updateJobResourceRequirements(JobResourceRequirements jobResourceRequirements) {
+        // TODO: 外部 UI 主动指定
         if (settings.getExecutionMode() == SchedulerExecutionMode.REACTIVE) {
             throw new UnsupportedOperationException(
                     "Cannot change the parallelism of a job running in reactive mode.");
@@ -1379,6 +1380,7 @@ public class AdaptiveScheduler
 
         final JobSchedulingPlan jobSchedulingPlan =
                 executionGraphWithVertexParallelism.getJobSchedulingPlan();
+        // TODO... 是否占用成功？？
         return slotAllocator
                 .tryReserveResources(jobSchedulingPlan)
                 .map(reservedSlots -> assignSlotsToExecutionGraph(executionGraph, reservedSlots))

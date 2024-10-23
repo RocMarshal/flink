@@ -63,7 +63,7 @@ public class KafkaEventsGeneratorJob {
                         RateLimiterStrategy.perSecond(recordsPerSecond),
                         TypeInformation.of(Event.class));
 
-        env.fromSource(
+        /*env.fromSource(
                         eventGeneratorSource,
                         WatermarkStrategy.noWatermarks(),
                         "Events Generator Source")
@@ -77,7 +77,7 @@ public class KafkaEventsGeneratorJob {
                                                                 new EventDeSerializationSchema())
                                                         .setTopic(kafkaTopic)
                                                         .build())
-                                        .build());
+                                        .build());*/
 
         // trigger program execution
         env.execute("State machine example Kafka events generator job");

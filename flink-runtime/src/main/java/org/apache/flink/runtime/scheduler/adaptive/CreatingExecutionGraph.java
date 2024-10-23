@@ -149,6 +149,7 @@ public class CreatingExecutionGraph extends StateWithoutExecutionGraph {
                 getLogger()
                         .debug(
                                 "Failed to reserve and assign the required slots. Waiting for new resources.");
+                //
                 context.goToWaitingForResources(previousExecutionGraph);
             }
         }

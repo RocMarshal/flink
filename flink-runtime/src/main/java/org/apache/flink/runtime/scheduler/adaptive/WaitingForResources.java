@@ -106,6 +106,7 @@ class WaitingForResources extends StateWithoutExecutionGraph
     }
 
     private void resourceTimeout() {
+        //
         getLogger()
                 .debug(
                         "Initial resource allocation timeout triggered: Creating ExecutionGraph with available resources.");
@@ -124,7 +125,17 @@ class WaitingForResources extends StateWithoutExecutionGraph
 
     @Override
     public void transitionToSubsequentState() {
+        // TODO
         context.goToCreatingExecutionGraph(previousExecutionGraph);
+    }
+
+    @Override
+    public void transitionToSubsequentState(
+            String statePhase,
+            String from,
+            String to,
+            String cause) {
+
     }
 
     @Override
