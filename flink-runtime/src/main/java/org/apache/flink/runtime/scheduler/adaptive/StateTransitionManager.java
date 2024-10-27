@@ -63,18 +63,6 @@ public interface StateTransitionManager {
         void transitionToSubsequentState();
 
         /**
-         * Triggers the transition to the subsequent state of the {@link AdaptiveScheduler}.
-         *
-         * @param statePhase state of the transition phase.
-         * @param from state.
-         * @param to state .
-         * @param cause the cause of the current trigger.
-         */
-        default void transitionToSubsequentState(String statePhase, String from, String to, String cause) {
-
-        }
-
-        /**
          * Runs operation with a given delay in the underlying main thread.
          *
          * @return a ScheduledFuture representing pending completion of the operation.

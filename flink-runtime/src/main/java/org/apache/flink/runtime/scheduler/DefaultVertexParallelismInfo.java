@@ -148,4 +148,14 @@ public class DefaultVertexParallelismInfo implements VertexParallelismInformatio
                 .apply(normalizeAndCheckMaxParallelism(desiredMaxParallelism))
                 .isPresent();
     }
+
+    @Override
+    public String toString() {
+        return "DefaultVertexParallelismInfo{" +
+                "minParallelism=" + minParallelism +
+                ", parallelism=" + parallelism +
+                ", maxParallelism=" + maxParallelism +
+                ", rescaleMaxValidator=" + rescaleMaxValidator +
+                '}';
+    }
 }

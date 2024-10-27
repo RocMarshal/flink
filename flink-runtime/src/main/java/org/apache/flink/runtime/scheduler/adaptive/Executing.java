@@ -161,17 +161,6 @@ class Executing extends StateWithExecutionGraph
     }
 
     @Override
-    public void transitionToSubsequentState(String statePhase, String from, String to, String cause) {
-        context.goToRestarting(
-                getExecutionGraph(),
-                getExecutionGraphHandler(),
-                getOperatorCoordinatorHandler(),
-                Duration.ofMillis(0L),
-                true,
-                getFailures());
-    }
-
-    @Override
     public JobStatus getJobStatus() {
         return JobStatus.RUNNING;
     }
@@ -228,12 +217,15 @@ class Executing extends StateWithExecutionGraph
 
     @Override
     public void onNewResourcesAvailable() {
+        // todo, 可能也是触发时间
         stateTransitionManager.onChange();
         initializeFailedCheckpointCountdownIfUnset();
     }
 
     @Override
     public void onNewResourceRequirements() {
+        getLogger().info("debug__:");
+
         stateTransitionManager.onChange();
         initializeFailedCheckpointCountdownIfUnset();
     }

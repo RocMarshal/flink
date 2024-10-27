@@ -23,6 +23,7 @@ public class FailureResultUtil {
     public static <T extends StateTransitions.ToRestarting & StateTransitions.ToFailing>
             void restartOrFail(
                     FailureResult failureResult, T context, StateWithExecutionGraph sweg) {
+        // TODO 可能作为 rescale 的起点
         if (failureResult.canRestart()) {
             sweg.getLogger().info("Restarting job.", failureResult.getFailureCause());
             context.goToRestarting(

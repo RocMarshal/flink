@@ -142,7 +142,7 @@ public final class PerJobMiniClusterFactory {
                                 () ->
                                         finalMaximumParallelism > 0
                                                 ? MathUtils.divideRoundUp(
-                                                        finalMaximumParallelism, 1)
+                                                        finalMaximumParallelism, numTaskManagers)
                                                 : TaskManagerOptions.NUM_TASK_SLOTS.defaultValue());
 
         return new MiniClusterConfiguration.Builder()

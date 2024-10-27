@@ -92,11 +92,13 @@ class WaitingForResources extends StateWithoutExecutionGraph
 
     @Override
     public void onNewResourcesAvailable() {
+        // TODO
         checkPotentialStateTransition();
     }
 
     @Override
     public void onNewResourceRequirements() {
+        getLogger().info("debug__: 111");
         checkPotentialStateTransition();
     }
 
@@ -127,15 +129,6 @@ class WaitingForResources extends StateWithoutExecutionGraph
     public void transitionToSubsequentState() {
         // TODO
         context.goToCreatingExecutionGraph(previousExecutionGraph);
-    }
-
-    @Override
-    public void transitionToSubsequentState(
-            String statePhase,
-            String from,
-            String to,
-            String cause) {
-
     }
 
     @Override

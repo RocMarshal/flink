@@ -81,6 +81,8 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
      * @param maxTriggerDelay The maximum delay for triggering a {@link AdaptiveScheduler}'s state
      *     transition if only sufficient resources are available.
      */
+    // 区别 executing 和 wait resource
+    // 在 exeting的时候记录 资源来源的触发原因
     DefaultStateTransitionManager(
             Context transitionContext,
             Supplier<Temporal> clock,

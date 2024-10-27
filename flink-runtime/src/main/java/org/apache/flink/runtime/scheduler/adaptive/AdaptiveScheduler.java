@@ -397,6 +397,7 @@ public class AdaptiveScheduler
 
     private final ExecutionGraphFactory executionGraphFactory;
 
+    // todo, 可能也是触发时间
     private State state = new Created(this, LOG);
 
     private boolean isTransitioningState = false;
@@ -511,6 +512,9 @@ public class AdaptiveScheduler
         }
 
         this.initialParallelismStore = vertexParallelismStore;
+        // 每次赋值，生成 required-id
+        // 当前 rid 中， 每次调整都认为是一次 attempt
+        //
         this.jobInformation = new JobGraphJobInformation(jobGraph, vertexParallelismStore);
 
         this.declarativeSlotPool = declarativeSlotPool;
@@ -1078,6 +1082,8 @@ public class AdaptiveScheduler
             this.jobInformation =
                     new JobGraphJobInformation(jobGraph, maybeUpdateVertexParallelismStore.get());
             declareDesiredResources();
+            LOG.info("debug__: {}", maybeUpdateVertexParallelismStore.get());
+
             state.tryRun(
                     ResourceListener.class,
                     ResourceListener::onNewResourceRequirements,
