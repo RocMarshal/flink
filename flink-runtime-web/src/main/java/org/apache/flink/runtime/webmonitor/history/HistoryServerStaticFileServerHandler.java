@@ -26,12 +26,15 @@ package org.apache.flink.runtime.webmonitor.history;
  * https://github.com/netty/netty/blob/4.0/example/src/main/java/io/netty/example/http/file/HttpStaticFileServerHandler.java
  * ***************************************************************************
  */
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.runtime.rest.NotFoundException;
 import org.apache.flink.runtime.rest.handler.RestHandlerException;
 import org.apache.flink.runtime.rest.handler.legacy.files.StaticFileServerHandler;
 import org.apache.flink.runtime.rest.handler.router.RoutedRequest;
 import org.apache.flink.runtime.rest.handler.util.HandlerUtils;
 import org.apache.flink.runtime.rest.messages.ErrorResponseBody;
+import org.apache.flink.util.ExceptionUtils;
+import org.apache.flink.util.StringUtils;
 
 import org.apache.flink.shaded.netty4.io.netty.channel.ChannelFuture;
 import org.apache.flink.shaded.netty4.io.netty.channel.ChannelFutureListener;
@@ -65,6 +68,13 @@ import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static org.apache.flink.shaded.netty4.io.netty.handler.codec.http.HttpHeaderNames.CONNECTION;
 import static org.apache.flink.shaded.netty4.io.netty.handler.codec.http.HttpHeaderNames.IF_MODIFIED_SINCE;
@@ -94,13 +104,33 @@ public class HistoryServerStaticFileServerHandler
     private static final Logger LOG =
             LoggerFactory.getLogger(HistoryServerStaticFileServerHandler.class);
 
+    private static final long UNZIP_TIMEOUT_SECOND = 10L;
+    private static final int JOBID_LENGTH = 32;
+
     // ------------------------------------------------------------------------
 
     /** The path in which the static documents are. */
     private final File rootPath;
 
+    private final Boolean enableUnzip;
+    private final ExecutorService unzipExecutor;
+    private final Function<String, Supplier<Boolean>> unzipTask;
+
+    @VisibleForTesting
     public HistoryServerStaticFileServerHandler(File rootPath) throws IOException {
+        this(rootPath, null, null, false);
+    }
+
+    public HistoryServerStaticFileServerHandler(
+            File rootPath,
+            ExecutorService unzipExecutor,
+            Function<String, Supplier<Boolean>> unzipTask,
+            Boolean enableUnzip)
+            throws IOException {
         this.rootPath = checkNotNull(rootPath).getCanonicalFile();
+        this.unzipExecutor = unzipExecutor;
+        this.unzipTask = unzipTask;
+        this.enableUnzip = enableUnzip;
     }
 
     // ------------------------------------------------------------------------
@@ -126,7 +156,7 @@ public class HistoryServerStaticFileServerHandler
 
     /** Response when running with leading JobManager. */
     private void respondWithFile(ChannelHandlerContext ctx, HttpRequest request, String requestPath)
-            throws IOException, ParseException, RestHandlerException {
+            throws ParseException, RestHandlerException, IOException {
 
         // make sure we request the "index.html" in case there is a directory request
         if (requestPath.endsWith("/")) {
@@ -141,43 +171,71 @@ public class HistoryServerStaticFileServerHandler
         final File file = new File(rootPath, requestPath);
 
         if (!file.exists()) {
-            // file does not exist. Try to load it with the classloader
-            ClassLoader cl = HistoryServerStaticFileServerHandler.class.getClassLoader();
+            tryLoadFromClassloader(requestPath, file);
+        }
 
-            try (InputStream resourceStream = cl.getResourceAsStream("web" + requestPath)) {
-                boolean success = false;
-                try {
-                    if (resourceStream != null) {
-                        URL root = cl.getResource("web");
-                        URL requested = cl.getResource("web" + requestPath);
+        respondReturn(ctx, request, requestPath, file);
+    }
 
-                        if (root != null && requested != null) {
-                            URI rootURI = new URI(root.getPath()).normalize();
-                            URI requestedURI = new URI(requested.getPath()).normalize();
-
-                            // Check that we don't load anything from outside of the
-                            // expected scope.
-                            if (!rootURI.relativize(requestedURI).equals(requestedURI)) {
-                                LOG.debug("Loading missing file from classloader: {}", requestPath);
-                                // ensure that directory to file exists.
-                                file.getParentFile().mkdirs();
-                                Files.copy(resourceStream, file.toPath());
-
-                                success = true;
-                            }
-                        }
-                    }
-                } catch (Throwable t) {
-                    LOG.error("error while responding", t);
-                } finally {
-                    if (!success) {
-                        LOG.debug("Unable to load requested file {} from classloader", requestPath);
-                        throw new NotFoundException("File not found.");
+    private void tryLoadFromClassloader(String requestPath, File file) throws NotFoundException {
+        // file does not exist. Try to load it with the classloader
+        ClassLoader cl = HistoryServerStaticFileServerHandler.class.getClassLoader();
+        boolean success = false;
+        try (InputStream resourceStream = cl.getResourceAsStream("web" + requestPath)) {
+            if (resourceStream != null) {
+                URL root = cl.getResource("web");
+                URL requested = cl.getResource("web" + requestPath);
+                if (root != null && requested != null) {
+                    URI rootURI = new URI(root.getPath()).normalize();
+                    URI requestedURI = new URI(requested.getPath()).normalize();
+                    // Check that we don't load anything from outside of the
+                    // expected scope.
+                    if (!rootURI.relativize(requestedURI).equals(requestedURI)) {
+                        LOG.debug("Loading missing file from classloader: {}", requestPath);
+                        // ensure that directory to file exists.
+                        file.getParentFile().mkdirs();
+                        Files.copy(resourceStream, file.toPath());
+                        success = true;
                     }
                 }
             }
+            // try to unzip archived files
+            if (enableUnzip && !success) {
+                // extract jobid from requestPath
+                String jobId = extractJobId(requestPath);
+                if (!StringUtils.isNullOrWhitespaceOnly(jobId)) {
+                    // submit unzip Task and get future
+                    Boolean unzipped =
+                            CompletableFuture.supplyAsync(unzipTask.apply(jobId), unzipExecutor)
+                                    .get(UNZIP_TIMEOUT_SECOND, TimeUnit.SECONDS);
+                    success = unzipped && file.exists();
+                }
+            }
+        } catch (TimeoutException t) {
+            LOG.debug(
+                    "Didn't unzip archived file after {} seconds. "
+                            + "HistoryServer is stilling unzipping",
+                    UNZIP_TIMEOUT_SECOND,
+                    t);
+            throw new NotFoundException(
+                    "HistoryServer is processing archive jobs. "
+                            + "Please reload this page after 10 seconds");
+        } catch (ExecutionException t) {
+            LOG.debug("Fail to unzip archived file", t);
+            throw new NotFoundException(
+                    "Fail to unzip archived file:" + ExceptionUtils.stringifyException(t));
+        } catch (Throwable t) {
+            LOG.error("error while responding", t);
         }
+        if (!success) {
+            LOG.debug("Unable to load requested file {} from classloader", requestPath);
+            throw new NotFoundException("File not found.");
+        }
+    }
 
+    private void respondReturn(
+            ChannelHandlerContext ctx, HttpRequest request, String requestPath, File file)
+            throws IOException, RestHandlerException, ParseException {
         StaticFileServerHandler.checkFileValidity(file, rootPath, LOG);
 
         // cache validation
@@ -203,7 +261,7 @@ public class HistoryServerStaticFileServerHandler
         }
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Responding with file '" + file.getAbsolutePath() + '\'');
+            LOG.debug("Responding with file '{}'", file.getAbsolutePath());
         }
 
         // Don't need to close this manually. Netty's DefaultFileRegion will take care of it.
@@ -265,6 +323,18 @@ public class HistoryServerStaticFileServerHandler
             LOG.error("Failed to serve file.", e);
             throw new RestHandlerException("Internal server error.", INTERNAL_SERVER_ERROR);
         }
+    }
+
+    static String extractJobId(String requestPath) {
+        if (StringUtils.isNullOrWhitespaceOnly(requestPath)
+                || !requestPath.matches("^/jobs/.{" + JOBID_LENGTH + "}\\.json$")) {
+            return null;
+        }
+        String secondPath = requestPath.split("/")[2];
+        if (StringUtils.isNullOrWhitespaceOnly(secondPath) || secondPath.length() < JOBID_LENGTH) {
+            return null;
+        }
+        return secondPath.substring(0, JOBID_LENGTH);
     }
 
     @Override
