@@ -17,22 +17,28 @@
 
 package org.apache.flink.streaming.examples.wordcount;
 
-import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.connector.file.sink.FileSink;
-import org.apache.flink.connector.file.src.FileSource;
-import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.DefaultRollingPolicy;
+import org.apache.flink.streaming.api.functions.sink.legacy.DiscardingSink;
+import org.apache.flink.streaming.api.functions.source.legacy.ParallelSourceFunction;
 import org.apache.flink.streaming.examples.wordcount.util.CLI;
 import org.apache.flink.streaming.examples.wordcount.util.WordCountData;
 import org.apache.flink.util.Collector;
 
 import java.time.Duration;
+import java.util.UUID;
+
+import static org.apache.flink.configuration.JobManagerOptions.SCHEDULER_SUBMISSION_RESOURCE_WAIT_TIMEOUT;
+import static org.apache.flink.configuration.RestartStrategyOptions.RESTART_STRATEGY;
 
 /**
  * Implements the "WordCount" program that computes a simple word occurrence histogram over text
@@ -74,7 +80,22 @@ public class WordCount {
 
         // Create the execution environment. This is the main entrypoint
         // to building a Flink application.
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        Configuration conf = new Configuration();
+        conf.set(JobManagerOptions.SCHEDULER, JobManagerOptions.SchedulerType.Adaptive);
+        conf.set(TaskManagerOptions.MINI_CLUSTER_NUM_TASK_MANAGERS, 5);
+        conf.set(TaskManagerOptions.NUM_TASK_SLOTS, 5);
+        conf.set(SCHEDULER_SUBMISSION_RESOURCE_WAIT_TIMEOUT, Duration.ofMinutes(1));
+        /*
+        restart-strategy:
+        restart-strategy.fixed-delay.attempts: 3
+        restart-strategy.fixed-delay.delay: 5 s
+        */
+        conf.set(RESTART_STRATEGY, "fixed-delay");
+        conf.setString("restart-strategy.fixed-delay.attempts", "10");
+        conf.setString("restart-strategy.fixed-delay.delay", "10s");
+
+        final StreamExecutionEnvironment env =
+                StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(conf);
 
         // Apache Flink’s unified approach to stream and batch processing means that a DataStream
         // application executed over bounded input will produce the same final results regardless
@@ -101,23 +122,24 @@ public class WordCount {
         // available in the Flink UI.
         env.getConfig().setGlobalJobParameters(params);
 
-        DataStream<String> text;
-        if (params.getInputs().isPresent()) {
-            // Create a new file source that will read files from a given set of directories.
-            // Each file will be processed as plain text and split based on newlines.
-            FileSource.FileSourceBuilder<String> builder =
-                    FileSource.forRecordStreamFormat(
-                            new TextLineInputFormat(), params.getInputs().get());
+        DataStream<String> text =
+                env.addSource(
+                        new ParallelSourceFunction<String>() {
+                            volatile boolean running = true;
 
-            // If a discovery interval is provided, the source will
-            // continuously watch the given directories for new files.
-            params.getDiscoveryInterval().ifPresent(builder::monitorContinuously);
+                            @Override
+                            public void run(SourceContext<String> ctx) throws Exception {
+                                while (running) {
+                                    ctx.collect(UUID.randomUUID().toString());
+                                    Thread.sleep(500L);
+                                }
+                            }
 
-            text = env.fromSource(builder.build(), WatermarkStrategy.noWatermarks(), "file-input");
-        } else {
-            text = env.fromData(WordCountData.WORDS).name("in-memory-input");
-        }
-
+                            @Override
+                            public void cancel() {
+                                running = false;
+                            }
+                        });
         DataStream<Tuple2<String, Integer>> counts =
                 // The text lines read from the source are split into words
                 // using a user-defined function. The tokenizer, implemented below,
@@ -151,7 +173,7 @@ public class WordCount {
                                     .build())
                     .name("file-sink");
         } else {
-            counts.print().name("print-sink");
+            counts.addSink(new DiscardingSink<>()).name("print-sink");
         }
 
         // Apache Flink applications are composed lazily. Calling execute
