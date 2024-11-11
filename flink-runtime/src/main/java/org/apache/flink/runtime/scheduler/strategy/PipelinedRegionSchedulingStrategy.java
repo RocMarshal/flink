@@ -42,15 +42,15 @@ import static org.apache.flink.util.Preconditions.checkState;
  */
 public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
 
-    private final SchedulerOperations schedulerOperations;
+    protected final SchedulerOperations schedulerOperations;
 
-    private final SchedulingTopology schedulingTopology;
+    protected final SchedulingTopology schedulingTopology;
 
     /** External consumer regions of each ConsumedPartitionGroup. */
     private final Map<ConsumedPartitionGroup, Set<SchedulingPipelinedRegion>>
             partitionGroupConsumerRegions = new IdentityHashMap<>();
 
-    private final Map<SchedulingPipelinedRegion, List<ExecutionVertexID>> regionVerticesSorted =
+    protected final Map<SchedulingPipelinedRegion, List<ExecutionVertexID>> regionVerticesSorted =
             new IdentityHashMap<>();
 
     /** All produced partition groups of one schedulingPipelinedRegion. */
@@ -61,7 +61,7 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
     private final Set<ConsumedPartitionGroup> crossRegionConsumedPartitionGroups =
             Collections.newSetFromMap(new IdentityHashMap<>());
 
-    private final Set<SchedulingPipelinedRegion> scheduledRegions =
+    protected final Set<SchedulingPipelinedRegion> scheduledRegions =
             Collections.newSetFromMap(new IdentityHashMap<>());
 
     public PipelinedRegionSchedulingStrategy(
@@ -221,7 +221,7 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
     @Override
     public void onPartitionConsumable(final IntermediateResultPartitionID resultPartitionId) {}
 
-    private void maybeScheduleRegions(final Set<SchedulingPipelinedRegion> regions) {
+    protected void maybeScheduleRegions(final Set<SchedulingPipelinedRegion> regions) {
         final Set<SchedulingPipelinedRegion> regionsToSchedule = new HashSet<>();
         Set<SchedulingPipelinedRegion> nextRegions = regions;
         while (!nextRegions.isEmpty()) {
@@ -233,7 +233,7 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
                 .forEach(this::scheduleRegion);
     }
 
-    private Set<SchedulingPipelinedRegion> addSchedulableAndGetNextRegions(
+    protected Set<SchedulingPipelinedRegion> addSchedulableAndGetNextRegions(
             Set<SchedulingPipelinedRegion> currentRegions,
             Set<SchedulingPipelinedRegion> regionsToSchedule) {
         Set<SchedulingPipelinedRegion> nextRegions = new HashSet<>();
@@ -359,7 +359,7 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
         return true;
     }
 
-    private boolean areRegionVerticesAllInCreatedState(final SchedulingPipelinedRegion region) {
+    protected boolean areRegionVerticesAllInCreatedState(final SchedulingPipelinedRegion region) {
         for (SchedulingExecutionVertex vertex : region.getVertices()) {
             if (vertex.getState() != ExecutionState.CREATED) {
                 return false;
@@ -388,6 +388,9 @@ public class PipelinedRegionSchedulingStrategy implements SchedulingStrategy {
 
     /** The factory for creating {@link PipelinedRegionSchedulingStrategy}. */
     public static class Factory implements SchedulingStrategyFactory {
+
+        public Factory() {}
+
         @Override
         public SchedulingStrategy createInstance(
                 final SchedulerOperations schedulerOperations,

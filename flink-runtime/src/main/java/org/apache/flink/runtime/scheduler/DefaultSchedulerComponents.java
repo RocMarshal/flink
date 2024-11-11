@@ -20,6 +20,7 @@
 package org.apache.flink.runtime.scheduler;
 
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutor;
 import org.apache.flink.runtime.jobgraph.JobType;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotProvider;
@@ -28,6 +29,7 @@ import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotRequestBulkChecke
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlotRequestBulkCheckerImpl;
 import org.apache.flink.runtime.jobmaster.slotpool.SlotPool;
 import org.apache.flink.runtime.jobmaster.slotpool.SlotSelectionStrategy;
+import org.apache.flink.runtime.scheduler.strategy.BatchedPipelinedRegionsSchedulingStrategy;
 import org.apache.flink.runtime.scheduler.strategy.PipelinedRegionSchedulingStrategy;
 import org.apache.flink.runtime.scheduler.strategy.SchedulingStrategyFactory;
 import org.apache.flink.runtime.util.SlotSelectionStrategyUtils;
@@ -36,6 +38,7 @@ import org.apache.flink.util.clock.SystemClock;
 import java.time.Duration;
 import java.util.function.Consumer;
 
+import static org.apache.flink.configuration.TaskManagerOptions.TASK_MANAGER_LOAD_BALANCE_MODE;
 import static org.apache.flink.util.Preconditions.checkArgument;
 
 /**
@@ -105,8 +108,19 @@ public class DefaultSchedulerComponents {
                         bulkChecker,
                         slotRequestTimeout);
         return new DefaultSchedulerComponents(
-                new PipelinedRegionSchedulingStrategy.Factory(),
+                getSchedulingStrategyFactory(
+                        jobType, jobMasterConfiguration.get(TASK_MANAGER_LOAD_BALANCE_MODE)),
                 bulkChecker::start,
                 allocatorFactory);
+    }
+
+    private static SchedulingStrategyFactory getSchedulingStrategyFactory(
+            JobType jobType,
+            TaskManagerOptions.TaskManagerLoadBalanceMode taskManagerLoadBalanceMode) {
+        return jobType == JobType.STREAMING
+                        && taskManagerLoadBalanceMode
+                                == TaskManagerOptions.TaskManagerLoadBalanceMode.TASKS
+                ? new BatchedPipelinedRegionsSchedulingStrategy.Factory()
+                : new PipelinedRegionSchedulingStrategy.Factory();
     }
 }

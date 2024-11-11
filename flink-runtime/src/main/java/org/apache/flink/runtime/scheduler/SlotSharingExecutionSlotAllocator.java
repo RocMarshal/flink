@@ -105,10 +105,12 @@ class SlotSharingExecutionSlotAllocator implements ExecutionSlotAllocator {
     public Map<ExecutionAttemptID, ExecutionSlotAssignment> allocateSlotsFor(
             List<ExecutionAttemptID> executionAttemptIds) {
 
-        final Map<ExecutionVertexID, ExecutionAttemptID> vertexIdToExecutionId = new HashMap<>();
-        executionAttemptIds.forEach(
-                executionId ->
-                        vertexIdToExecutionId.put(executionId.getExecutionVertexId(), executionId));
+        final Map<ExecutionVertexID, ExecutionAttemptID> vertexIdToExecutionId =
+                executionAttemptIds.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        ExecutionAttemptID::getExecutionVertexId,
+                                        Function.identity()));
 
         checkState(
                 vertexIdToExecutionId.size() == executionAttemptIds.size(),
