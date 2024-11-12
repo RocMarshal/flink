@@ -18,6 +18,12 @@
 
 package org.apache.flink.runtime.scheduler.adaptive;
 
+import org.apache.flink.runtime.scheduler.VertexParallelismStore;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleAttemptID;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleEvent;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleLine;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleStatus;
+
 /** {@link FailureResultUtil} contains helper methods for {@link FailureResult}. */
 public class FailureResultUtil {
     public static <T extends StateTransitions.ToRestarting & StateTransitions.ToFailing>
@@ -25,6 +31,23 @@ public class FailureResultUtil {
                     FailureResult failureResult, T context, StateWithExecutionGraph sweg) {
         if (failureResult.canRestart()) {
             sweg.getLogger().info("Restarting job.", failureResult.getFailureCause());
+            final RescaleLine rescaleLine = context.getRescaleLine();
+            final RescaleAttemptID rescaleAttemptID = rescaleLine.nextRescaleAttemptID();
+            final VertexParallelismStore requiredVertexParallelism =
+                    rescaleLine.getRequiredVertexParallelism();
+            rescaleLine
+                    .tryUpdateCurrentEvent(
+                            entry ->
+                                    entry.setStatus(RescaleStatus.IGNORED)
+                                            .setEndTimestamp(System.currentTimeMillis())
+                                            .fillBackDuration()
+                                            .setComment("Ignored by restarting."))
+                    .resetCurrentEvent()
+                    .addEventAsCurrent(
+                            new RescaleEvent(rescaleAttemptID)
+                                    .setTriggerTimestamp()
+                                    .setStatus(RescaleStatus.TRYING)
+                                    .setRequiredVertexParallelism(requiredVertexParallelism));
             context.goToRestarting(
                     sweg.getExecutionGraph(),
                     sweg.getExecutionGraphHandler(),

@@ -113,6 +113,12 @@ import org.apache.flink.runtime.scheduler.adaptive.allocator.JobInformation;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.ReservedSlots;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.SlotAllocator;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleAttemptID;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleEvent;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleHistory;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleIdGenerator;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleLine;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleStatus;
 import org.apache.flink.runtime.scheduler.exceptionhistory.ExceptionHistoryEntry;
 import org.apache.flink.runtime.scheduler.exceptionhistory.RootExceptionHistoryEntry;
 import org.apache.flink.runtime.scheduler.metrics.DeploymentStateTimeMetrics;
@@ -144,12 +150,14 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -421,6 +429,10 @@ public class AdaptiveScheduler
 
     private final Supplier<Temporal> clock = Instant::now;
 
+    private @Nullable State previousState = null;
+    private final RescaleIdGenerator rescaleIdGenerator;
+    private final RescaleHistory rescaleHistory;
+
     public AdaptiveScheduler(
             Settings settings,
             JobGraph jobGraph,
@@ -509,6 +521,11 @@ public class AdaptiveScheduler
                                     vertexParallelismStore, jobResourceRequirements)
                             .orElse(vertexParallelismStore);
         }
+
+        this.rescaleIdGenerator = new RescaleIdGenerator();
+        this.rescaleHistory =
+                new RescaleHistory(
+                        configuration.get(WebOptions.MAX_ADAPTIVE_SCHEDULER_RESCALE_HISTORY_SIZE));
 
         this.initialParallelismStore = vertexParallelismStore;
         this.jobInformation = new JobGraphJobInformation(jobGraph, vertexParallelismStore);
@@ -690,6 +707,45 @@ public class AdaptiveScheduler
                 jobGraph.getVertices(), defaultMaxParallelismFunc);
     }
 
+    @Override
+    public RescaleLine getRescaleLine() {
+        return new RescaleLine() {
+
+            @Override
+            public RescaleLine tryUpdateCurrentEvent(@Nonnull Consumer<RescaleEvent> updater) {
+                rescaleHistory.tryUpdateCurrentEvent(updater);
+                return this;
+            }
+
+            @Override
+            public RescaleLine resetCurrentEvent() {
+                rescaleHistory.setCurrent(null);
+                return this;
+            }
+
+            @Override
+            public void addEventAsCurrent(RescaleEvent rescaleEvent) {
+                rescaleHistory.add(rescaleEvent);
+                rescaleHistory.setCurrent(rescaleEvent);
+            }
+
+            @Override
+            public RescaleAttemptID nextRescaleAttemptID() {
+                return rescaleIdGenerator.nextRescaleAttemptID();
+            }
+
+            @Override
+            public VertexParallelismStore getRequiredVertexParallelism() {
+                return jobInformation.getVertexParallelismStore();
+            }
+
+            @Override
+            public boolean preSchedulerStateInstanceOf(Class<?> klass) {
+                return Objects.nonNull(previousState) && klass.isInstance(previousState);
+            }
+        };
+    }
+
     private void newResourcesAvailable(Collection<? extends PhysicalSlot> physicalSlots) {
         state.tryRun(
                 ResourceListener.class,
@@ -699,6 +755,12 @@ public class AdaptiveScheduler
 
     @Override
     public void startScheduling() {
+        this.getRescaleLine()
+                .addEventAsCurrent(
+                        new RescaleEvent(rescaleIdGenerator.currentRescaleAttemptID())
+                                .setTriggerTimestamp()
+                                .setStatus(RescaleStatus.TRYING)
+                                .setRequiredVertexParallelism(initialParallelismStore));
         checkIdleSlotTimeout();
         state.as(Created.class)
                 .orElseThrow(
@@ -824,7 +886,8 @@ public class AdaptiveScheduler
 
     @Override
     public ExecutionGraphInfo requestJob() {
-        return new ExecutionGraphInfo(state.getJob(), exceptionHistory.toArrayList());
+        return new ExecutionGraphInfo(
+                state.getJob(), exceptionHistory.toArrayList(), rescaleHistory.toArrayList());
     }
 
     @Override
@@ -1074,8 +1137,31 @@ public class AdaptiveScheduler
                 DefaultVertexParallelismStore.applyJobResourceRequirements(
                         jobInformation.getVertexParallelismStore(), jobResourceRequirements);
         if (maybeUpdateVertexParallelismStore.isPresent()) {
+            LOG.debug("Accepted a new resource requirements.");
+            final RescaleLine rescaleLine = getRescaleLine();
+            rescaleLine.tryUpdateCurrentEvent(
+                    rescaleEntry -> {
+                        if (!RescaleStatus.isTerminated(rescaleEntry.getStatus())) {
+                            rescaleEntry
+                                    .setStatus(RescaleStatus.IGNORED)
+                                    .setComment("New acceptable resource requirements.")
+                                    .setEndTimestamp(System.currentTimeMillis())
+                                    .fillBackDuration();
+                        }
+                    });
+
             this.jobInformation =
                     new JobGraphJobInformation(jobGraph, maybeUpdateVertexParallelismStore.get());
+
+            rescaleLine
+                    .resetCurrentEvent()
+                    .addEventAsCurrent(
+                            new RescaleEvent(rescaleIdGenerator.rollEpochAndGetRescaleAttemptID())
+                                    .setTriggerTimestamp()
+                                    .setStatus(RescaleStatus.TRYING)
+                                    .setRequiredVertexParallelism(
+                                            maybeUpdateVertexParallelismStore.get()));
+
             declareDesiredResources();
             state.tryRun(
                     ResourceListener.class,
@@ -1458,6 +1544,19 @@ public class AdaptiveScheduler
                 archivedExecutionGraph.getFailureInfo() != null
                         ? archivedExecutionGraph.getFailureInfo().getException()
                         : null;
+        final RescaleLine rescaleLine = getRescaleLine();
+        rescaleLine
+                .tryUpdateCurrentEvent(
+                        entry ->
+                                entry.setStatus(
+                                                optionalFailure == null
+                                                        ? RescaleStatus.IGNORED
+                                                        : RescaleStatus.FAILED)
+                                        .setEndTimestamp(System.currentTimeMillis())
+                                        .fillBackDuration()
+                                        .setComment(
+                                                ExceptionUtils.stringifyException(optionalFailure)))
+                .resetCurrentEvent();
         LOG.info(
                 "Job {} reached terminal state {}.",
                 archivedExecutionGraph.getJobID(),
@@ -1570,6 +1669,7 @@ public class AdaptiveScheduler
 
             final JobStatus previousJobStatus = state.getJobStatus();
 
+            previousState = state;
             state.onLeave(targetState.getStateClass());
             T targetStateInstance = targetState.getState();
             state = targetStateInstance;

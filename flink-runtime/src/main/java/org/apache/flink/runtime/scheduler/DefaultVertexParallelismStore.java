@@ -87,4 +87,12 @@ public class DefaultVertexParallelismStore implements MutableVertexParallelismSt
                                                 "No parallelism information set for vertex %s",
                                                 vertexId)));
     }
+
+    @Override
+    public String toString() {
+        return "DefaultVertexParallelismStore{"
+                + "vertexToParallelismInfo="
+                + vertexToParallelismInfo
+                + '}';
+    }
 }

@@ -21,6 +21,7 @@ package org.apache.flink.runtime.scheduler;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.executiongraph.ArchivedExecutionGraph;
 import org.apache.flink.runtime.executiongraph.ExecutionGraph;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleEvent;
 import org.apache.flink.runtime.scheduler.exceptionhistory.RootExceptionHistoryEntry;
 
 import java.io.Serializable;
@@ -36,6 +37,7 @@ public class ExecutionGraphInfo implements Serializable {
 
     private final ArchivedExecutionGraph executionGraph;
     private final Iterable<RootExceptionHistoryEntry> exceptionHistory;
+    private final Iterable<RescaleEvent> rescaleHistory;
 
     public ExecutionGraphInfo(ArchivedExecutionGraph executionGraph) {
         this(
@@ -44,14 +46,17 @@ public class ExecutionGraphInfo implements Serializable {
                         ? Collections.singleton(
                                 RootExceptionHistoryEntry.fromGlobalFailure(
                                         executionGraph.getFailureInfo()))
-                        : Collections.emptyList());
+                        : Collections.emptyList(),
+                Collections.emptyList());
     }
 
     public ExecutionGraphInfo(
             ArchivedExecutionGraph executionGraph,
-            Iterable<RootExceptionHistoryEntry> exceptionHistory) {
+            Iterable<RootExceptionHistoryEntry> exceptionHistory,
+            Iterable<RescaleEvent> rescaleHistory) {
         this.executionGraph = executionGraph;
         this.exceptionHistory = exceptionHistory;
+        this.rescaleHistory = rescaleHistory;
     }
 
     public JobID getJobId() {
@@ -64,5 +69,9 @@ public class ExecutionGraphInfo implements Serializable {
 
     public Iterable<RootExceptionHistoryEntry> getExceptionHistory() {
         return exceptionHistory;
+    }
+
+    public Iterable<RescaleEvent> getRescaleHistory() {
+        return rescaleHistory;
     }
 }

@@ -32,6 +32,9 @@ import org.apache.flink.runtime.scheduler.ExecutionGraphHandler;
 import org.apache.flink.runtime.scheduler.GlobalFailureHandler;
 import org.apache.flink.runtime.scheduler.OperatorCoordinatorHandler;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleLine;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleStatus;
+import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.IterableUtils;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.concurrent.FutureUtils;
@@ -77,9 +80,10 @@ public class CreatingExecutionGraph extends StateWithoutExecutionGraph {
                         (executionGraphWithVertexParallelism, throwable) -> {
                             context.runIfState(
                                     this,
-                                    () ->
-                                            handleExecutionGraphCreation(
-                                                    executionGraphWithVertexParallelism, throwable),
+                                    () -> {
+                                        handleExecutionGraphCreation(
+                                                executionGraphWithVertexParallelism, throwable);
+                                    },
                                     Duration.ZERO);
                             return null;
                         }));
@@ -89,6 +93,7 @@ public class CreatingExecutionGraph extends StateWithoutExecutionGraph {
     private void handleExecutionGraphCreation(
             @Nullable ExecutionGraphWithVertexParallelism executionGraphWithVertexParallelism,
             @Nullable Throwable throwable) {
+        final RescaleLine rescaleLine = context.getRescaleLine();
         if (throwable != null) {
             getLogger()
                     .info(
@@ -96,17 +101,36 @@ public class CreatingExecutionGraph extends StateWithoutExecutionGraph {
                             CreatingExecutionGraph.class.getSimpleName(),
                             Executing.class.getSimpleName(),
                             throwable);
+            rescaleLine
+                    .tryUpdateCurrentEvent(
+                            rescaleEntry ->
+                                    rescaleEntry
+                                            .setComment(
+                                                    ExceptionUtils.stringifyException(throwable))
+                                            .setEndTimestamp(System.currentTimeMillis())
+                                            .setStatus(RescaleStatus.FAILED)
+                                            .fillBackDuration())
+                    .resetCurrentEvent();
             context.goToFinished(context.getArchivedExecutionGraph(JobStatus.FAILED, throwable));
         } else {
             for (ExecutionVertex vertex :
                     executionGraphWithVertexParallelism.executionGraph.getAllExecutionVertices()) {
                 vertex.getCurrentExecutionAttempt().transitionState(ExecutionState.SCHEDULED);
             }
+            rescaleLine.tryUpdateCurrentEvent(
+                    rescaleEntry -> rescaleEntry.setStatus(RescaleStatus.ASSIGNING_RESOURCES));
 
             final AssignmentResult result =
                     context.tryToAssignSlots(executionGraphWithVertexParallelism);
 
             if (result.isSuccess()) {
+                final VertexParallelism vertexParallelism =
+                        executionGraphWithVertexParallelism
+                                .getJobSchedulingPlan()
+                                .getVertexParallelism();
+                rescaleLine.tryUpdateCurrentEvent(
+                        rescaleEntry ->
+                                rescaleEntry.setAcquiredVertexParallelism(vertexParallelism));
                 getLogger()
                         .debug(
                                 "Successfully reserved and assigned the required slots for the ExecutionGraph.");

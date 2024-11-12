@@ -21,6 +21,7 @@ package org.apache.flink.runtime.scheduler.adaptive;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.runtime.executiongraph.ExecutionGraph;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleStatus;
 import org.apache.flink.util.Preconditions;
 
 import org.slf4j.Logger;
@@ -66,6 +67,8 @@ class WaitingForResources extends StateWithoutExecutionGraph
         this.context = Preconditions.checkNotNull(context);
         Preconditions.checkNotNull(submissionResourceWaitTimeout);
         this.stateTransitionManager = stateTransitionManagerFactory.apply(this);
+        context.getRescaleLine()
+                .tryUpdateCurrentEvent(event -> event.setStatus(RescaleStatus.WAITING_RESOURCES));
 
         // since state transitions are not allowed in state constructors, schedule calls for later.
         if (!submissionResourceWaitTimeout.isNegative()) {

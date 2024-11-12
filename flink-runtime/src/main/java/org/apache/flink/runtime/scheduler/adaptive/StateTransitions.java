@@ -23,6 +23,7 @@ import org.apache.flink.runtime.executiongraph.ArchivedExecutionGraph;
 import org.apache.flink.runtime.executiongraph.ExecutionGraph;
 import org.apache.flink.runtime.scheduler.ExecutionGraphHandler;
 import org.apache.flink.runtime.scheduler.OperatorCoordinatorHandler;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleLine;
 import org.apache.flink.runtime.scheduler.exceptionhistory.ExceptionHistoryEntry;
 
 import javax.annotation.Nullable;
@@ -171,5 +172,10 @@ public interface StateTransitions {
 
         /** Transitions into the {@link WaitingForResources} state. */
         void goToWaitingForResources(@Nullable ExecutionGraph previousExecutionGraph);
+    }
+
+    /** Get the rescale time line. */
+    default RescaleLine getRescaleLine() {
+        throw new UnsupportedOperationException();
     }
 }

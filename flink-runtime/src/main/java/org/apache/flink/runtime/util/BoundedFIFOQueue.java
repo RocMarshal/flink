@@ -89,4 +89,9 @@ public class BoundedFIFOQueue<T> implements Iterable<T>, Serializable {
     public Iterator<T> iterator() {
         return elements.iterator();
     }
+
+    @Override
+    public String toString() {
+        return "BoundedFIFOQueue{" + "maxSize=" + maxSize + ", elements=" + elements + '}';
+    }
 }

@@ -29,6 +29,7 @@ import org.apache.flink.runtime.scheduler.ExecutionGraphInfo;
 import org.apache.flink.util.Preconditions;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
@@ -78,7 +79,8 @@ public class TestingJobManagerRunner implements JobManagerRunner {
                                 null,
                                 null,
                                 0L),
-                        null);
+                        null,
+                        Collections.emptyList());
         terminationFuture.whenComplete(
                 (ignored, ignoredThrowable) ->
                         resultFuture.complete(

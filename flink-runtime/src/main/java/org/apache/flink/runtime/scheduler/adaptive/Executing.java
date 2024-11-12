@@ -34,6 +34,8 @@ import org.apache.flink.runtime.executiongraph.ExecutionVertex;
 import org.apache.flink.runtime.scheduler.ExecutionGraphHandler;
 import org.apache.flink.runtime.scheduler.OperatorCoordinatorHandler;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleLine;
+import org.apache.flink.runtime.scheduler.adaptive.rescalehistory.RescaleStatus;
 import org.apache.flink.runtime.scheduler.exceptionhistory.ExceptionHistoryEntry;
 import org.apache.flink.runtime.scheduler.stopwithsavepoint.StopWithSavepointTerminationManager;
 import org.apache.flink.util.Preconditions;
@@ -96,6 +98,18 @@ class Executing extends StateWithExecutionGraph
         this.failedCheckpointCountdown = null;
 
         deploy();
+
+        final RescaleLine rescaleLine = context.getRescaleLine();
+        if (rescaleLine.preSchedulerStateInstanceOf(CreatingExecutionGraph.class)) {
+            rescaleLine
+                    .tryUpdateCurrentEvent(
+                            rescaleEntry ->
+                                    rescaleEntry
+                                            .setStatus(RescaleStatus.SUCCEEDED)
+                                            .setEndTimestamp(System.currentTimeMillis())
+                                            .fillBackDuration())
+                    .resetCurrentEvent();
+        }
 
         // check if new resources have come available in the meantime
         context.runIfState(

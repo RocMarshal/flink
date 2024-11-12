@@ -115,6 +115,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -833,7 +834,9 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
     public ExecutionGraphInfo requestJob() {
         mainThreadExecutor.assertRunningInMainThread();
         return new ExecutionGraphInfo(
-                ArchivedExecutionGraph.createFrom(executionGraph), getExceptionHistory());
+                ArchivedExecutionGraph.createFrom(executionGraph),
+                getExceptionHistory(),
+                Collections.emptyList());
     }
 
     @Override
