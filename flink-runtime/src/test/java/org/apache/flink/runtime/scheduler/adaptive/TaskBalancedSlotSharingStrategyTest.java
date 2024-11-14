@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.scheduler.adaptive;
 
+import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlot;
 import org.apache.flink.runtime.scheduler.TestingPhysicalSlot;
@@ -52,7 +53,7 @@ class TaskBalancedSlotSharingStrategyTest {
     private static final IsSlotAvailableAndFreeFunction is_slot_free_function = ignored -> true;
     private static final FreeSlotFunction free_slot_function = (a, c, t) -> {};
     private static final ReserveSlotFunction reserve_slot_function =
-            (allocationId, resourceProfile) ->
+            (allocationId, resourceProfile, loadingWeight) ->
                     TestingPhysicalSlot.builder()
                             .withAllocationID(allocationId)
                             .withResourceProfile(resourceProfile)
@@ -66,7 +67,7 @@ class TaskBalancedSlotSharingStrategyTest {
                     free_slot_function,
                     is_slot_free_function,
                     disable_local_recovery,
-                    slotSharingStrategy);
+                    TaskManagerOptions.TaskManagerLoadBalanceMode.TASKS);
 
     private SlotSharingGroup slotSharingGroup1;
     private SlotSharingGroup slotSharingGroup2;

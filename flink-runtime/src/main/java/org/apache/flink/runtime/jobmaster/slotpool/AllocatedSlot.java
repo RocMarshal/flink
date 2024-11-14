@@ -23,7 +23,10 @@ import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.clusterframework.types.SlotID;
 import org.apache.flink.runtime.jobmanager.slots.TaskManagerGateway;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
+
+import javax.annotation.Nonnull;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -58,6 +61,8 @@ class AllocatedSlot implements PhysicalSlot {
     /** The number of the slot on the TaskManager to which slot belongs. Purely informational. */
     private final int physicalSlotNumber;
 
+    private @Nonnull LoadingWeight loadingWeight;
+
     private final AtomicReference<Payload> payloadReference;
 
     // ------------------------------------------------------------------------
@@ -67,12 +72,14 @@ class AllocatedSlot implements PhysicalSlot {
             TaskManagerLocation location,
             int physicalSlotNumber,
             ResourceProfile resourceProfile,
-            TaskManagerGateway taskManagerGateway) {
+            TaskManagerGateway taskManagerGateway,
+            LoadingWeight loadingWeight) {
         this.allocationId = checkNotNull(allocationId);
         this.taskManagerLocation = checkNotNull(location);
         this.physicalSlotNumber = physicalSlotNumber;
         this.resourceProfile = checkNotNull(resourceProfile);
         this.taskManagerGateway = checkNotNull(taskManagerGateway);
+        this.loadingWeight = checkNotNull(loadingWeight);
 
         payloadReference = new AtomicReference<>(null);
     }
@@ -154,6 +161,16 @@ class AllocatedSlot implements PhysicalSlot {
         }
     }
 
+    public void setLoading(LoadingWeight loadingWeight) {
+        this.loadingWeight = checkNotNull(loadingWeight);
+    }
+
+    @Nonnull
+    @Override
+    public LoadingWeight getLoading() {
+        return loadingWeight;
+    }
+
     // ------------------------------------------------------------------------
 
     /** This always returns a reference hash code. */
@@ -175,6 +192,12 @@ class AllocatedSlot implements PhysicalSlot {
                 + " @ "
                 + taskManagerLocation
                 + " - "
-                + physicalSlotNumber;
+                + physicalSlotNumber
+                + " - loadingWeight("
+                + loadingWeight
+                + ")"
+                + " - resourceProfile("
+                + resourceProfile
+                + ")";
     }
 }

@@ -17,12 +17,15 @@
 
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
+import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.jobmaster.LogicalSlot;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
+import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlot;
+import org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadInformation;
 import org.apache.flink.runtime.scheduler.TestingPhysicalSlot;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobAllocationsInformation.VertexAllocationInformation;
@@ -54,16 +57,17 @@ class SlotSharingSlotAllocatorTest {
 
     private static final FreeSlotFunction TEST_FREE_SLOT_FUNCTION = (a, c, t) -> {};
     private static final ReserveSlotFunction TEST_RESERVE_SLOT_FUNCTION =
-            (allocationId, resourceProfile) ->
+            (allocationId, resourceProfile, loadingWeight) ->
                     TestingPhysicalSlot.builder()
                             .withAllocationID(allocationId)
                             .withResourceProfile(resourceProfile)
+                            .withLoadingWeight(loadingWeight)
                             .build();
     private static final IsSlotAvailableAndFreeFunction TEST_IS_SLOT_FREE_FUNCTION =
             ignored -> true;
     private static final boolean DISABLE_LOCAL_RECOVERY = false;
-    private static final SlotSharingStrategy SLOT_SHARING_STRATEGY =
-            DefaultSlotSharingStrategy.INSTANCE;
+    private static final TaskManagerOptions.TaskManagerLoadBalanceMode
+            TASK_MANAGER_LOAD_BALANCE_MODE = TaskManagerOptions.TaskManagerLoadBalanceMode.NONE;
 
     private static final SlotSharingGroup slotSharingGroup1 = new SlotSharingGroup();
     private static final SlotSharingGroup slotSharingGroup2 = new SlotSharingGroup();
@@ -82,7 +86,7 @@ class SlotSharingSlotAllocatorTest {
                         TEST_FREE_SLOT_FUNCTION,
                         TEST_IS_SLOT_FREE_FUNCTION,
                         DISABLE_LOCAL_RECOVERY,
-                        SLOT_SHARING_STRATEGY);
+                        TASK_MANAGER_LOAD_BALANCE_MODE);
 
         final ResourceCounter resourceCounter =
                 slotAllocator.calculateRequiredSlots(Arrays.asList(vertex1, vertex2, vertex3));
@@ -102,7 +106,7 @@ class SlotSharingSlotAllocatorTest {
                         TEST_FREE_SLOT_FUNCTION,
                         TEST_IS_SLOT_FREE_FUNCTION,
                         DISABLE_LOCAL_RECOVERY,
-                        SLOT_SHARING_STRATEGY);
+                        TASK_MANAGER_LOAD_BALANCE_MODE);
 
         final JobInformation jobInformation =
                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3));
@@ -123,7 +127,7 @@ class SlotSharingSlotAllocatorTest {
                         TEST_FREE_SLOT_FUNCTION,
                         TEST_IS_SLOT_FREE_FUNCTION,
                         DISABLE_LOCAL_RECOVERY,
-                        SLOT_SHARING_STRATEGY);
+                        TASK_MANAGER_LOAD_BALANCE_MODE);
 
         final JobInformation jobInformation =
                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3));
@@ -147,7 +151,7 @@ class SlotSharingSlotAllocatorTest {
                         TEST_FREE_SLOT_FUNCTION,
                         TEST_IS_SLOT_FREE_FUNCTION,
                         DISABLE_LOCAL_RECOVERY,
-                        SLOT_SHARING_STRATEGY);
+                        TASK_MANAGER_LOAD_BALANCE_MODE);
         final SlotSharingGroup slotSharingGroup1 = new SlotSharingGroup();
         final JobInformation.VertexInformation vertex11 =
                 new TestVertexInformation(new JobVertexID(), 4, slotSharingGroup1);
@@ -182,7 +186,7 @@ class SlotSharingSlotAllocatorTest {
                         TEST_FREE_SLOT_FUNCTION,
                         TEST_IS_SLOT_FREE_FUNCTION,
                         DISABLE_LOCAL_RECOVERY,
-                        SLOT_SHARING_STRATEGY);
+                        TASK_MANAGER_LOAD_BALANCE_MODE);
 
         final JobInformation jobInformation =
                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3));
@@ -201,7 +205,7 @@ class SlotSharingSlotAllocatorTest {
                         TEST_FREE_SLOT_FUNCTION,
                         TEST_IS_SLOT_FREE_FUNCTION,
                         DISABLE_LOCAL_RECOVERY,
-                        SLOT_SHARING_STRATEGY);
+                        TASK_MANAGER_LOAD_BALANCE_MODE);
         final JobInformation.VertexInformation vertex1 =
                 new TestVertexInformation(new JobVertexID(), 1, 8, new SlotSharingGroup());
         final JobInformation.VertexInformation vertex2 =
@@ -231,7 +235,7 @@ class SlotSharingSlotAllocatorTest {
                         TEST_FREE_SLOT_FUNCTION,
                         TEST_IS_SLOT_FREE_FUNCTION,
                         DISABLE_LOCAL_RECOVERY,
-                        SLOT_SHARING_STRATEGY);
+                        TASK_MANAGER_LOAD_BALANCE_MODE);
         final JobInformation.VertexInformation vertex1 =
                 new TestVertexInformation(new JobVertexID(), 4, 4, new SlotSharingGroup());
         final JobInformation.VertexInformation vertex2 =
@@ -254,7 +258,7 @@ class SlotSharingSlotAllocatorTest {
                         TEST_FREE_SLOT_FUNCTION,
                         TEST_IS_SLOT_FREE_FUNCTION,
                         DISABLE_LOCAL_RECOVERY,
-                        SLOT_SHARING_STRATEGY);
+                        TASK_MANAGER_LOAD_BALANCE_MODE);
         SlotSharingGroup slotSharingGroup = new SlotSharingGroup();
         final JobInformation.VertexInformation vertex1 =
                 new TestVertexInformation(new JobVertexID(), 2, 2, slotSharingGroup);
@@ -277,7 +281,7 @@ class SlotSharingSlotAllocatorTest {
                         TEST_FREE_SLOT_FUNCTION,
                         TEST_IS_SLOT_FREE_FUNCTION,
                         DISABLE_LOCAL_RECOVERY,
-                        SLOT_SHARING_STRATEGY);
+                        TASK_MANAGER_LOAD_BALANCE_MODE);
         final JobInformation.VertexInformation vertex1 =
                 new TestVertexInformation(new JobVertexID(), 4, 10, new SlotSharingGroup());
         final JobInformation.VertexInformation vertex2 =
@@ -309,7 +313,7 @@ class SlotSharingSlotAllocatorTest {
                         TEST_FREE_SLOT_FUNCTION,
                         TEST_IS_SLOT_FREE_FUNCTION,
                         DISABLE_LOCAL_RECOVERY,
-                        SLOT_SHARING_STRATEGY);
+                        TASK_MANAGER_LOAD_BALANCE_MODE);
         final JobInformation.VertexInformation vertex1 =
                 new TestVertexInformation(new JobVertexID(), 4, 4, new SlotSharingGroup());
         final JobInformation.VertexInformation vertex2 =
@@ -341,7 +345,7 @@ class SlotSharingSlotAllocatorTest {
                         TEST_FREE_SLOT_FUNCTION,
                         TEST_IS_SLOT_FREE_FUNCTION,
                         DISABLE_LOCAL_RECOVERY,
-                        SLOT_SHARING_STRATEGY);
+                        TASK_MANAGER_LOAD_BALANCE_MODE);
 
         final JobInformation jobInformation =
                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3));
@@ -349,7 +353,10 @@ class SlotSharingSlotAllocatorTest {
         final JobSchedulingPlan jobSchedulingPlan =
                 slotAllocator
                         .determineParallelismAndCalculateAssignment(
-                                jobInformation, getSlots(50), JobAllocationsInformation.empty())
+                                jobInformation,
+                                getSlots(50),
+                                TaskExecutorsLoadInformation.EMPTY,
+                                JobAllocationsInformation.empty())
                         .get();
 
         final ReservedSlots reservedSlots =
@@ -386,7 +393,7 @@ class SlotSharingSlotAllocatorTest {
                         TEST_FREE_SLOT_FUNCTION,
                         ignored -> false,
                         DISABLE_LOCAL_RECOVERY,
-                        SLOT_SHARING_STRATEGY);
+                        TASK_MANAGER_LOAD_BALANCE_MODE);
 
         final JobInformation jobInformation =
                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3));
@@ -394,7 +401,10 @@ class SlotSharingSlotAllocatorTest {
         JobSchedulingPlan jobSchedulingPlan =
                 slotSharingSlotAllocator
                         .determineParallelismAndCalculateAssignment(
-                                jobInformation, getSlots(50), JobAllocationsInformation.empty())
+                                jobInformation,
+                                getSlots(50),
+                                TaskExecutorsLoadInformation.EMPTY,
+                                JobAllocationsInformation.empty())
                         .get();
 
         final Optional<? extends ReservedSlots> reservedSlots =
@@ -441,22 +451,23 @@ class SlotSharingSlotAllocatorTest {
                                 KeyGroupRange.of(1, 100),
                                 1)));
 
-        List<SlotInfo> freeSlots = new ArrayList<>();
+        List<PhysicalSlot> freeSlots = new ArrayList<>();
         IntStream.range(0, 10).forEach(i -> freeSlots.add(new TestingSlot(new AllocationID())));
         freeSlots.add(new TestingSlot(allocation1));
         freeSlots.add(new TestingSlot(allocation2));
 
         JobSchedulingPlan schedulingPlan =
                 SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                                (allocationId, resourceProfile) ->
+                                (allocationId, resourceProfile, loadingWeight) ->
                                         TestingPhysicalSlot.builder().build(),
                                 (allocationID, cause, ts) -> {},
                                 id -> false,
                                 true,
-                                SLOT_SHARING_STRATEGY)
+                                TASK_MANAGER_LOAD_BALANCE_MODE)
                         .determineParallelismAndCalculateAssignment(
                                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3)),
                                 freeSlots,
+                                TaskExecutorsLoadInformation.EMPTY,
                                 new JobAllocationsInformation(locality))
                         .get();
 
