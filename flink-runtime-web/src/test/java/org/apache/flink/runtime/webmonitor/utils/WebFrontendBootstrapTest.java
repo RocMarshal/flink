@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,7 +63,10 @@ class WebFrontendBootstrapTest {
         configuration.set(Prio0InboundChannelHandlerFactory.REDIRECT_TO_URL, "/index.html");
         Router<?> router =
                 new Router<>()
-                        .addGet("/:*", new HistoryServerStaticFileServerHandler(webDir.toFile()));
+                        .addGet(
+                                "/:*",
+                                new HistoryServerStaticFileServerHandler(
+                                        webDir.toFile(), Duration.ofMillis(30L)));
         WebFrontendBootstrap webUI =
                 new WebFrontendBootstrap(
                         router,

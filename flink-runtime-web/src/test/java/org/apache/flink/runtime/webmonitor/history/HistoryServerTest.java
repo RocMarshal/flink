@@ -26,12 +26,13 @@ import org.apache.flink.configuration.HistoryServerOptions;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.runtime.history.FsJobArchivist;
-import org.apache.flink.runtime.messages.webmonitor.JobDetails;
 import org.apache.flink.runtime.messages.webmonitor.MultipleJobsDetails;
 import org.apache.flink.runtime.rest.messages.DashboardConfiguration;
 import org.apache.flink.runtime.rest.messages.DashboardConfigurationHeaders;
 import org.apache.flink.runtime.rest.messages.JobsOverviewHeaders;
+import org.apache.flink.runtime.rest.messages.job.JobDetailsInfo;
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration;
+import org.apache.flink.runtime.webmonitor.history.HistoryServerArchiveProcessor.ProcessEventType;
 import org.apache.flink.runtime.webmonitor.testutils.HttpUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.v2.DiscardingSink;
@@ -44,6 +45,7 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonGenerator
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.DeserializationFeature;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,9 +60,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -69,6 +72,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.flink.configuration.HistoryServerOptions.HISTORY_SERVER_UNZIPPED_JOBS_MAX;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -86,11 +90,13 @@ class HistoryServerTest {
     private MiniClusterWithClientResource cluster;
     private File jmDirectory;
     private File hsDirectory;
+    private File archivedJobsDirectory;
 
     @BeforeEach
     void setUp(@TempDir File jmDirectory, @TempDir File hsDirectory) throws Exception {
         this.jmDirectory = jmDirectory;
         this.hsDirectory = hsDirectory;
+        this.archivedJobsDirectory = new File(this.hsDirectory, "archivedJobs");
 
         Configuration clusterConfig = new Configuration();
         clusterConfig.set(JobManagerOptions.ARCHIVE_DIR, jmDirectory.toURI().toString());
@@ -126,8 +132,7 @@ class HistoryServerTest {
                 new HistoryServer(
                         historyServerConfig,
                         (event) -> {
-                            if (event.getType()
-                                    == HistoryServerArchiveFetcher.ArchiveEventType.CREATED) {
+                            if (event.getType() == ProcessEventType.DOWNLOADED) {
                                 numExpectedArchivedJobs.countDown();
                             }
                         });
@@ -145,7 +150,7 @@ class HistoryServerTest {
             waitForArchivesCreation(numJobs + numLegacyJobs);
 
             assertThat(numExpectedArchivedJobs.await(10L, TimeUnit.SECONDS)).isTrue();
-            assertThat(getJobsOverview(baseUrl).getJobs()).hasSize(numJobs + numLegacyJobs);
+            assertThat(getIdsFromArchivedDir()).hasSize(numJobs + numLegacyJobs);
 
             // checks whether the dashboard configuration contains all expected fields
             getDashboardConfiguration(baseUrl);
@@ -175,7 +180,7 @@ class HistoryServerTest {
             }
         }
 
-        CountDownLatch numArchivesCreatedInitially = new CountDownLatch(numArchivesToKeepInHistory);
+        CountDownLatch numArchivesJobsInitially = new CountDownLatch(numArchivesToKeepInHistory);
         CountDownLatch numArchivesDeletedInitially =
                 new CountDownLatch(numArchivesToRemoveUponHsStart);
         CountDownLatch numArchivesCreatedTotal =
@@ -192,28 +197,18 @@ class HistoryServerTest {
         historyServerConfig.set(
                 HistoryServerOptions.HISTORY_SERVER_RETAINED_JOBS, numArchivesToKeepInHistory);
         HistoryServer hs =
-                new HistoryServer(
+                createTestingHistoryServer(
                         historyServerConfig,
-                        (event) -> {
-                            switch (event.getType()) {
-                                case CREATED:
-                                    numArchivesCreatedInitially.countDown();
-                                    numArchivesCreatedTotal.countDown();
-                                    break;
-                                case DELETED:
-                                    numArchivesDeletedInitially.countDown();
-                                    numArchivesDeletedTotal.countDown();
-                                    break;
-                            }
-                        });
+                        numArchivesJobsInitially,
+                        numArchivesCreatedTotal,
+                        numArchivesDeletedInitially,
+                        numArchivesDeletedTotal);
 
         try {
             hs.start();
-            String baseUrl = "http://localhost:" + hs.getWebPort();
-            assertThat(numArchivesCreatedInitially.await(10L, TimeUnit.SECONDS)).isTrue();
+            assertThat(numArchivesJobsInitially.await(10L, TimeUnit.SECONDS)).isTrue();
             assertThat(numArchivesDeletedInitially.await(10L, TimeUnit.SECONDS)).isTrue();
-            assertThat(getIdsFromJobOverview(baseUrl))
-                    .isEqualTo(new HashSet<>(expectedJobIdsToKeep));
+            assertThat(getIdsFromArchivedDir()).isEqualTo(new HashSet<>(expectedJobIdsToKeep));
 
             for (int j = numArchivesBeforeHsStarted;
                     j < numArchivesBeforeHsStarted + numArchivesAfterHsStarted;
@@ -225,18 +220,250 @@ class HistoryServerTest {
             }
             assertThat(numArchivesCreatedTotal.await(10L, TimeUnit.SECONDS)).isTrue();
             assertThat(numArchivesDeletedTotal.await(10L, TimeUnit.SECONDS)).isTrue();
-            assertThat(getIdsFromJobOverview(baseUrl))
-                    .isEqualTo(new HashSet<>(expectedJobIdsToKeep));
+            assertThat(getIdsFromArchivedDir()).isEqualTo(new HashSet<>(expectedJobIdsToKeep));
         } finally {
             hs.stop();
         }
     }
 
-    private Set<String> getIdsFromJobOverview(String baseUrl) throws Exception {
-        return getJobsOverview(baseUrl).getJobs().stream()
-                .map(JobDetails::getJobId)
-                .map(JobID::toString)
-                .collect(Collectors.toSet());
+    @ParameterizedTest(name = "Flink version less than 1.4: {0}")
+    @ValueSource(booleans = {true, false})
+    void testTriggerUnzipArchivedFile(final boolean versionLessThan14) throws Exception {
+        final int numArchivesBeforeHsStarted = 0;
+        final int numArchivesAfterHsStarted = 2;
+        final int numTriggerUnzipJobNum = 1;
+        final int numArchivesToRemove = 1;
+
+        CountDownLatch numArchivesJobsInitially = new CountDownLatch(numArchivesBeforeHsStarted);
+        CountDownLatch numArchivesJobsTotal =
+                new CountDownLatch(numArchivesBeforeHsStarted + numArchivesAfterHsStarted);
+        CountDownLatch numUnzippedJobsTotal = new CountDownLatch(numTriggerUnzipJobNum);
+        CountDownLatch numArchivesCleanedTotal = new CountDownLatch(numArchivesToRemove);
+        CountDownLatch numArchivesDeletedTotal = new CountDownLatch(numArchivesToRemove);
+
+        Configuration historyServerConfig = createTestConfiguration(true);
+
+        HistoryServer hs =
+                createTestingHistoryServer(
+                        historyServerConfig,
+                        numArchivesJobsInitially,
+                        numArchivesJobsTotal,
+                        numUnzippedJobsTotal,
+                        numArchivesCleanedTotal,
+                        numArchivesDeletedTotal);
+
+        try {
+            hs.start();
+            assertThat(numArchivesJobsInitially.await(1L, TimeUnit.SECONDS)).isTrue();
+            assertThat(numUnzippedJobsTotal.getCount()).isEqualTo(numTriggerUnzipJobNum);
+            assertThat(getIdsFromArchivedDir()).hasSize(numArchivesBeforeHsStarted);
+
+            for (int x = 0; x < numArchivesAfterHsStarted; x++) {
+                runJob();
+            }
+            assertThat(numArchivesJobsTotal.await(1L, TimeUnit.SECONDS)).isTrue();
+            assertThat(numUnzippedJobsTotal.getCount()).isEqualTo(numTriggerUnzipJobNum);
+            assertThat(getIdsFromArchivedDir())
+                    .hasSize(numArchivesBeforeHsStarted + numArchivesAfterHsStarted);
+
+            String jobIdToView = getIdsFromArchivedDir().iterator().next();
+            String baseUrl = "http://localhost:" + hs.getWebPort();
+            JobDetailsInfo jobDetailsViewed = getJobOverview(baseUrl, jobIdToView);
+            assertThat(numUnzippedJobsTotal.await(1L, TimeUnit.SECONDS)).isTrue();
+            assertThat(jobDetailsViewed.getJobId().toString()).isEqualTo(jobIdToView);
+
+            Files.deleteIfExists(jmDirectory.toPath().resolve(jobIdToView));
+            assertThat(numArchivesDeletedTotal.await(1L, TimeUnit.SECONDS)).isTrue();
+            assertThat(numArchivesCleanedTotal.await(1L, TimeUnit.SECONDS)).isTrue();
+            assertThat(getIdsFromArchivedDir())
+                    .hasSize(
+                            numArchivesBeforeHsStarted
+                                    + numArchivesAfterHsStarted
+                                    - numArchivesToRemove);
+        } finally {
+            hs.stop();
+        }
+    }
+
+    @ParameterizedTest(name = "Flink version less than 1.4: {0}")
+    @ValueSource(booleans = {true, false})
+    void testCleanUnzipArchivedFile(final boolean versionLessThan14) throws Exception {
+        final int numArchivesBeforeHsStarted = 0;
+        final int numArchivesAfterHsStarted = 6;
+        final int numTriggerUnzipJobNum = 5;
+        final int numCached = 3;
+        final int numArchivesToClean = numTriggerUnzipJobNum - numCached;
+        final int numArchivesToRemove = 1;
+
+        CountDownLatch numArchivesJobsInitially = new CountDownLatch(numArchivesBeforeHsStarted);
+        CountDownLatch numArchivesJobsTotal =
+                new CountDownLatch(numArchivesBeforeHsStarted + numArchivesAfterHsStarted);
+        CountDownLatch numUnzippedJobsTotal = new CountDownLatch(numTriggerUnzipJobNum);
+        CountDownLatch numArchivesCleanedTotal = new CountDownLatch(numArchivesToClean);
+        CountDownLatch numArchivesDeletedTotal = new CountDownLatch(numArchivesToRemove);
+
+        Configuration historyServerConfig = createTestConfiguration(true);
+        historyServerConfig.set(HISTORY_SERVER_UNZIPPED_JOBS_MAX, numCached);
+
+        HistoryServer hs =
+                createTestingHistoryServer(
+                        historyServerConfig,
+                        numArchivesJobsInitially,
+                        numArchivesJobsTotal,
+                        numUnzippedJobsTotal,
+                        numArchivesCleanedTotal,
+                        numArchivesDeletedTotal);
+
+        try {
+            hs.start();
+            assertThat(numArchivesJobsInitially.await(1L, TimeUnit.SECONDS)).isTrue();
+            assertThat(numUnzippedJobsTotal.getCount()).isEqualTo(numTriggerUnzipJobNum);
+            assertThat(getIdsFromArchivedDir()).hasSize(numArchivesBeforeHsStarted);
+
+            for (int x = 0; x < numArchivesAfterHsStarted; x++) {
+                runJob();
+            }
+            assertThat(numArchivesJobsTotal.await(1L, TimeUnit.SECONDS)).isTrue();
+            assertThat(numUnzippedJobsTotal.getCount()).isEqualTo(numTriggerUnzipJobNum);
+            assertThat(getIdsFromArchivedDir())
+                    .hasSize(numArchivesBeforeHsStarted + numArchivesAfterHsStarted);
+
+            String jobIdToRemove = null;
+            Set<String> jobSet = getIdsFromArchivedDir();
+            int triggerNum = numTriggerUnzipJobNum;
+            Iterator<String> jobIterator = jobSet.iterator();
+            while (jobIterator.hasNext() && triggerNum > 0) {
+                String jobIdToView = jobIterator.next();
+                String baseUrl = "http://localhost:" + hs.getWebPort();
+                getJobOverview(baseUrl, jobIdToView);
+                triggerNum--;
+                if (triggerNum == 0) {
+                    jobIdToRemove = jobIdToView;
+                }
+            }
+            assertThat(numUnzippedJobsTotal.await(1L, TimeUnit.SECONDS)).isTrue();
+            assertThat(numArchivesCleanedTotal.await(1L, TimeUnit.SECONDS)).isTrue();
+
+            if (jobIdToRemove != null) {
+                Files.deleteIfExists(jmDirectory.toPath().resolve(jobIdToRemove));
+            }
+            assertThat(numArchivesDeletedTotal.await(1L, TimeUnit.SECONDS)).isTrue();
+
+            assertThat(getIdsFromArchivedDir())
+                    .hasSize(numArchivesAfterHsStarted - numArchivesToRemove);
+        } finally {
+            hs.stop();
+        }
+    }
+
+    @Test
+    void testCleanWhenHistoryServer() throws Exception {
+        final int numArchivesBeforeHsStarted = 4;
+        final int numTriggerUnzipJobNum = 2;
+        CountDownLatch numArchivesJobsReloaded = new CountDownLatch(numTriggerUnzipJobNum);
+        CountDownLatch numArchivesJobsTotal = new CountDownLatch(numArchivesBeforeHsStarted);
+        CountDownLatch numUnzippedJobsTotal = new CountDownLatch(numTriggerUnzipJobNum);
+        Configuration historyServerConfig = createTestConfiguration(true);
+        HistoryServer hs =
+                createTestingHistoryServer(
+                        historyServerConfig,
+                        numArchivesJobsTotal,
+                        numUnzippedJobsTotal,
+                        numArchivesJobsReloaded);
+        try {
+            hs.start();
+            for (int x = 0; x < numArchivesBeforeHsStarted; x++) {
+                runJob();
+            }
+            assertThat(numArchivesJobsTotal.await(1L, TimeUnit.SECONDS)).isTrue();
+
+            Set<String> jobSet = getIdsFromArchivedDir();
+            int triggerNum = numTriggerUnzipJobNum;
+            Iterator<String> jobIterator = jobSet.iterator();
+            while (jobIterator.hasNext() && triggerNum > 0) {
+                String jobIdToView = jobIterator.next();
+                String baseUrl = "http://localhost:" + hs.getWebPort();
+                getJobOverview(baseUrl, jobIdToView);
+                triggerNum--;
+            }
+            assertThat(numUnzippedJobsTotal.await(1L, TimeUnit.SECONDS)).isTrue();
+            assertThat(getIdsFromArchivedDir()).hasSize(numArchivesBeforeHsStarted);
+        } finally {
+            hs.stop();
+        }
+
+        assertThat(getFileNameInHSDir()).hasSize(3);
+        assertThat(getFileNameInHSDir()).contains("overviews");
+        assertThat(getFileNameInHSDir()).contains("jobs");
+        assertThat(getFileNameInHSDir()).contains("archivedJobs");
+    }
+
+    @Test
+    void testReloadUnzipArchivedFile() throws Exception {
+        final int numArchivesBeforeHsStarted = 4;
+        final int numTriggerUnzipJobNum = 2;
+        final int numArchivesToRemove = 1;
+
+        CountDownLatch numArchivesJobsReloaded = new CountDownLatch(numTriggerUnzipJobNum);
+        CountDownLatch numArchivesJobsTotal = new CountDownLatch(numArchivesBeforeHsStarted);
+        CountDownLatch numUnzippedJobsTotal = new CountDownLatch(numTriggerUnzipJobNum);
+
+        Configuration historyServerConfig = createTestConfiguration(true);
+
+        HistoryServer hs =
+                createTestingHistoryServer(
+                        historyServerConfig,
+                        numArchivesJobsTotal,
+                        numUnzippedJobsTotal,
+                        numArchivesJobsReloaded);
+
+        try {
+            hs.start();
+            for (int x = 0; x < numArchivesBeforeHsStarted; x++) {
+                runJob();
+            }
+            assertThat(numArchivesJobsTotal.await(1L, TimeUnit.SECONDS)).isTrue();
+
+            Set<String> jobSet = getIdsFromArchivedDir();
+            int triggerNum = numTriggerUnzipJobNum;
+            Iterator<String> jobIterator = jobSet.iterator();
+            while (jobIterator.hasNext() && triggerNum > 0) {
+                String jobIdToView = jobIterator.next();
+                String baseUrl = "http://localhost:" + hs.getWebPort();
+                getJobOverview(baseUrl, jobIdToView);
+                triggerNum--;
+            }
+            assertThat(numUnzippedJobsTotal.await(1L, TimeUnit.SECONDS)).isTrue();
+            assertThat(getIdsFromArchivedDir()).hasSize(numArchivesBeforeHsStarted);
+        } finally {
+            hs.stop();
+        }
+
+        String jobToRemove = getIdsFromArchivedDir().iterator().next();
+        Files.deleteIfExists(jmDirectory.toPath().resolve(jobToRemove));
+
+        hs =
+                createTestingHistoryServer(
+                        historyServerConfig,
+                        numArchivesJobsTotal,
+                        numUnzippedJobsTotal,
+                        numArchivesJobsReloaded);
+        try {
+            hs.start();
+            assertThat(numArchivesJobsReloaded.await(1L, TimeUnit.SECONDS)).isTrue();
+            assertThat(getIdsFromArchivedDir())
+                    .hasSize(numArchivesBeforeHsStarted - numArchivesToRemove);
+        } finally {
+            hs.stop();
+        }
+    }
+
+    private Set<String> getIdsFromArchivedDir() {
+        return Arrays.stream(this.archivedJobsDirectory.list()).collect(Collectors.toSet());
+    }
+
+    private Set<String> getFileNameInHSDir() {
+        return Arrays.stream(this.hsDirectory.list()).collect(Collectors.toSet());
     }
 
     @Test
@@ -279,80 +506,171 @@ class HistoryServerTest {
         waitForArchivesCreation(numJobs);
 
         CountDownLatch numExpectedArchivedJobs = new CountDownLatch(numJobs);
+        CountDownLatch numExpectedUnzipJobs = new CountDownLatch(numJobs);
         CountDownLatch firstArchiveExpiredLatch = new CountDownLatch(numExpiredJobs);
         CountDownLatch allArchivesExpiredLatch =
                 new CountDownLatch(cleanupExpiredJobs ? numJobs : 0);
+        CountDownLatch firstCleanLatch = new CountDownLatch(numExpiredJobs);
+        CountDownLatch allCleanLatch = new CountDownLatch(cleanupExpiredJobs ? numJobs : 0);
 
         Configuration historyServerConfig = createTestConfiguration(cleanupExpiredJobs);
 
         HistoryServer hs =
-                new HistoryServer(
+                createTestingHistoryServer(
                         historyServerConfig,
-                        (event) -> {
-                            switch (event.getType()) {
-                                case CREATED:
-                                    numExpectedArchivedJobs.countDown();
-                                    break;
-                                case DELETED:
-                                    firstArchiveExpiredLatch.countDown();
-                                    allArchivesExpiredLatch.countDown();
-                                    break;
-                            }
-                        });
+                        numExpectedArchivedJobs,
+                        numExpectedUnzipJobs,
+                        firstCleanLatch,
+                        allCleanLatch,
+                        firstArchiveExpiredLatch,
+                        allArchivesExpiredLatch);
 
         try {
             hs.start();
             String baseUrl = "http://localhost:" + hs.getWebPort();
             assertThat(numExpectedArchivedJobs.await(10L, TimeUnit.SECONDS)).isTrue();
 
-            Collection<JobDetails> jobs = getJobsOverview(baseUrl).getJobs();
+            Set<String> jobs = getIdsFromArchivedDir();
             assertThat(jobs).hasSize(numJobs);
-
-            String jobIdToDelete =
-                    jobs.stream()
-                            .findFirst()
-                            .map(JobDetails::getJobId)
-                            .map(JobID::toString)
-                            .orElseThrow(
-                                    () ->
-                                            new IllegalStateException(
-                                                    "Expected at least one existing job"));
 
             // trigger another fetch and delete one archive from jm
             // we fetch again to probabilistically cause a concurrent deletion
             hs.fetchArchives();
+            assertThat(numExpectedArchivedJobs.await(10L, TimeUnit.SECONDS)).isTrue();
+            assertThat(numExpectedUnzipJobs.getCount()).isEqualTo(numJobs);
+
+            String jobIdToDelete = getIdsFromArchivedDir().iterator().next();
             Files.deleteIfExists(jmDirectory.toPath().resolve(jobIdToDelete));
-
             assertThat(firstArchiveExpiredLatch.await(10L, TimeUnit.SECONDS)).isTrue();
+            assertThat(firstCleanLatch.await(10L, TimeUnit.SECONDS)).isTrue();
+            assertThat(numExpectedUnzipJobs.getCount()).isEqualTo(numJobs);
 
-            // check that archive is still/no longer present in hs
-            Collection<JobDetails> jobsAfterDeletion = getJobsOverview(baseUrl).getJobs();
-            assertThat(jobsAfterDeletion).hasSize(numJobs - numExpiredJobs);
-            assertThat(
-                            jobsAfterDeletion.stream()
-                                    .map(JobDetails::getJobId)
-                                    .map(JobID::toString)
-                                    .filter(jobId -> jobId.equals(jobIdToDelete))
-                                    .count())
-                    .isEqualTo(1 - numExpiredJobs);
-
+            jobs = getIdsFromArchivedDir();
+            assertThat(jobs).hasSize(numJobs - numExpiredJobs);
             // delete remaining archives from jm and ensure files are cleaned up
-            List<String> remainingJobIds =
-                    jobsAfterDeletion.stream()
-                            .map(JobDetails::getJobId)
-                            .map(JobID::toString)
-                            .collect(Collectors.toList());
-
-            for (String remainingJobId : remainingJobIds) {
+            for (String remainingJobId : jobs) {
                 Files.deleteIfExists(jmDirectory.toPath().resolve(remainingJobId));
             }
-
             assertThat(allArchivesExpiredLatch.await(10L, TimeUnit.SECONDS)).isTrue();
+            assertThat(allCleanLatch.await(10L, TimeUnit.SECONDS)).isTrue();
+            assertThat(numExpectedUnzipJobs.getCount()).isEqualTo(numJobs);
 
             assertJobFilesCleanedUp(cleanupExpiredJobs);
         } finally {
             hs.stop();
         }
+    }
+
+    private static @NotNull HistoryServer createTestingHistoryServer(
+            Configuration historyServerConfig,
+            CountDownLatch numArchivesJobsInitially,
+            CountDownLatch numArchivesCreatedTotal,
+            CountDownLatch numArchivesDeletedInitially,
+            CountDownLatch numArchivesDeletedTotal)
+            throws IOException, FlinkException {
+        return new HistoryServer(
+                historyServerConfig,
+                (event) -> {
+                    switch (event.getType()) {
+                        case DOWNLOADED:
+                            numArchivesJobsInitially.countDown();
+                            numArchivesCreatedTotal.countDown();
+                            break;
+                        case DELETED:
+                            numArchivesDeletedInitially.countDown();
+                            numArchivesDeletedTotal.countDown();
+                            break;
+                    }
+                });
+    }
+
+    private static @NotNull HistoryServer createTestingHistoryServer(
+            Configuration historyServerConfig,
+            CountDownLatch numArchivesJobsTotal,
+            CountDownLatch numUnzippedJobsTotal,
+            CountDownLatch numArchivesJobsReloaded)
+            throws IOException, FlinkException {
+        return new HistoryServer(
+                historyServerConfig,
+                (event) -> {
+                    switch (event.getType()) {
+                        case DOWNLOADED:
+                            numArchivesJobsTotal.countDown();
+                            break;
+                        case UNZIPPED:
+                            numUnzippedJobsTotal.countDown();
+                            break;
+                        case RELOADED:
+                            numArchivesJobsReloaded.countDown();
+                            break;
+                    }
+                });
+    }
+
+    private static @NotNull HistoryServer createTestingHistoryServer(
+            Configuration historyServerConfig,
+            CountDownLatch numExpectedArchivedJobs,
+            CountDownLatch numExpectedUnzipJobs,
+            CountDownLatch firstCleanLatch,
+            CountDownLatch allCleanLatch,
+            CountDownLatch firstArchiveExpiredLatch,
+            CountDownLatch allArchivesExpiredLatch)
+            throws IOException, FlinkException {
+        return new HistoryServer(
+                historyServerConfig,
+                (event) -> {
+                    switch (event.getType()) {
+                        case DOWNLOADED:
+                            numExpectedArchivedJobs.countDown();
+                            break;
+                        case UNZIPPED:
+                            numExpectedUnzipJobs.countDown();
+                            break;
+                        case CLEANED:
+                            firstCleanLatch.countDown();
+                            allCleanLatch.countDown();
+                            break;
+                        case DELETED:
+                            firstArchiveExpiredLatch.countDown();
+                            allArchivesExpiredLatch.countDown();
+                            break;
+                    }
+                });
+    }
+
+    private static @NotNull HistoryServer createTestingHistoryServer(
+            Configuration historyServerConfig,
+            CountDownLatch numArchivesJobsInitially,
+            CountDownLatch numArchivesJobsTotal,
+            CountDownLatch numUnzippedJobsTotal,
+            CountDownLatch numArchivesCleanedTotal,
+            CountDownLatch numArchivesDeletedTotal)
+            throws IOException, FlinkException {
+        return new HistoryServer(
+                historyServerConfig,
+                (event) -> {
+                    switch (event.getType()) {
+                        case DOWNLOADED:
+                            numArchivesJobsInitially.countDown();
+                            numArchivesJobsTotal.countDown();
+                            break;
+                        case UNZIPPED:
+                            numUnzippedJobsTotal.countDown();
+                            break;
+                        case CLEANED:
+                            numArchivesCleanedTotal.countDown();
+                            break;
+                        case DELETED:
+                            numArchivesDeletedTotal.countDown();
+                            break;
+                    }
+                });
+    }
+
+    private static JobDetailsInfo getJobOverview(String baseUrl, String jobID) throws Exception {
+        String jobUrl = baseUrl + "/jobs/" + jobID;
+        Tuple2<Integer, String> response = HttpUtils.getFromHTTP(jobUrl);
+        return OBJECT_MAPPER.readValue(response.f1, JobDetailsInfo.class);
     }
 
     private void assertJobFilesCleanedUp(boolean jobFilesShouldBeDeleted) throws IOException {
@@ -361,6 +679,7 @@ class HistoryServerTest {
                     paths.filter(path -> !path.equals(hsDirectory.toPath()))
                             .map(path -> hsDirectory.toPath().relativize(path))
                             .filter(path -> !path.equals(Paths.get("config.json")))
+                            .filter(path -> !path.equals(Paths.get("archivedJobs")))
                             .filter(path -> !path.equals(Paths.get("jobs")))
                             .filter(path -> !path.equals(Paths.get("jobs", "overview.json")))
                             .filter(path -> !path.equals(Paths.get("overviews")))
