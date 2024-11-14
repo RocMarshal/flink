@@ -19,6 +19,7 @@
 
 package org.apache.flink.runtime.scheduler.adaptive;
 
+import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.core.execution.CheckpointType;
 import org.apache.flink.runtime.OperatorIDPair;
 import org.apache.flink.runtime.checkpoint.CompletedCheckpoint;
@@ -33,7 +34,6 @@ import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.jobgraph.JobVertex;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobmaster.slotpool.DeclarativeSlotPool;
-import org.apache.flink.runtime.scheduler.adaptive.allocator.DefaultSlotSharingStrategy;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobAllocationsInformation;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.SlotAllocator;
 import org.apache.flink.runtime.state.KeyGroupRange;
@@ -79,7 +79,7 @@ public class LocalRecoveryTest extends AdaptiveSchedulerTestBase {
                                 localRecoveryEnabled,
                                 executionTarget,
                                 minimalTaskManagerPreferred,
-                                DefaultSlotSharingStrategy.INSTANCE),
+                                TaskManagerOptions.TaskManagerLoadBalanceMode.NONE),
                         capturedAllocations);
 
         scheduler =
