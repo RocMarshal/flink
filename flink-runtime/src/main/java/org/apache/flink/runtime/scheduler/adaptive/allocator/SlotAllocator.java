@@ -64,8 +64,8 @@ public interface SlotAllocator {
     Optional<JobSchedulingPlan> determineParallelismAndCalculateAssignment(
             JobInformation jobInformation,
             Collection<PhysicalSlot> slots,
-            JobAllocationsInformation jobAllocationsInformation,
-            TaskExecutorsLoadInformation taskExecutorsLoadInformation);
+            TaskExecutorsLoadInformation taskExecutorsLoadInformation,
+            JobAllocationsInformation jobAllocationsInformation);
 
     /**
      * Reserves slots according to the given assignment if possible. If the underlying set of

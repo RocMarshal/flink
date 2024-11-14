@@ -19,6 +19,7 @@ package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
@@ -30,6 +31,7 @@ import org.apache.flink.runtime.scheduler.TestingPhysicalSlot;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobAllocationsInformation.VertexAllocationInformation;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.SlotSharingSlotAllocator.ExecutionSlotSharingGroup;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.topology.VertexID;
@@ -58,10 +60,11 @@ class SlotSharingSlotAllocatorTest {
 
     private static final FreeSlotFunction TEST_FREE_SLOT_FUNCTION = (a, c, t) -> {};
     private static final ReserveSlotFunction TEST_RESERVE_SLOT_FUNCTION =
-            (allocationId, resourceProfile) ->
+            (allocationId, resourceProfile, loadingWeight) ->
                     TestingPhysicalSlot.builder()
                             .withAllocationID(allocationId)
                             .withResourceProfile(resourceProfile)
+                            .withLoadingWeight(loadingWeight)
                             .build();
     private static final IsSlotAvailableAndFreeFunction TEST_IS_SLOT_FREE_FUNCTION =
             ignored -> true;
@@ -355,8 +358,8 @@ class SlotSharingSlotAllocatorTest {
                         .determineParallelismAndCalculateAssignment(
                                 jobInformation,
                                 getSlots(50),
-                                JobAllocationsInformation.empty(),
-                                TaskExecutorsLoadInformation.EMPTY)
+                                TaskExecutorsLoadInformation.EMPTY,
+                                JobAllocationsInformation.empty())
                         .get();
 
         final ReservedSlots reservedSlots =
@@ -403,8 +406,8 @@ class SlotSharingSlotAllocatorTest {
                         .determineParallelismAndCalculateAssignment(
                                 jobInformation,
                                 getSlots(50),
-                                JobAllocationsInformation.empty(),
-                                TaskExecutorsLoadInformation.EMPTY)
+                                TaskExecutorsLoadInformation.EMPTY,
+                                JobAllocationsInformation.empty())
                         .get();
 
         final Optional<? extends ReservedSlots> reservedSlots =
@@ -456,8 +459,15 @@ class SlotSharingSlotAllocatorTest {
         freeSlots.add(new TestingSlot(allocation1));
         freeSlots.add(new TestingSlot(allocation2));
         TaskExecutorsLoadInformation taskExecutorsLoadInformation =
-                () ->
-                        freeSlots.stream()
+                new TaskExecutorsLoadInformation() {
+                    @Override
+                    public Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight() {
+                        return Map.of();
+                    }
+
+                    @Override
+                    public Map<ResourceID, SlotsUtilization> getTaskExecutorsSlotsUtilization() {
+                        return freeSlots.stream()
                                 .collect(
                                         Collectors.toMap(
                                                 physicalSlot ->
@@ -467,10 +477,12 @@ class SlotSharingSlotAllocatorTest {
                                                 physicalSlot ->
                                                         new TaskExecutorsLoadInformation
                                                                 .SlotsUtilization(1, 0)));
+                    }
+                };
 
         JobSchedulingPlan schedulingPlan =
                 SlotSharingSlotAllocator.createSlotSharingSlotAllocator(
-                                (allocationId, resourceProfile) ->
+                                (allocationId, resourceProfile, loadingWeight) ->
                                         TestingPhysicalSlot.builder().build(),
                                 (allocationID, cause, ts) -> {},
                                 id -> false,
@@ -479,8 +491,8 @@ class SlotSharingSlotAllocatorTest {
                         .determineParallelismAndCalculateAssignment(
                                 new TestJobInformation(Arrays.asList(vertex1, vertex2, vertex3)),
                                 freeSlots,
-                                new JobAllocationsInformation(locality),
-                                taskExecutorsLoadInformation)
+                                TaskExecutorsLoadInformation.EMPTY,
+                                new JobAllocationsInformation(locality))
                         .get();
 
         Map<AllocationID, Set<VertexID>> allocated = new HashMap<>();

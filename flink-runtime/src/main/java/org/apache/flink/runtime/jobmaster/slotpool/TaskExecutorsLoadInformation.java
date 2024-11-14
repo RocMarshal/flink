@@ -18,6 +18,7 @@
 package org.apache.flink.runtime.jobmaster.slotpool;
 
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nonnull;
@@ -31,7 +32,12 @@ import java.util.Objects;
  */
 public interface TaskExecutorsLoadInformation {
 
-    TaskExecutorsLoadInformation EMPTY = HashMap::new;
+    /**
+     * Return the loading weight for per task executor.
+     *
+     * @return map of loading weight for per task executor.
+     */
+    Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight();
 
     /**
      * Return the slots utilization for per task executor.
@@ -89,4 +95,18 @@ public interface TaskExecutorsLoadInformation {
             return Double.compare(getUtilization(), o.getUtilization());
         }
     }
+
+    TaskExecutorsLoadInformation EMPTY =
+            new TaskExecutorsLoadInformation() {
+
+                @Override
+                public Map<ResourceID, SlotsUtilization> getTaskExecutorsSlotsUtilization() {
+                    return new HashMap<>();
+                }
+
+                @Override
+                public Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight() {
+                    return new HashMap<>();
+                }
+            };
 }

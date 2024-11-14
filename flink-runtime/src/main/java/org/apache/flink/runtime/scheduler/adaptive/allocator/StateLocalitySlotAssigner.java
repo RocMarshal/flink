@@ -27,6 +27,7 @@ import org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadInformation;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobAllocationsInformation.VertexAllocationInformation;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.SlotSharingSlotAllocator.ExecutionSlotSharingGroup;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyGroupRangeAssignment;
@@ -118,18 +119,28 @@ public class StateLocalitySlotAssigner implements SlotAssigner {
                 freeSlots.stream().collect(toMap(SlotInfo::getAllocationId, identity()));
         AllocationScore score;
         final Collection<SlotAssignment> assignments = new ArrayList<>();
-        Map<ResourceID, TaskExecutorsLoadInformation.SlotsUtilization> slotsUtilizations =
-                taskExecutorsLoadInformation.getTaskExecutorsSlotsUtilization();
+        Map<ResourceID, LoadingWeight> taskExecutorsLoadingWeight =
+                taskExecutorsLoadInformation.getTaskExecutorsLoadingWeight();
+        Map<ResourceID, TaskExecutorsLoadInformation.SlotsUtilization>
+                tasExecutorsSlotsUtilizations =
+                        taskExecutorsLoadInformation.getTaskExecutorsSlotsUtilization();
         while ((score = scores.poll()) != null) {
             if (slotsById.containsKey(score.getAllocationId())
                     && groupsById.containsKey(score.getGroupId())) {
-                PhysicalSlot targetSlot = slotsById.remove(score.getAllocationId());
-                slotsUtilizations.compute(
-                        targetSlot.getTaskManagerLocation().getResourceID(),
+                PhysicalSlot slot = slotsById.remove(score.getAllocationId());
+                ExecutionSlotSharingGroup group = groupsById.remove(score.getGroupId());
+                assignments.add(new SlotAssignment(slot, group));
+                taskExecutorsLoadingWeight.compute(
+                        slot.getTaskManagerLocation().getResourceID(),
+                        (resourceID, oldLoading) ->
+                                oldLoading == null
+                                        ? group.getLoading()
+                                        : oldLoading.merge(group.getLoading()));
+                tasExecutorsSlotsUtilizations.compute(
+                        slot.getTaskManagerLocation().getResourceID(),
                         (resourceID, oldSlotsUtilization) ->
+                                // TODO: Maybe bug here.
                                 Preconditions.checkNotNull(oldSlotsUtilization).incReserved(1));
-                assignments.add(
-                        new SlotAssignment(targetSlot, groupsById.remove(score.getGroupId())));
             }
         }
 
@@ -140,7 +151,19 @@ public class StateLocalitySlotAssigner implements SlotAssigner {
                             slotsById.values(),
                             new ArrayList<>(groupsById.values()),
                             previousAllocations,
-                            () -> slotsUtilizations));
+                            new TaskExecutorsLoadInformation() {
+                                @Override
+                                public Map<ResourceID, LoadingWeight>
+                                        getTaskExecutorsLoadingWeight() {
+                                    return taskExecutorsLoadingWeight;
+                                }
+
+                                @Override
+                                public Map<ResourceID, SlotsUtilization>
+                                        getTaskExecutorsSlotsUtilization() {
+                                    return tasExecutorsSlotsUtilizations;
+                                }
+                            }));
         }
 
         return assignments;

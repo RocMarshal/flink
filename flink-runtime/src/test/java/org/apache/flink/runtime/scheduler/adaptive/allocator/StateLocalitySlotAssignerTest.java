@@ -18,6 +18,7 @@
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlot;
@@ -25,6 +26,7 @@ import org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadInformation;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobAllocationsInformation.VertexAllocationInformation;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobInformation.VertexInformation;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyGroupRangeAssignment;
 
@@ -36,6 +38,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -187,8 +190,15 @@ class StateLocalitySlotAssignerTest {
         List<PhysicalSlot> freeSlots =
                 allocationIDs.stream().map(TestingSlot::new).collect(Collectors.toList());
         TaskExecutorsLoadInformation taskExecutorsLoadInformation =
-                () ->
-                        freeSlots.stream()
+                new TaskExecutorsLoadInformation() {
+                    @Override
+                    public Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight() {
+                        return Map.of();
+                    }
+
+                    @Override
+                    public Map<ResourceID, SlotsUtilization> getTaskExecutorsSlotsUtilization() {
+                        return freeSlots.stream()
                                 .collect(
                                         Collectors.toMap(
                                                 physicalSlot ->
@@ -198,6 +208,8 @@ class StateLocalitySlotAssignerTest {
                                                 physicalSlot ->
                                                         new TaskExecutorsLoadInformation
                                                                 .SlotsUtilization(1, 0)));
+                    }
+                };
         return new StateLocalitySlotAssigner(new DefaultSlotAssigner())
                 .assignSlots(
                         testJobInformation,
@@ -205,7 +217,7 @@ class StateLocalitySlotAssignerTest {
                         allGroups,
                         new JobAllocationsInformation(
                                 singletonMap(vertexInformation.getJobVertexID(), allocations)),
-                        taskExecutorsLoadInformation);
+                        TaskExecutorsLoadInformation.EMPTY);
     }
 
     private static VertexInformation createVertex(int parallelism) {

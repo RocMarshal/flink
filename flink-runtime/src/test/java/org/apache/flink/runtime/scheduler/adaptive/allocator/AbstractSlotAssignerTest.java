@@ -18,11 +18,14 @@
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlot;
 import org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadInformation;
+import org.apache.flink.runtime.scheduler.loading.DefaultLoadingWeight;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.runtime.taskmanager.LocalTaskManagerLocation;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
@@ -95,8 +98,21 @@ abstract class AbstractSlotAssignerTest {
                     requestGroup7);
 
     protected final TaskExecutorsLoadInformation taskExecutorsLoadInformation =
-            () ->
-                    new HashMap<>() {
+            new TaskExecutorsLoadInformation() {
+                @Override
+                public Map<ResourceID, LoadingWeight> getTaskExecutorsLoadingWeight() {
+                    return new HashMap<ResourceID, LoadingWeight>() {
+                        {
+                            put(tml1.getResourceID(), DefaultLoadingWeight.EMPTY);
+                            put(tml2.getResourceID(), DefaultLoadingWeight.EMPTY);
+                            put(tml3.getResourceID(), DefaultLoadingWeight.EMPTY);
+                        }
+                    };
+                }
+
+                @Override
+                public Map<ResourceID, SlotsUtilization> getTaskExecutorsSlotsUtilization() {
+                    return new HashMap<ResourceID, SlotsUtilization>() {
                         {
                             put(
                                     tml1.getResourceID(),
@@ -109,7 +125,8 @@ abstract class AbstractSlotAssignerTest {
                                     new TaskExecutorsLoadInformation.SlotsUtilization(3, 0));
                         }
                     };
-
+                }
+            };
     protected SlotAssigner slotAssigner;
 
     @BeforeEach
@@ -166,5 +183,37 @@ class SlotsBalancedSlotAssignerTest extends AbstractSlotAssignerTest {
         IntSummaryStatistics stats =
                 assignmentsPerTm.values().stream().collect(Collectors.summarizingInt(Set::size));
         assertThat(stats.getMax() - stats.getMin()).isBetween(0, 1);
+    }
+}
+
+/** Test for {@link TasksBalancedSlotAssigner}. */
+class TasksBalancedSlotAssignerTest extends AbstractSlotAssignerTest {
+
+    @Override
+    protected SlotAssigner createSlotAssigner() {
+        return new TasksBalancedSlotAssigner();
+    }
+
+    @Override
+    protected void assertAssignments(Collection<SlotAssignment> assignments) {
+        Map<TaskManagerLocation, Set<SlotAssignment>> assignmentsPerTm =
+                getAssignmentsPerTaskManager(assignments);
+        assertThat(assignmentsPerTm)
+                .allSatisfy(
+                        (taskManagerLocation, slotAssignments) -> {
+                            assertThat(
+                                            slotAssignments.stream()
+                                                    .map(
+                                                            s ->
+                                                                    s.getTargetAs(
+                                                                                    ExecutionSlotSharingGroup
+                                                                                            .class)
+                                                                            .getLoading())
+                                                    .reduce(
+                                                            DefaultLoadingWeight.EMPTY,
+                                                            LoadingWeight::merge)
+                                                    .getLoading())
+                                    .isGreaterThanOrEqualTo(9f);
+                        });
     }
 }

@@ -60,8 +60,8 @@ public class TestingSlotAllocator implements SlotAllocator {
     public Optional<JobSchedulingPlan> determineParallelismAndCalculateAssignment(
             JobInformation jobInformation,
             Collection<PhysicalSlot> slots,
-            JobAllocationsInformation jobAllocationsInformation,
-            TaskExecutorsLoadInformation taskExecutorsLoadInformation) {
+            TaskExecutorsLoadInformation taskExecutorsLoadInformation,
+            JobAllocationsInformation jobAllocationsInformation) {
         return Optional.empty();
     }
 
