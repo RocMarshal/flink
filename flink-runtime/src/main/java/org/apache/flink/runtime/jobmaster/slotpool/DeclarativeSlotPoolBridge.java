@@ -121,6 +121,9 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
     protected void onStart() {
 
         getDeclarativeSlotPool().registerNewSlotsListener(this::newSlotsAreAvailable);
+        if (slotBatchAllocatable) {
+            getDeclarativeSlotPool().registerExceedingSlotRequestMaxIntervalListener(this::newSlotsAvailableForSlotBatchAllocatable);
+        }
 
         componentMainThreadExecutor.schedule(
                 this::checkIdleSlotTimeout, idleSlotTimeout.toMillis(), TimeUnit.MILLISECONDS);
@@ -207,23 +210,20 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
 
     @VisibleForTesting
     void newSlotsAreAvailable(Collection<? extends PhysicalSlot> newSlots) {
+        log.debug("Received new available slots: {}", newSlots);
         if (pendingRequests.isEmpty()) {
             return;
         }
 
         if (slotBatchAllocatable) {
-            newSlotsAvailableForSlotBatchAllocatable(newSlots);
+            newSlotsAvailableForSlotBatchAllocatable();
         } else {
             newSlotsAvailableForDirectlyAllocatable(newSlots);
         }
     }
 
-    private void newSlotsAvailableForSlotBatchAllocatable(
-            Collection<? extends PhysicalSlot> newSlots) {
-        log.debug("Received new available slots: {}", newSlots);
-
+    private void newSlotsAvailableForSlotBatchAllocatable() {
         final FreeSlotTracker freeSlotInfoTracker = getDeclarativeSlotPool().getFreeSlotTracker();
-
         final int slotsNum = freeSlotInfoTracker.getAvailableSlots().size();
         if (slotsNum < pendingRequests.size()) {
             // Do nothing and waiting slots.
@@ -234,8 +234,9 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
             return;
         }
 
-        final Collection<PhysicalSlot> availableSlots =
-                freeSlotInfoTracker.getFreeSlotsInformation();
+        final Collection<PhysicalSlot> availableSlots = freeSlotInfoTracker.getFreeSlotsInformation();
+        log.debug("The free slots: {}", availableSlots);
+
         final Collection<RequestSlotMatchingStrategy.RequestSlotMatch> requestSlotMatches =
                 requestSlotMatchingStrategy.matchRequestsAndSlots(
                         availableSlots,

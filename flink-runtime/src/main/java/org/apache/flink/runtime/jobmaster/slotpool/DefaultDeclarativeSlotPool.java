@@ -114,6 +114,8 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
     // For slots(resources) requests by batch.
     @Nonnull private final Duration slotRequestMaxInterval;
     @Nullable private ScheduledFuture<?> slotRequestFuture;
+    private ExceedingSlotRequestMaxIntervalListener exceedingSlotRequestMaxIntervalListener = NoOpExceedingSlotRequestMaxIntervalListener.INSTANCE;
+
 
     public DefaultDeclarativeSlotPool(
             JobID jobId,
@@ -169,7 +171,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
         }
         slotRequestFuture =
                 componentMainThreadExecutor.schedule(
-                        this::declareResourceRequirements,
+                        this::exceedingSlotRequestMaxInterval,
                         slotRequestMaxInterval.toMillis(),
                         TimeUnit.MILLISECONDS);
     }
@@ -178,6 +180,11 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
     public void setResourceRequirements(ResourceCounter resourceRequirements) {
         totalResourceRequirements = resourceRequirements;
 
+        declareResourceRequirements();
+    }
+
+    private void exceedingSlotRequestMaxInterval() {
+        exceedingSlotRequestMaxIntervalListener.notifyExceedingSlotRequestMaxInterval();
         declareResourceRequirements();
     }
 
@@ -465,6 +472,14 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
                 this.newSlotsListener == NoOpNewSlotsListener.INSTANCE,
                 "DefaultDeclarativeSlotPool only supports a single slot listener.");
         this.newSlotsListener = newSlotsListener;
+    }
+
+    @Override
+    public void registerExceedingSlotRequestMaxIntervalListener(ExceedingSlotRequestMaxIntervalListener listener) {
+        Preconditions.checkState(
+                this.exceedingSlotRequestMaxIntervalListener == NoOpExceedingSlotRequestMaxIntervalListener.INSTANCE,
+                "DefaultDeclarativeSlotPool only supports a single exceeding-slot-request-max-interval listener.");
+        this.exceedingSlotRequestMaxIntervalListener = listener;
     }
 
     @Override

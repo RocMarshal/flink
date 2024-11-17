@@ -242,4 +242,28 @@ public interface DeclarativeSlotPool {
         public void notifyNewSlotsAreAvailable(
                 Collection<? extends PhysicalSlot> newlyAvailableSlots) {}
     }
+
+    /**
+     * Registers a listener which is called whenever the time is exceeding slot request max interval.
+     *
+     * @param listener which is called whenever the time is exceeding slot request max interval.
+     */
+    void registerExceedingSlotRequestMaxIntervalListener(ExceedingSlotRequestMaxIntervalListener listener);
+
+    /** The listener to listen the condition that the if time is exceeding the slot request max interval. */
+    interface ExceedingSlotRequestMaxIntervalListener {
+
+        /**
+         * Notifies the listener about slot request max interval.
+         */
+        void notifyExceedingSlotRequestMaxInterval();
+    }
+
+    /** No-op {@link ExceedingSlotRequestMaxIntervalListener} implementation. */
+    enum NoOpExceedingSlotRequestMaxIntervalListener implements ExceedingSlotRequestMaxIntervalListener {
+        INSTANCE;
+
+        @Override
+        public void notifyExceedingSlotRequestMaxInterval() {}
+    }
 }

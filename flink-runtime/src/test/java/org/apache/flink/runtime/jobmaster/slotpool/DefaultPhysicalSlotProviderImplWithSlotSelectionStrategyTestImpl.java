@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for {@link PhysicalSlotProviderImpl} using {@link
  * DefaultLocationPreferenceSlotSelectionStrategy}.
  */
-class PhysicalSlotProviderImplWithDefaultSlotSelectionStrategyTest {
+class DefaultPhysicalSlotProviderImplWithSlotSelectionStrategyTestImpl {
 
     @RegisterExtension
     private final PhysicalSlotProviderExtension physicalSlotProviderExtension =
