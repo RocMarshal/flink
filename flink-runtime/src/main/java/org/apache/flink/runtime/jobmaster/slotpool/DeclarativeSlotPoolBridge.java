@@ -21,12 +21,14 @@ package org.apache.flink.runtime.jobmaster.slotpool;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutor;
 import org.apache.flink.runtime.jobmanager.scheduler.NoResourceAvailableException;
 import org.apache.flink.runtime.jobmanager.slots.TaskManagerGateway;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
+import org.apache.flink.runtime.scheduler.loading.LoadingWeight;
 import org.apache.flink.runtime.slots.ResourceRequirement;
 import org.apache.flink.runtime.taskexecutor.slot.SlotOffer;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
@@ -47,6 +49,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -59,8 +62,31 @@ import java.util.stream.Stream;
 /** {@link SlotPool} implementation which uses the {@link DeclarativeSlotPool} to allocate slots. */
 public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implements SlotPool {
 
+    /** Helper class to represent the fulfilled allocation infromation. */
+    private static final class FulfilledAllocation {
+        final AllocationID allocationID;
+        final ResourceID taskExecutorID;
+        final LoadingWeight loadingWeight;
+
+        public FulfilledAllocation(PhysicalSlot slot, LoadingWeight loadingWeight) {
+            this.allocationID = Preconditions.checkNotNull(slot.getAllocationId());
+            this.taskExecutorID =
+                    Preconditions.checkNotNull(slot.getTaskManagerLocation().getResourceID());
+            this.loadingWeight = Preconditions.checkNotNull(loadingWeight);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == null || getClass() != o.getClass()) return false;
+            FulfilledAllocation that = (FulfilledAllocation) o;
+            return Objects.equals(allocationID, that.allocationID)
+                    && Objects.equals(taskExecutorID, that.taskExecutorID)
+                    && Objects.equals(loadingWeight, that.loadingWeight);
+        }
+    }
+
     private final Map<SlotRequestId, PendingRequest> pendingRequests;
-    private final Map<SlotRequestId, AllocationID> fulfilledRequests;
+    private final Map<SlotRequestId, FulfilledAllocation> fulfilledRequests;
     private final Duration idleSlotTimeout;
 
     private final RequestSlotMatchingStrategy requestSlotMatchingStrategy;
@@ -120,6 +146,18 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
     protected void onStart() {
 
         getDeclarativeSlotPool().registerNewSlotsListener(this::newSlotsAreAvailable);
+        if (deferSlotAllocation) {
+            getDeclarativeSlotPool()
+                    .registerResourceRequestStableListener(
+                            () -> {
+                                if (!pendingRequests.isEmpty()) {
+                                    componentMainThreadExecutor.schedule(
+                                            this::newSlotsAvailableForDeferAllocation,
+                                            0L,
+                                            TimeUnit.MILLISECONDS);
+                                }
+                            });
+        }
 
         componentMainThreadExecutor.schedule(
                 this::checkIdleSlotTimeout, idleSlotTimeout.toMillis(), TimeUnit.MILLISECONDS);
@@ -206,37 +244,51 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
 
     @VisibleForTesting
     void newSlotsAreAvailable(Collection<? extends PhysicalSlot> newSlots) {
+        log.debug("Received new available slots: {}", newSlots);
+
         if (pendingRequests.isEmpty()) {
             return;
         }
 
         if (deferSlotAllocation) {
-            newSlotsAvailableForDeferAllocation(newSlots);
+            if (getDeclarativeSlotPool().isResourceRequestStable()) {
+                newSlotsAvailableForDeferAllocation();
+            }
         } else {
             newSlotsAvailableForDirectlyAllocation(newSlots);
         }
     }
 
-    private void newSlotsAvailableForDeferAllocation(Collection<? extends PhysicalSlot> newSlots) {
-        log.debug("Received new available slots: {}", newSlots);
+    private Map<ResourceID, LoadingWeight> getLoadingWeights() {
+        final Map<ResourceID, LoadingWeight> result = new HashMap<>();
+        Collection<FulfilledAllocation> fulfilledAllocations = fulfilledRequests.values();
+        for (FulfilledAllocation allocation : fulfilledAllocations) {
+            result.compute(
+                    allocation.taskExecutorID,
+                    (ignoredID, oldLoading) ->
+                            Objects.isNull(oldLoading)
+                                    ? allocation.loadingWeight
+                                    : oldLoading.merge(allocation.loadingWeight));
+        }
+        return result;
+    }
 
-        final FreeSlotTracker freeSlotInfoTracker = getDeclarativeSlotPool().getFreeSlotTracker();
+    private void newSlotsAvailableForDeferAllocation() {
+        final Collection<PhysicalSlot> freeSlots =
+                getDeclarativeSlotPool().getFreeSlotTracker().getFreeSlotsInformation();
 
-        final int slotsNum = freeSlotInfoTracker.getAvailableSlots().size();
-        if (slotsNum < pendingRequests.size()) {
+        if (freeSlots.size() < pendingRequests.size()) {
             // Do nothing and waiting slots.
             log.debug(
                     "The number of available slots: {}, the required number of slots: {}, waiting for more available slots.",
-                    slotsNum,
+                    freeSlots.size(),
                     pendingRequests.size());
             return;
         }
 
-        final Collection<PhysicalSlot> availableSlots =
-                freeSlotInfoTracker.getFreeSlotsInformation();
         final Collection<RequestSlotMatchingStrategy.RequestSlotMatch> requestSlotMatches =
                 requestSlotMatchingStrategy.matchRequestsAndSlots(
-                        availableSlots, pendingRequests.values());
+                        freeSlots, pendingRequests.values(), getLoadingWeights());
         if (requestSlotMatches.size() == pendingRequests.size()) {
             reserveAndFulfillMatchedFreeSlots(requestSlotMatches);
         } else if (requestSlotMatches.size() < pendingRequests.size()) {
@@ -256,7 +308,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
             Collection<? extends PhysicalSlot> newSlots) {
         final Collection<RequestSlotMatchingStrategy.RequestSlotMatch> requestSlotMatches =
                 requestSlotMatchingStrategy.matchRequestsAndSlots(
-                        newSlots, pendingRequests.values());
+                        newSlots, pendingRequests.values(), getLoadingWeights());
         reserveAndFulfillMatchedFreeSlots(requestSlotMatches);
     }
 
@@ -275,7 +327,8 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
             reserveFreeSlot(
                     pendingRequest.getSlotRequestId(),
                     slot.getAllocationId(),
-                    pendingRequest.getResourceProfile());
+                    pendingRequest.getResourceProfile(),
+                    pendingRequest.getLoading());
         }
 
         // we have to first reserve all matching slots before fulfilling the requests
@@ -295,45 +348,49 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
         return getDeclarativeSlotPool().getFreeSlotTracker().getFreeSlotsInformation();
     }
 
-    private void reserveFreeSlot(
+    private PhysicalSlot reserveFreeSlot(
             SlotRequestId slotRequestId,
             AllocationID allocationId,
-            ResourceProfile resourceProfile) {
+            ResourceProfile resourceProfile,
+            LoadingWeight loadingWeight) {
         log.debug("Reserve slot {} for slot request id {}", allocationId, slotRequestId);
-        getDeclarativeSlotPool().reserveFreeSlot(allocationId, resourceProfile);
-        fulfilledRequests.put(slotRequestId, allocationId);
+        final PhysicalSlot slot =
+                getDeclarativeSlotPool().reserveFreeSlot(allocationId, resourceProfile);
+        fulfilledRequests.put(slotRequestId, new FulfilledAllocation(slot, loadingWeight));
+        return slot;
     }
 
     @Override
     public Optional<PhysicalSlot> allocateAvailableSlot(
             @Nonnull SlotRequestId slotRequestId,
             @Nonnull AllocationID allocationID,
-            @Nonnull ResourceProfile requirementProfile) {
+            @Nonnull ResourceProfile requiredResourceProfile,
+            @Nonnull LoadingWeight loadingWeight) {
         assertRunningInMainThread();
-        Preconditions.checkNotNull(requirementProfile, "The requiredSlotProfile must not be null.");
+        Preconditions.checkNotNull(
+                requiredResourceProfile, "The requiredResourceProfile must not be null.");
 
         log.debug(
                 "Reserving free slot {} for slot request id {} and profile {}.",
                 allocationID,
                 slotRequestId,
-                requirementProfile);
+                requiredResourceProfile);
 
         return Optional.of(
-                reserveFreeSlotForResource(slotRequestId, allocationID, requirementProfile));
+                reserveFreeSlotForResource(
+                        slotRequestId, allocationID, requiredResourceProfile, loadingWeight));
     }
 
     private PhysicalSlot reserveFreeSlotForResource(
             SlotRequestId slotRequestId,
             AllocationID allocationId,
-            ResourceProfile requiredSlotProfile) {
+            ResourceProfile requiredResourceProfile,
+            LoadingWeight loadingWeight) {
         getDeclarativeSlotPool()
                 .increaseResourceRequirementsBy(
-                        ResourceCounter.withResource(requiredSlotProfile, 1));
-        final PhysicalSlot physicalSlot =
-                getDeclarativeSlotPool().reserveFreeSlot(allocationId, requiredSlotProfile);
-        fulfilledRequests.put(slotRequestId, allocationId);
+                        ResourceCounter.withResource(requiredResourceProfile, 1));
 
-        return physicalSlot;
+        return reserveFreeSlot(slotRequestId, allocationId, requiredResourceProfile, loadingWeight);
     }
 
     @Override
@@ -341,6 +398,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
     public CompletableFuture<PhysicalSlot> requestNewAllocatedSlot(
             @Nonnull SlotRequestId slotRequestId,
             @Nonnull ResourceProfile resourceProfile,
+            @Nonnull LoadingWeight loadingWeight,
             @Nonnull Collection<AllocationID> preferredAllocations,
             @Nullable Duration timeout) {
         assertRunningInMainThread();
@@ -352,7 +410,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
 
         final PendingRequest pendingRequest =
                 PendingRequest.createNormalRequest(
-                        slotRequestId, resourceProfile, preferredAllocations);
+                        slotRequestId, resourceProfile, loadingWeight, preferredAllocations);
 
         return internalRequestNewSlot(pendingRequest, timeout);
     }
@@ -362,6 +420,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
     public CompletableFuture<PhysicalSlot> requestNewAllocatedBatchSlot(
             @Nonnull SlotRequestId slotRequestId,
             @Nonnull ResourceProfile resourceProfile,
+            @Nonnull LoadingWeight loadingWeight,
             @Nonnull Collection<AllocationID> preferredAllocations) {
         assertRunningInMainThread();
 
@@ -372,7 +431,7 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
 
         final PendingRequest pendingRequest =
                 PendingRequest.createBatchRequest(
-                        slotRequestId, resourceProfile, preferredAllocations);
+                        slotRequestId, resourceProfile, loadingWeight, preferredAllocations);
 
         return internalRequestNewSlot(pendingRequest, null);
     }
@@ -438,12 +497,15 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
                                     pendingRequest.getSlotRequestId()),
                             cause));
         } else {
-            final AllocationID allocationId = fulfilledRequests.remove(slotRequestId);
+            final FulfilledAllocation fulfilledAllocation = fulfilledRequests.remove(slotRequestId);
 
-            if (allocationId != null) {
+            if (fulfilledAllocation != null) {
                 ResourceCounter previouslyFulfilledRequirement =
                         getDeclarativeSlotPool()
-                                .freeReservedSlot(allocationId, cause, getRelativeTimeMillis());
+                                .freeReservedSlot(
+                                        fulfilledAllocation.allocationID,
+                                        cause,
+                                        getRelativeTimeMillis());
                 getDeclarativeSlotPool()
                         .decreaseResourceRequirementsBy(previouslyFulfilledRequirement);
             } else {
