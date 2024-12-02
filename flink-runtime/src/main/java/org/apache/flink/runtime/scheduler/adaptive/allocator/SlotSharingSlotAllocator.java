@@ -17,6 +17,8 @@
 
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
+import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.configuration.TaskManagerOptions.TaskManagerLoadBalanceMode;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.instance.SlotSharingGroupId;
@@ -30,6 +32,7 @@ import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.runtime.util.ResourceCounter;
+import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -59,6 +62,7 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
     private final boolean localRecoveryEnabled;
     private final @Nullable String executionTarget;
     private final boolean minimalTaskManagerPreferred;
+    private final SlotSharingStrategy slotSharingStrategy;
 
     private SlotSharingSlotAllocator(
             ReserveSlotFunction reserveSlot,
@@ -66,13 +70,28 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
             IsSlotAvailableAndFreeFunction isSlotAvailableAndFreeFunction,
             boolean localRecoveryEnabled,
             @Nullable String executionTarget,
-            boolean minimalTaskManagerPreferred) {
+            boolean minimalTaskManagerPreferred,
+            TaskManagerLoadBalanceMode taskManagerLoadBalanceMode) {
         this.reserveSlotFunction = reserveSlot;
         this.freeSlotFunction = freeSlotFunction;
         this.isSlotAvailableAndFreeFunction = isSlotAvailableAndFreeFunction;
         this.localRecoveryEnabled = localRecoveryEnabled;
         this.executionTarget = executionTarget;
         this.minimalTaskManagerPreferred = minimalTaskManagerPreferred;
+        this.slotSharingStrategy = getSlotSharingStrategy(taskManagerLoadBalanceMode);
+    }
+
+    private static SlotSharingStrategy getSlotSharingStrategy(
+            TaskManagerLoadBalanceMode taskManagerLoadBalanceMode) {
+        switch (taskManagerLoadBalanceMode) {
+            case NONE:
+            case MIN_RESOURCES:
+                return DefaultSlotSharingStrategy.INSTANCE;
+            default:
+                throw new UnsupportedOperationException(
+                        "Unsupported task manager load balance mode: "
+                                + taskManagerLoadBalanceMode);
+        }
     }
 
     public static SlotSharingSlotAllocator createSlotSharingSlotAllocator(
@@ -81,14 +100,16 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
             IsSlotAvailableAndFreeFunction isSlotAvailableAndFreeFunction,
             boolean localRecoveryEnabled,
             @Nullable String executionTarget,
-            boolean minimalTaskManagerPreferred) {
+            boolean minimalTaskManagerPreferred,
+            TaskManagerLoadBalanceMode taskManagerLoadBalanceMode) {
         return new SlotSharingSlotAllocator(
                 reserveSlot,
                 freeSlotFunction,
                 isSlotAvailableAndFreeFunction,
                 localRecoveryEnabled,
                 executionTarget,
-                minimalTaskManagerPreferred);
+                minimalTaskManagerPreferred,
+                taskManagerLoadBalanceMode);
     }
 
     @Override
@@ -150,9 +171,11 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
                         parallelism -> {
                             SlotAssigner slotAssigner =
                                     localRecoveryEnabled && !jobAllocationsInformation.isEmpty()
-                                            ? new StateLocalitySlotAssigner()
+                                            ? new StateLocalitySlotAssigner(slotSharingStrategy)
                                             : new DefaultSlotAssigner(
-                                                    executionTarget, minimalTaskManagerPreferred);
+                                                    executionTarget,
+                                                    minimalTaskManagerPreferred,
+                                                    slotSharingStrategy);
                             return new JobSchedulingPlan(
                                     parallelism,
                                     slotAssigner.assignSlots(
@@ -295,18 +318,30 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
                                 slotInfo.getAllocationId(), null, System.currentTimeMillis()));
     }
 
-    static class ExecutionSlotSharingGroup {
+    /** The execution slot sharing group for adaptive scheduler. */
+    public static class ExecutionSlotSharingGroup {
         private final String id;
+        private final SlotSharingGroup slotSharingGroup;
         private final Set<ExecutionVertexID> containedExecutionVertices;
 
-        public ExecutionSlotSharingGroup(Set<ExecutionVertexID> containedExecutionVertices) {
-            this(containedExecutionVertices, UUID.randomUUID().toString());
+        public ExecutionSlotSharingGroup(
+                SlotSharingGroup slotSharingGroup,
+                Set<ExecutionVertexID> containedExecutionVertices) {
+            this(UUID.randomUUID().toString(), slotSharingGroup, containedExecutionVertices);
         }
 
         public ExecutionSlotSharingGroup(
-                Set<ExecutionVertexID> containedExecutionVertices, String id) {
-            this.containedExecutionVertices = containedExecutionVertices;
+                String id,
+                SlotSharingGroup slotSharingGroup,
+                Set<ExecutionVertexID> containedExecutionVertices) {
             this.id = id;
+            this.slotSharingGroup = Preconditions.checkNotNull(slotSharingGroup);
+            this.containedExecutionVertices = containedExecutionVertices;
+        }
+
+        @VisibleForTesting
+        public SlotSharingGroup getSlotSharingGroup() {
+            return slotSharingGroup;
         }
 
         public String getId() {
