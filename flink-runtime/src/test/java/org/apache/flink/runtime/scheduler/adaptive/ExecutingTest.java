@@ -55,6 +55,7 @@ import org.apache.flink.runtime.failure.FailureEnricherUtils;
 import org.apache.flink.runtime.io.network.partition.JobMasterPartitionTracker;
 import org.apache.flink.runtime.jobgraph.IntermediateDataSetID;
 import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
+import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.jobgraph.JobVertex;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
@@ -819,6 +820,11 @@ class ExecutingTest {
         }
 
         @Override
+        public JobGraph getJobGraph() {
+            return null;
+        }
+
+        @Override
         public Optional<VertexParallelism> getAvailableVertexParallelism() {
             return Optional.ofNullable(vertexParallelism);
         }
@@ -1039,6 +1045,11 @@ class ExecutingTest {
     private static class MockState implements State {
         @Override
         public void cancel() {}
+
+        @Override
+        public Durable getDurable() {
+            return null;
+        }
 
         @Override
         public void suspend(Throwable cause) {}

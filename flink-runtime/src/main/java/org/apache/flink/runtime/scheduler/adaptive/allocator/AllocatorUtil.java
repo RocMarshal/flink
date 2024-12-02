@@ -18,7 +18,6 @@
 
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
-import org.apache.flink.runtime.instance.SlotSharingGroupId;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
@@ -38,13 +37,13 @@ class AllocatorUtil {
 
     private AllocatorUtil() {}
 
-    static Map<SlotSharingGroupId, SlotSharingSlotAllocator.SlotSharingGroupMetaInfo>
+    static Map<SlotSharingGroup, SlotSharingSlotAllocator.SlotSharingGroupMetaInfo>
             getSlotSharingGroupMetaInfos(JobInformation jobInformation) {
         return SlotSharingSlotAllocator.SlotSharingGroupMetaInfo.from(jobInformation.getVertices());
     }
 
     static int getMinimumRequiredSlots(
-            Map<SlotSharingGroupId, SlotSharingSlotAllocator.SlotSharingGroupMetaInfo>
+            Map<SlotSharingGroup, SlotSharingSlotAllocator.SlotSharingGroupMetaInfo>
                     slotSharingGroupMetaInfos) {
         return slotSharingGroupMetaInfos.values().stream()
                 .map(SlotSharingSlotAllocator.SlotSharingGroupMetaInfo::getMaxLowerBound)
@@ -62,9 +61,8 @@ class AllocatorUtil {
                 minimumRequiredSlots);
     }
 
-    static List<SlotSharingSlotAllocator.ExecutionSlotSharingGroup>
-            createExecutionSlotSharingGroups(
-                    VertexParallelism vertexParallelism, SlotSharingGroup slotSharingGroup) {
+    static List<ExecutionSlotSharingGroup> createExecutionSlotSharingGroups(
+            VertexParallelism vertexParallelism, SlotSharingGroup slotSharingGroup) {
         final Map<Integer, Set<ExecutionVertexID>> sharedSlotToVertexAssignment = new HashMap<>();
         slotSharingGroup
                 .getJobVertexIds()
@@ -78,7 +76,7 @@ class AllocatorUtil {
                             }
                         });
         return sharedSlotToVertexAssignment.values().stream()
-                .map(SlotSharingSlotAllocator.ExecutionSlotSharingGroup::new)
+                .map(ids -> new ExecutionSlotSharingGroup(slotSharingGroup, ids))
                 .collect(Collectors.toList());
     }
 }

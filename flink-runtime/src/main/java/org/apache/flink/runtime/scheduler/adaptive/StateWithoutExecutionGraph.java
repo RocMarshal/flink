@@ -39,9 +39,17 @@ abstract class StateWithoutExecutionGraph implements State {
 
     private final Logger logger;
 
+    private final Durable durable;
+
     StateWithoutExecutionGraph(Context context, Logger logger) {
         this.context = context;
         this.logger = logger;
+        this.durable = new Durable();
+    }
+
+    @Override
+    public Durable getDurable() {
+        return durable;
     }
 
     @Override

@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.scheduler.adaptive;
 
 import org.apache.flink.api.common.JobStatus;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.TriggerCause;
 
 import org.slf4j.Logger;
 
@@ -39,6 +40,16 @@ class Created extends StateWithoutExecutionGraph {
 
     /** Starts the scheduling by going into the {@link WaitingForResources} state. */
     void startScheduling() {
+        context.getRescaleTimeline()
+                .tryRolloutCurrentPendingRescale(
+                        false,
+                        null,
+                        rescale ->
+                                rescale.setTriggerCause(TriggerCause.INITIAL_SCHEDULE)
+                                        .setStartTimestamp(getDurable().getInTimestamp())
+                                        .setRequiredVertexParallelism()
+                                        .setRequiredSlots()
+                                        .setSufficientSlots());
         context.goToWaitingForResources(null);
     }
 

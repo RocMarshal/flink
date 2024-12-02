@@ -1,0 +1,63 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.flink.runtime.scheduler.adaptive.allocator;
+
+import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
+import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
+import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
+
+import java.util.Collection;
+import java.util.Set;
+import java.util.UUID;
+
+/** ExecutionSlotSharingGroup for adaptive scheduler. */
+public class ExecutionSlotSharingGroup {
+    private final String id;
+    private final SlotSharingGroup slotSharingGroup;
+    private final Set<ExecutionVertexID> containedExecutionVertices;
+
+    public ExecutionSlotSharingGroup(
+            SlotSharingGroup slotSharingGroup, Set<ExecutionVertexID> containedExecutionVertices) {
+        this(slotSharingGroup, containedExecutionVertices, UUID.randomUUID().toString());
+    }
+
+    public ExecutionSlotSharingGroup(
+            SlotSharingGroup slotSharingGroup,
+            Set<ExecutionVertexID> containedExecutionVertices,
+            String id) {
+        this.slotSharingGroup = slotSharingGroup;
+        this.containedExecutionVertices = containedExecutionVertices;
+        this.id = id;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public ResourceProfile getResourceProfile() {
+        return slotSharingGroup.getResourceProfile();
+    }
+
+    public SlotSharingGroup getSlotSharingGroup() {
+        return slotSharingGroup;
+    }
+
+    public Collection<ExecutionVertexID> getContainedExecutionVertices() {
+        return containedExecutionVertices;
+    }
+}

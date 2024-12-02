@@ -1940,6 +1940,8 @@ public class StreamingJobGraphGenerator {
                 // fallback to the region slot sharing group by default
                 effectiveSlotSharingGroup =
                         checkNotNull(vertexRegionSlotSharingGroups.get(vertex.getID()));
+                effectiveSlotSharingGroup.setSlotSharingGroupName(
+                        StreamGraphGenerator.DEFAULT_SLOT_SHARING_GROUP);
             } else {
                 checkState(
                         !jobVertexBuildContext.hasHybridResultPartition(),
@@ -1955,6 +1957,7 @@ public class StreamingJobGraphGenerator {
                                             .ifPresent(ssg::setResourceProfile);
                                     return ssg;
                                 });
+                effectiveSlotSharingGroup.setSlotSharingGroupName(slotSharingGroupKey);
             }
 
             vertex.setSlotSharingGroup(effectiveSlotSharingGroup);

@@ -159,6 +159,12 @@
             <td>Determines which job store implementation is used in session cluster. Accepted values are:<ul><li>'File': the file job store keeps the archived execution graphs in files</li><li>'Memory': the memory job store keeps the archived execution graphs in memory. You may need to limit the <code class="highlighter-rouge">jobstore.max-capacity</code> to mitigate FullGC or OOM when there are too many graphs</li></ul><br /><br />Possible values:<ul><li>"File"</li><li>"Memory"</li></ul></td>
         </tr>
         <tr>
+            <td><h5>web.adaptive-scheduler.rescale-history.size</h5></td>
+            <td style="word-wrap: break-word;">16</td>
+            <td>Integer</td>
+            <td>The maximum number of the rescale records per job whose scheduler is <code class="highlighter-rouge">AdaptiveScheduler</code>.</td>
+        </tr>
+        <tr>
             <td><h5>web.exception-history-size</h5></td>
             <td style="word-wrap: break-word;">16</td>
             <td>Integer</td>

@@ -33,6 +33,9 @@ import org.apache.flink.runtime.scheduler.ExecutionGraphHandler;
 import org.apache.flink.runtime.scheduler.GlobalFailureHandler;
 import org.apache.flink.runtime.scheduler.OperatorCoordinatorHandler;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleStatus;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
+import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.IterableUtils;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.concurrent.FutureUtils;
@@ -42,7 +45,9 @@ import org.slf4j.Logger;
 import javax.annotation.Nullable;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledFuture;
@@ -90,6 +95,7 @@ public class CreatingExecutionGraph extends StateWithoutExecutionGraph {
     private void handleExecutionGraphCreation(
             @Nullable ExecutionGraphWithVertexParallelism executionGraphWithVertexParallelism,
             @Nullable Throwable throwable) {
+        RescaleTimeline rtl = context.getRescaleTimeline();
         if (throwable != null) {
             getLogger()
                     .info(
@@ -97,6 +103,18 @@ public class CreatingExecutionGraph extends StateWithoutExecutionGraph {
                             CreatingExecutionGraph.class.getSimpleName(),
                             Executing.class.getSimpleName(),
                             throwable);
+
+            final long epochMilli = Instant.now().toEpochMilli();
+            rtl.tryRolloutCurrentPendingRescale(
+                    false,
+                    null,
+                    rescale ->
+                            rescale.setSealedDescription(
+                                            ExceptionUtils.stringifyException(throwable))
+                                    .setEndTimestamp(epochMilli)
+                                    .addSchedulerStateForced(this, throwable)
+                                    .setStatus(RescaleStatus.Failed)
+                                    .log());
             context.goToFinished(context.getArchivedExecutionGraph(JobStatus.FAILED, throwable));
         } else {
             for (ExecutionVertex vertex :
@@ -108,6 +126,18 @@ public class CreatingExecutionGraph extends StateWithoutExecutionGraph {
                     context.tryToAssignSlots(executionGraphWithVertexParallelism);
 
             if (result.isSuccess()) {
+                rtl.tryRolloutCurrentPendingRescale(
+                        false,
+                        null,
+                        rescale -> {
+                            rescale.setAcquiredVertexParallelism(
+                                            executionGraphWithVertexParallelism
+                                                    .getVertexParallelism())
+                                    .setAcquiredSlots(
+                                            executionGraphWithVertexParallelism.jobSchedulingPlan
+                                                    .getSlotAssignments());
+                        });
+
                 getLogger()
                         .debug(
                                 "Successfully reserved and assigned the required slots for the ExecutionGraph.");
@@ -153,6 +183,11 @@ public class CreatingExecutionGraph extends StateWithoutExecutionGraph {
                 context.goToWaitingForResources(previousExecutionGraph);
             }
         }
+    }
+
+    @Override
+    public Optional<RescaleStatus> getRescaleStatus() {
+        return Optional.of(RescaleStatus.CreatingExecutionGraph);
     }
 
     @Override
