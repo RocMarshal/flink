@@ -19,8 +19,11 @@ package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
+import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlot;
+import org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadInformation;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobAllocationsInformation.VertexAllocationInformation;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.SlotSharingSlotAllocator.ExecutionSlotSharingGroup;
@@ -94,9 +97,10 @@ public class StateLocalitySlotAssigner implements SlotAssigner {
     @Override
     public Collection<SlotAssignment> assignSlots(
             JobInformation jobInformation,
-            Collection<? extends SlotInfo> freeSlots,
+            Collection<PhysicalSlot> freeSlots,
             Collection<ExecutionSlotSharingGroup> requestExecutionSlotSharingGroups,
-            JobAllocationsInformation previousAllocations) {
+            JobAllocationsInformation previousAllocations,
+            TaskExecutorsLoadInformation taskExecutorsLoadInformation) {
 
         final Map<JobVertexID, Integer> parallelism =
                 getParallelism(requestExecutionSlotSharingGroups);
@@ -110,17 +114,22 @@ public class StateLocalitySlotAssigner implements SlotAssigner {
         final Map<String, ExecutionSlotSharingGroup> groupsById =
                 requestExecutionSlotSharingGroups.stream()
                         .collect(toMap(ExecutionSlotSharingGroup::getId, identity()));
-        final Map<AllocationID, SlotInfo> slotsById =
+        final Map<AllocationID, PhysicalSlot> slotsById =
                 freeSlots.stream().collect(toMap(SlotInfo::getAllocationId, identity()));
         AllocationScore score;
         final Collection<SlotAssignment> assignments = new ArrayList<>();
+        Map<ResourceID, TaskExecutorsLoadInformation.SlotsUtilization> slotsUtilizations =
+                taskExecutorsLoadInformation.getTaskExecutorsSlotsUtilization();
         while ((score = scores.poll()) != null) {
             if (slotsById.containsKey(score.getAllocationId())
                     && groupsById.containsKey(score.getGroupId())) {
+                PhysicalSlot targetSlot = slotsById.remove(score.getAllocationId());
+                slotsUtilizations.compute(
+                        targetSlot.getTaskManagerLocation().getResourceID(),
+                        (resourceID, oldSlotsUtilization) ->
+                                Preconditions.checkNotNull(oldSlotsUtilization).incReserved(1));
                 assignments.add(
-                        new SlotAssignment(
-                                slotsById.remove(score.getAllocationId()),
-                                groupsById.remove(score.getGroupId())));
+                        new SlotAssignment(targetSlot, groupsById.remove(score.getGroupId())));
             }
         }
 
@@ -130,7 +139,8 @@ public class StateLocalitySlotAssigner implements SlotAssigner {
                             jobInformation,
                             slotsById.values(),
                             new ArrayList<>(groupsById.values()),
-                            previousAllocations));
+                            previousAllocations,
+                            () -> slotsUtilizations));
         }
 
         return assignments;

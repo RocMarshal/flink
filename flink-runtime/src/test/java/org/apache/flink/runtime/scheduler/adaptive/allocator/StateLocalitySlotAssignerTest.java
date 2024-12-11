@@ -20,6 +20,8 @@ package org.apache.flink.runtime.scheduler.adaptive.allocator;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
+import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlot;
+import org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadInformation;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobAllocationsInformation.VertexAllocationInformation;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobInformation.VertexInformation;
@@ -182,13 +184,28 @@ class StateLocalitySlotAssignerTest {
         Collection<SlotSharingSlotAllocator.ExecutionSlotSharingGroup> allGroups =
                 DefaultSlotSharingStrategy.INSTANCE.getExecutionSlotSharingGroups(
                         testJobInformation, vertexParallelism);
+        List<PhysicalSlot> freeSlots =
+                allocationIDs.stream().map(TestingSlot::new).collect(Collectors.toList());
+        TaskExecutorsLoadInformation taskExecutorsLoadInformation =
+                () ->
+                        freeSlots.stream()
+                                .collect(
+                                        Collectors.toMap(
+                                                physicalSlot ->
+                                                        physicalSlot
+                                                                .getTaskManagerLocation()
+                                                                .getResourceID(),
+                                                physicalSlot ->
+                                                        new TaskExecutorsLoadInformation
+                                                                .SlotsUtilization(1, 0)));
         return new StateLocalitySlotAssigner(new DefaultSlotAssigner())
                 .assignSlots(
                         testJobInformation,
-                        allocationIDs.stream().map(TestingSlot::new).collect(Collectors.toList()),
+                        freeSlots,
                         allGroups,
                         new JobAllocationsInformation(
-                                singletonMap(vertexInformation.getJobVertexID(), allocations)));
+                                singletonMap(vertexInformation.getJobVertexID(), allocations)),
+                        taskExecutorsLoadInformation);
     }
 
     private static VertexInformation createVertex(int parallelism) {

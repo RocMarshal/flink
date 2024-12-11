@@ -18,6 +18,7 @@
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.instance.SlotSharingGroupId;
@@ -27,6 +28,7 @@ import org.apache.flink.runtime.jobmaster.LogicalSlot;
 import org.apache.flink.runtime.jobmaster.SlotInfo;
 import org.apache.flink.runtime.jobmaster.SlotRequestId;
 import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlot;
+import org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadInformation;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan.SlotAssignment;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
@@ -57,6 +59,7 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
     private final FreeSlotFunction freeSlotFunction;
     private final IsSlotAvailableAndFreeFunction isSlotAvailableAndFreeFunction;
     private final boolean localRecoveryEnabled;
+    private final TaskManagerOptions.TaskManagerLoadBalanceMode taskManagerLoadBalanceMode;
     private final SlotSharingStrategy slotSharingStrategy;
 
     private SlotSharingSlotAllocator(
@@ -64,12 +67,13 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
             FreeSlotFunction freeSlotFunction,
             IsSlotAvailableAndFreeFunction isSlotAvailableAndFreeFunction,
             boolean localRecoveryEnabled,
-            SlotSharingStrategy slotSharingStrategy) {
+            TaskManagerOptions.TaskManagerLoadBalanceMode taskManagerLoadBalanceMode) {
         this.reserveSlotFunction = reserveSlot;
         this.freeSlotFunction = freeSlotFunction;
         this.isSlotAvailableAndFreeFunction = isSlotAvailableAndFreeFunction;
         this.localRecoveryEnabled = localRecoveryEnabled;
-        this.slotSharingStrategy = slotSharingStrategy;
+        this.taskManagerLoadBalanceMode = taskManagerLoadBalanceMode;
+        this.slotSharingStrategy = DefaultSlotSharingStrategy.INSTANCE;
     }
 
     public static SlotSharingSlotAllocator createSlotSharingSlotAllocator(
@@ -77,13 +81,13 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
             FreeSlotFunction freeSlotFunction,
             IsSlotAvailableAndFreeFunction isSlotAvailableAndFreeFunction,
             boolean localRecoveryEnabled,
-            SlotSharingStrategy slotSharingStrategy) {
+            TaskManagerOptions.TaskManagerLoadBalanceMode taskManagerLoadBalanceMode) {
         return new SlotSharingSlotAllocator(
                 reserveSlot,
                 freeSlotFunction,
                 isSlotAvailableAndFreeFunction,
                 localRecoveryEnabled,
-                slotSharingStrategy);
+                taskManagerLoadBalanceMode);
     }
 
     @Override
@@ -141,8 +145,9 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
     @Override
     public Optional<JobSchedulingPlan> determineParallelismAndCalculateAssignment(
             JobInformation jobInformation,
-            Collection<? extends SlotInfo> slots,
-            JobAllocationsInformation jobAllocationsInformation) {
+            Collection<PhysicalSlot> slots,
+            JobAllocationsInformation jobAllocationsInformation,
+            TaskExecutorsLoadInformation taskExecutorsLoadInformation) {
         return determineParallelism(jobInformation, slots)
                 .map(
                         parallelism -> {
@@ -165,12 +170,16 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
                                             jobInformation,
                                             slots,
                                             allExecutionSlotSharingGroups,
-                                            jobAllocationsInformation));
+                                            jobAllocationsInformation,
+                                            taskExecutorsLoadInformation));
                         });
     }
 
     private SlotAssigner createSlotAssigner(JobAllocationsInformation jobAllocationsInformation) {
-        final SlotAssigner rollbackSlotAssigner = new DefaultSlotAssigner();
+        final SlotAssigner rollbackSlotAssigner =
+                taskManagerLoadBalanceMode == TaskManagerOptions.TaskManagerLoadBalanceMode.SLOTS
+                        ? new SlotsBalancedSlotAssigner()
+                        : new DefaultSlotAssigner();
         return localRecoveryEnabled && !jobAllocationsInformation.isEmpty()
                 ? new StateLocalitySlotAssigner(rollbackSlotAssigner)
                 : rollbackSlotAssigner;

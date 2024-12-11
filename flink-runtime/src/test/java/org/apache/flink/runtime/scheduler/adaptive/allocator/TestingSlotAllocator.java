@@ -19,6 +19,8 @@
 package org.apache.flink.runtime.scheduler.adaptive.allocator;
 
 import org.apache.flink.runtime.jobmaster.SlotInfo;
+import org.apache.flink.runtime.jobmaster.slotpool.PhysicalSlot;
+import org.apache.flink.runtime.jobmaster.slotpool.TaskExecutorsLoadInformation;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan;
 import org.apache.flink.runtime.util.ResourceCounter;
 
@@ -57,8 +59,9 @@ public class TestingSlotAllocator implements SlotAllocator {
     @Override
     public Optional<JobSchedulingPlan> determineParallelismAndCalculateAssignment(
             JobInformation jobInformation,
-            Collection<? extends SlotInfo> slots,
-            JobAllocationsInformation jobAllocationsInformation) {
+            Collection<PhysicalSlot> slots,
+            JobAllocationsInformation jobAllocationsInformation,
+            TaskExecutorsLoadInformation taskExecutorsLoadInformation) {
         return Optional.empty();
     }
 

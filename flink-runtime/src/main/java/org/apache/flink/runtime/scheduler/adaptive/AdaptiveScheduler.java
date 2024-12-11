@@ -1126,7 +1126,8 @@ public class AdaptiveScheduler
                 .determineParallelismAndCalculateAssignment(
                         jobInformation,
                         declarativeSlotPool.getFreeSlotTracker().getFreeSlotsInformation(),
-                        JobAllocationsInformation.fromGraph(previousExecutionGraph))
+                        JobAllocationsInformation.fromGraph(previousExecutionGraph),
+                        declarativeSlotPool.getTaskExecutorsLoadInformation())
                 .orElseThrow(
                         () ->
                                 new NoResourceAvailableException(
