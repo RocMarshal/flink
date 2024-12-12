@@ -45,6 +45,12 @@ import java.util.Map;
 public interface DeclarativeSlotPool {
 
     /**
+     * Whether the resources request is stable.
+     * @return True if the resources request is stable, false else.
+     */
+    boolean isResourceRequestStable();
+
+    /**
      * Increases the resource requirements by increment.
      *
      * @param increment increment by which to increase the resource requirements

@@ -118,21 +118,24 @@ public class PhysicalSlotProviderImpl implements PhysicalSlotProvider {
         FreeSlotTracker freeSlotTracker = slotPool.getFreeSlotTracker();
 
         Map<SlotRequestId, Optional<PhysicalSlot>> allocateResult = new HashMap<>();
+
+
         for (PhysicalSlotRequest request : slotRequests) {
-            Optional<SlotSelectionStrategy.SlotInfoAndLocality> slot =
-                    slotSelectionStrategy.selectBestSlotForProfile(
-                            freeSlotTracker, request.getSlotProfile());
-            allocateResult.put(
-                    request.getSlotRequestId(),
-                    slot.flatMap(
-                            slotInfoAndLocality -> {
-                                freeSlotTracker.reserveSlot(
-                                        slotInfoAndLocality.getSlotInfo().getAllocationId());
-                                return slotPool.allocateAvailableSlot(
-                                        request.getSlotRequestId(),
-                                        slotInfoAndLocality.getSlotInfo().getAllocationId(),
-                                        request.getPhysicalSlotLoadableResourceProfile());
-                            }));
+//            Optional<SlotSelectionStrategy.SlotInfoAndLocality> slot =
+//                    slotSelectionStrategy.selectBestSlotForProfile(
+//                            freeSlotTracker, request.getSlotProfile());
+//            allocateResult.put(
+//                    request.getSlotRequestId(),
+//                    slot.flatMap(
+//                            slotInfoAndLocality -> {
+//                                freeSlotTracker.reserveSlot(
+//                                        slotInfoAndLocality.getSlotInfo().getAllocationId());
+//                                return slotPool.allocateAvailableSlot(
+//                                        request.getSlotRequestId(),
+//                                        slotInfoAndLocality.getSlotInfo().getAllocationId(),
+//                                        request.getPhysicalSlotLoadableResourceProfile());
+//                            }));
+            allocateResult.put(request.getSlotRequestId(), Optional.empty());
         }
         return allocateResult;
     }

@@ -73,6 +73,9 @@ public class DeclarativeSlotPoolBridge extends DeclarativeSlotPoolService implem
 
     private final boolean slotBatchAllocatable;
 
+    private final Duration resourceWaitTimeout = Duration.ofSeconds(10L);
+    private final Duration resourceStabilizationTimeout = Duration.ofSeconds(5);
+
     public DeclarativeSlotPoolBridge(
             JobID jobId,
             DeclarativeSlotPoolFactory declarativeSlotPoolFactory,

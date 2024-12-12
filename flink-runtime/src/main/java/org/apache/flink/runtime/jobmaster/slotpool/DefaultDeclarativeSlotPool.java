@@ -137,6 +137,11 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
     }
 
     @Override
+    public boolean isResourceRequestStable() {
+        return Objects.isNull(slotRequestFuture) || slotRequestFuture.isDone();
+    }
+
+    @Override
     public void increaseResourceRequirementsBy(ResourceCounter increment) {
         if (increment.isEmpty()) {
             return;
@@ -192,6 +197,7 @@ public class DefaultDeclarativeSlotPool implements DeclarativeSlotPool {
                 System.lineSeparator(),
                 fulfilledResourceRequirements);
         notifyNewResourceRequirements.accept(resourceRequirements);
+        // TODO resource request stable
     }
 
     @Override
