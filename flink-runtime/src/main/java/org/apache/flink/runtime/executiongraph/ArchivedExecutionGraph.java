@@ -63,6 +63,9 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
     /** The name of the original job graph. */
     private final String jobName;
 
+    /** The name of scheduler. */
+    private final String jobScheduler;
+
     /** All job vertices that are part of this graph. */
     private final Map<JobVertexID, ArchivedExecutionJobVertex> tasks;
 
@@ -120,6 +123,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
     public ArchivedExecutionGraph(
             JobID jobID,
             String jobName,
+            String jobScheduler,
             Map<JobVertexID, ArchivedExecutionJobVertex> tasks,
             List<ArchivedExecutionJobVertex> verticesInCreationOrder,
             long[] stateTimestamps,
@@ -142,6 +146,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
 
         this.jobID = Preconditions.checkNotNull(jobID);
         this.jobName = Preconditions.checkNotNull(jobName);
+        this.jobScheduler = Preconditions.checkNotNull(jobScheduler);
         this.tasks = Preconditions.checkNotNull(tasks);
         this.verticesInCreationOrder = Preconditions.checkNotNull(verticesInCreationOrder);
         this.stateTimestamps = Preconditions.checkNotNull(stateTimestamps);
@@ -368,6 +373,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
         return new ArchivedExecutionGraph(
                 executionGraph.getJobID(),
                 executionGraph.getJobName(),
+                executionGraph.getJobScheduler(),
                 archivedTasks,
                 archivedVerticesInCreationOrder,
                 timestamps,
@@ -398,6 +404,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
             String jobName,
             JobStatus jobStatus,
             @Nullable JobType jobType,
+            @Nullable String jobScheduler,
             @Nullable Throwable throwable,
             @Nullable JobCheckpointingSettings checkpointingSettings,
             long initializationTimestamp) {
@@ -406,6 +413,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
                 jobName,
                 jobStatus,
                 jobType,
+                jobScheduler,
                 Collections.emptyMap(),
                 Collections.emptyList(),
                 throwable,
@@ -418,6 +426,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
             String jobName,
             JobStatus jobStatus,
             JobType jobType,
+            @Nullable String jobScheduler,
             @Nullable Throwable throwable,
             @Nullable JobCheckpointingSettings checkpointingSettings,
             long initializationTimestamp,
@@ -448,6 +457,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
                 jobName,
                 jobStatus,
                 jobType,
+                jobScheduler,
                 archivedJobVertices,
                 archivedVerticesInCreationOrder,
                 throwable,
@@ -460,6 +470,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
             String jobName,
             JobStatus jobStatus,
             JobType jobType,
+            String jobScheduler,
             Map<JobVertexID, ArchivedExecutionJobVertex> archivedTasks,
             List<ArchivedExecutionJobVertex> archivedVerticesInCreationOrder,
             @Nullable Throwable throwable,
@@ -487,6 +498,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
         return new ArchivedExecutionGraph(
                 jobId,
                 jobName,
+                jobScheduler,
                 archivedTasks,
                 archivedVerticesInCreationOrder,
                 timestamps,
@@ -510,5 +522,11 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
                 checkpointingSettings == null ? null : "Unknown",
                 null,
                 0);
+    }
+
+    @Nullable
+    @Override
+    public String getJobScheduler() {
+        return jobScheduler;
     }
 }

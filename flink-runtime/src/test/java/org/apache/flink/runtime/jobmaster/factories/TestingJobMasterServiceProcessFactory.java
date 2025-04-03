@@ -66,7 +66,14 @@ public class TestingJobMasterServiceProcessFactory implements JobMasterServicePr
     public ArchivedExecutionGraph createArchivedExecutionGraph(
             JobStatus jobStatus, @Nullable Throwable cause) {
         return ArchivedExecutionGraph.createSparseArchivedExecutionGraph(
-                jobId, jobName, jobStatus, JobType.STREAMING, cause, null, initializationTimestamp);
+                jobId,
+                jobName,
+                jobStatus,
+                JobType.STREAMING,
+                null,
+                cause,
+                null,
+                initializationTimestamp);
     }
 
     public static Builder newBuilder() {

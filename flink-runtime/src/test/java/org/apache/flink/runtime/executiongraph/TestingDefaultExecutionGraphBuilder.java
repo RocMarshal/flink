@@ -197,6 +197,7 @@ public class TestingDefaultExecutionGraphBuilder {
                 UnregisteredMetricGroups.createUnregisteredJobManagerJobMetricGroup();
         return DefaultExecutionGraphBuilder.buildGraph(
                 jobGraph,
+                null,
                 jobMasterConfig,
                 executorService,
                 executorService,

@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.executiongraph;
 
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.configuration.Configuration;
@@ -29,6 +30,8 @@ import org.apache.flink.util.SerializedValue;
 
 import org.apache.flink.shaded.guava33.com.google.common.collect.ImmutableCollection;
 import org.apache.flink.shaded.guava33.com.google.common.collect.ImmutableList;
+
+import javax.annotation.Nullable;
 
 import java.io.Serializable;
 import java.net.URL;
@@ -49,6 +52,9 @@ public class JobInformation implements Serializable {
     /** Job name. */
     private final String jobName;
 
+    /** Job scheduler. */
+    @Nullable private final String jobScheduler;
+
     /** Serialized execution config because it can contain user code classes. */
     private final SerializedValue<ExecutionConfig> serializedExecutionConfig;
 
@@ -61,6 +67,7 @@ public class JobInformation implements Serializable {
     /** URLs specifying the classpath to add to the class loader. */
     private final ImmutableCollection<URL> requiredClasspathURLs;
 
+    @VisibleForTesting
     public JobInformation(
             JobID jobId,
             JobType jobType,
@@ -69,9 +76,30 @@ public class JobInformation implements Serializable {
             Configuration jobConfiguration,
             Collection<PermanentBlobKey> requiredJarFileBlobKeys,
             Collection<URL> requiredClasspathURLs) {
+        this(
+                jobId,
+                jobType,
+                jobName,
+                null,
+                serializedExecutionConfig,
+                jobConfiguration,
+                requiredJarFileBlobKeys,
+                requiredClasspathURLs);
+    }
+
+    public JobInformation(
+            JobID jobId,
+            JobType jobType,
+            String jobName,
+            String jobScheduler,
+            SerializedValue<ExecutionConfig> serializedExecutionConfig,
+            Configuration jobConfiguration,
+            Collection<PermanentBlobKey> requiredJarFileBlobKeys,
+            Collection<URL> requiredClasspathURLs) {
         this.jobId = Preconditions.checkNotNull(jobId);
         this.jobType = Preconditions.checkNotNull(jobType);
         this.jobName = Preconditions.checkNotNull(jobName);
+        this.jobScheduler = jobScheduler;
         this.serializedExecutionConfig = Preconditions.checkNotNull(serializedExecutionConfig);
         this.jobConfiguration =
                 new UnmodifiableConfiguration(Preconditions.checkNotNull(jobConfiguration));
@@ -91,6 +119,11 @@ public class JobInformation implements Serializable {
 
     public JobType getJobType() {
         return jobType;
+    }
+
+    @Nullable
+    public String getJobScheduler() {
+        return jobScheduler;
     }
 
     public SerializedValue<ExecutionConfig> getSerializedExecutionConfig() {
@@ -125,6 +158,7 @@ public class JobInformation implements Serializable {
         JobInformation that = (JobInformation) o;
         return Objects.equals(jobId, that.jobId)
                 && Objects.equals(jobName, that.jobName)
+                && Objects.equals(jobScheduler, that.jobScheduler)
                 && Objects.equals(serializedExecutionConfig, that.serializedExecutionConfig)
                 && Objects.equals(jobConfiguration, that.jobConfiguration)
                 && Objects.equals(requiredJarFileBlobKeys, that.requiredJarFileBlobKeys)
@@ -136,6 +170,7 @@ public class JobInformation implements Serializable {
         return Objects.hash(
                 jobId,
                 jobName,
+                jobScheduler,
                 serializedExecutionConfig,
                 jobConfiguration,
                 requiredJarFileBlobKeys,

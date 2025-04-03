@@ -39,6 +39,7 @@ public interface ExecutionGraphFactory {
      * Create and restore {@link ExecutionGraph} from the given {@link JobGraph} and services.
      *
      * @param jobGraph jobGraph to initialize the ExecutionGraph with
+     * @param jobScheduler name of the jobScheduler
      * @param completedCheckpointStore completedCheckpointStore to pass to the CheckpointCoordinator
      * @param checkpointsCleaner checkpointsCleaner to pass to the CheckpointCoordinator
      * @param checkpointIdCounter checkpointIdCounter to pass to the CheckpointCoordinator
@@ -60,6 +61,7 @@ public interface ExecutionGraphFactory {
      */
     ExecutionGraph createAndRestoreExecutionGraph(
             JobGraph jobGraph,
+            String jobScheduler,
             CompletedCheckpointStore completedCheckpointStore,
             CheckpointsCleaner checkpointsCleaner,
             CheckpointIDCounter checkpointIdCounter,

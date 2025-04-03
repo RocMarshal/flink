@@ -1802,4 +1802,10 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     public TaskDeploymentDescriptorFactory getTaskDeploymentDescriptorFactory() {
         return taskDeploymentDescriptorFactory;
     }
+
+    @Nullable
+    @Override
+    public String getJobScheduler() {
+        return jobInformation.getJobScheduler();
+    }
 }

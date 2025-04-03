@@ -108,6 +108,7 @@ class DefaultExecutionGraphFactoryTest {
                         () ->
                                 executionGraphFactory.createAndRestoreExecutionGraph(
                                         jobGraphWithNewOperator,
+                                        null,
                                         new StandaloneCompletedCheckpointStore(1),
                                         new CheckpointsCleaner(),
                                         new StandaloneCheckpointIDCounter(),
@@ -140,6 +141,7 @@ class DefaultExecutionGraphFactoryTest {
                 new StandaloneCompletedCheckpointStore(1);
         executionGraphFactory.createAndRestoreExecutionGraph(
                 jobGraphWithNewOperator,
+                null,
                 completedCheckpointStore,
                 new CheckpointsCleaner(),
                 new StandaloneCheckpointIDCounter(),
@@ -182,6 +184,7 @@ class DefaultExecutionGraphFactoryTest {
         ExecutionGraph executionGraph =
                 executionGraphFactory.createAndRestoreExecutionGraph(
                         jobGraphWithParallelism2,
+                        null,
                         completedCheckpointStore,
                         new CheckpointsCleaner(),
                         new StandaloneCheckpointIDCounter(),

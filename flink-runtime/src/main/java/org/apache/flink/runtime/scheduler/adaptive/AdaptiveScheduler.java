@@ -1151,6 +1151,7 @@ public class AdaptiveScheduler
                 jobInformation.getName(),
                 jobStatus,
                 jobGraph.getJobType(),
+                getClass().getSimpleName(),
                 cause,
                 jobInformation.getCheckpointingSettings(),
                 initializationTimestamp,
@@ -1437,6 +1438,7 @@ public class AdaptiveScheduler
             VertexParallelismStore adjustedParallelismStore) throws Exception {
         return executionGraphFactory.createAndRestoreExecutionGraph(
                 jobInformation.copyJobGraph(),
+                getClass().getSimpleName(),
                 completedCheckpointStore,
                 checkpointsCleaner,
                 checkpointIdCounter,

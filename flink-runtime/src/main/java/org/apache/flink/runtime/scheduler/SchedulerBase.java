@@ -401,6 +401,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
         final ExecutionGraph newExecutionGraph =
                 executionGraphFactory.createAndRestoreExecutionGraph(
                         jobGraph,
+                        getClass().getSimpleName(),
                         completedCheckpointStore,
                         checkpointsCleaner,
                         checkpointIdCounter,

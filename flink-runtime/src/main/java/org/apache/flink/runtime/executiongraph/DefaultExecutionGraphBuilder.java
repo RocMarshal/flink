@@ -75,6 +75,7 @@ public class DefaultExecutionGraphBuilder {
 
     public static DefaultExecutionGraph buildGraph(
             JobGraph jobGraph,
+            String jobScheduler,
             Configuration jobManagerConfig,
             ScheduledExecutorService futureExecutor,
             Executor ioExecutor,
@@ -112,6 +113,7 @@ public class DefaultExecutionGraphBuilder {
                         jobId,
                         jobGraph.getJobType(),
                         jobName,
+                        jobScheduler,
                         jobGraph.getSerializedExecutionConfig(),
                         jobGraph.getJobConfiguration(),
                         jobGraph.getUserJarBlobKeys(),

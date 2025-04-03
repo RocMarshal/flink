@@ -128,6 +128,7 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
     @Override
     public ExecutionGraph createAndRestoreExecutionGraph(
             JobGraph jobGraph,
+            String jobScheduler,
             CompletedCheckpointStore completedCheckpointStore,
             CheckpointsCleaner checkpointsCleaner,
             CheckpointIDCounter checkpointIdCounter,
@@ -154,6 +155,7 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
         final ExecutionGraph newExecutionGraph =
                 DefaultExecutionGraphBuilder.buildGraph(
                         jobGraph,
+                        jobScheduler,
                         configuration,
                         futureExecutor,
                         ioExecutor,

@@ -77,6 +77,7 @@ public class TestingJobManagerRunner implements JobManagerRunner {
                                 JobType.STREAMING,
                                 null,
                                 null,
+                                null,
                                 0L),
                         null);
         terminationFuture.whenComplete(

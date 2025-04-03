@@ -153,6 +153,7 @@ public class ArchivedExecutionGraphBuilder {
         return new ArchivedExecutionGraph(
                 jobID,
                 jobName,
+                null,
                 tasks,
                 verticesInCreationOrder != null
                         ? verticesInCreationOrder
