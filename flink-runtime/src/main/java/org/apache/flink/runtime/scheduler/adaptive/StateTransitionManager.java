@@ -34,6 +34,10 @@ public interface StateTransitionManager {
      */
     void onChange();
 
+    default boolean inIdlingPhase() {
+        return false;
+    }
+
     /**
      * Is called when any previous observed environment changes shall be verified possibly
      * triggering a state transition operation.

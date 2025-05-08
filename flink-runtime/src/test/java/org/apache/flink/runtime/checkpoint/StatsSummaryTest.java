@@ -18,6 +18,9 @@
 
 package org.apache.flink.runtime.checkpoint;
 
+import org.apache.flink.runtime.util.stats.StatsSummary;
+import org.apache.flink.runtime.util.stats.StatsSummarySnapshot;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.ThreadLocalRandom;

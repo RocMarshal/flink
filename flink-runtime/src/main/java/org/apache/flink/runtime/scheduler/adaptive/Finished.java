@@ -34,11 +34,19 @@ class Finished implements State {
 
     private final Logger logger;
 
+    private final Durable durable;
+
     Finished(Context context, ArchivedExecutionGraph archivedExecutionGraph, Logger logger) {
         this.archivedExecutionGraph = archivedExecutionGraph;
         this.logger = logger;
+        this.durable = new Durable();
 
         context.onFinished(archivedExecutionGraph);
+    }
+
+    @Override
+    public Durable getDurable() {
+        return durable;
     }
 
     @Override
