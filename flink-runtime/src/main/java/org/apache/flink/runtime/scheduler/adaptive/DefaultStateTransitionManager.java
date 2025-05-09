@@ -121,6 +121,11 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
     }
 
     @Override
+    public boolean inIdlingPhase() {
+        return phase instanceof Idling;
+    }
+
+    @Override
     public void close() {
         scheduledFutures.forEach(future -> future.cancel(true));
         scheduledFutures.clear();

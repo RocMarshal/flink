@@ -1041,6 +1041,11 @@ class ExecutingTest {
         public void cancel() {}
 
         @Override
+        public Durable getDurable() {
+            return null;
+        }
+
+        @Override
         public void suspend(Throwable cause) {}
 
         @Override

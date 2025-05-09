@@ -40,8 +40,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -281,29 +279,6 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
                 () ->
                         freeSlotFunction.freeSlot(
                                 slotInfo.getAllocationId(), null, System.currentTimeMillis()));
-    }
-
-    static class ExecutionSlotSharingGroup {
-        private final String id;
-        private final Set<ExecutionVertexID> containedExecutionVertices;
-
-        public ExecutionSlotSharingGroup(Set<ExecutionVertexID> containedExecutionVertices) {
-            this(containedExecutionVertices, UUID.randomUUID().toString());
-        }
-
-        public ExecutionSlotSharingGroup(
-                Set<ExecutionVertexID> containedExecutionVertices, String id) {
-            this.containedExecutionVertices = containedExecutionVertices;
-            this.id = id;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public Collection<ExecutionVertexID> getContainedExecutionVertices() {
-            return containedExecutionVertices;
-        }
     }
 
     private static class SlotSharingGroupMetaInfo {

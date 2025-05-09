@@ -22,8 +22,10 @@ import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.MemorySize;
 import org.apache.flink.configuration.StateBackendOptions;
+import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.connector.file.sink.FileSink;
 import org.apache.flink.connector.file.src.FileSource;
 import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
@@ -31,11 +33,13 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.DefaultRollingPolicy;
+import org.apache.flink.streaming.api.functions.source.legacy.RichParallelSourceFunction;
 import org.apache.flink.streaming.examples.wordcount.util.CLI;
 import org.apache.flink.streaming.examples.wordcount.util.WordCountData;
 import org.apache.flink.util.Collector;
 
 import java.time.Duration;
+import java.util.UUID;
 
 import static org.apache.flink.runtime.state.StateBackendLoader.FORST_STATE_BACKEND_NAME;
 
@@ -80,7 +84,12 @@ public class WordCount {
 
         // Create the execution environment. This is the main entrypoint
         // to building a Flink application.
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        Configuration conf = new Configuration();
+        conf.set(JobManagerOptions.SCHEDULER, JobManagerOptions.SchedulerType.Adaptive);
+        conf.set(TaskManagerOptions.NUM_TASK_SLOTS, 5);
+        conf.set(TaskManagerOptions.MINI_CLUSTER_NUM_TASK_MANAGERS, 5);
+        final StreamExecutionEnvironment env =
+                StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(conf);
 
         // For async state, by default we will use the forst state backend.
         if (params.isAsyncState()) {
@@ -130,7 +139,19 @@ public class WordCount {
 
             text = env.fromSource(builder.build(), WatermarkStrategy.noWatermarks(), "file-input");
         } else {
-            text = env.fromData(WordCountData.WORDS).name("in-memory-input");
+            text =
+                    env.addSource(
+                            new RichParallelSourceFunction<String>() {
+                                @Override
+                                public void run(SourceContext<String> ctx) throws Exception {
+                                    while (true) {
+                                        ctx.collect(UUID.randomUUID().toString());
+                                    }
+                                }
+
+                                @Override
+                                public void cancel() {}
+                            });
         }
 
         KeyedStream<Tuple2<String, Integer>, String> keyedStream =

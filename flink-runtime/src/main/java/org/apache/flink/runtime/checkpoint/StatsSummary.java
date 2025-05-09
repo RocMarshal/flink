@@ -51,11 +51,11 @@ public class StatsSummary implements Serializable {
      */
     @Nullable private final Histogram histogram;
 
-    StatsSummary() {
+    public StatsSummary() {
         this(0);
     }
 
-    StatsSummary(int histogramWindowSize) {
+    public StatsSummary(int histogramWindowSize) {
         this.histogram =
                 histogramWindowSize > 0
                         ? new DescriptiveStatisticsHistogram(histogramWindowSize)
@@ -67,7 +67,7 @@ public class StatsSummary implements Serializable {
      *
      * @param value Value to add for min/max/avg stats..
      */
-    void add(long value) {
+    public void add(long value) {
         if (value >= 0) {
             if (count > 0) {
                 min = Math.min(min, value);

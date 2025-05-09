@@ -69,6 +69,7 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -101,6 +102,8 @@ abstract class StateWithExecutionGraph implements State {
 
     private final VertexEndOfDataListener vertexEndOfDataListener;
 
+    private final Durable durable;
+
     StateWithExecutionGraph(
             Context context,
             ExecutionGraph executionGraph,
@@ -118,6 +121,7 @@ abstract class StateWithExecutionGraph implements State {
         this.userCodeClassLoader = userClassCodeLoader;
         this.failureCollection = new ArrayList<>(failureCollection);
         this.vertexEndOfDataListener = new VertexEndOfDataListener(executionGraph);
+        this.durable = new Durable();
 
         FutureUtils.assertNoException(
                 executionGraph
@@ -135,6 +139,11 @@ abstract class StateWithExecutionGraph implements State {
                                     }
                                 },
                                 context.getMainThreadExecutor()));
+    }
+
+    @Override
+    public Durable getDurable() {
+        return durable;
     }
 
     ExecutionGraph getExecutionGraph() {
@@ -156,6 +165,7 @@ abstract class StateWithExecutionGraph implements State {
 
     @Override
     public void onLeave(Class<? extends State> newState) {
+        getDurable().setOutTimestamp(Instant.now().toEpochMilli());
         if (!StateWithExecutionGraph.class.isAssignableFrom(newState)) {
             // we are leaving the StateWithExecutionGraph --> we need to dispose temporary services
             operatorCoordinatorHandler.disposeAllOperatorCoordinators();

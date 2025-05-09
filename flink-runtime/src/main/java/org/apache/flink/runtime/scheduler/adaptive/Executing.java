@@ -34,6 +34,8 @@ import org.apache.flink.runtime.executiongraph.ExecutionVertex;
 import org.apache.flink.runtime.scheduler.ExecutionGraphHandler;
 import org.apache.flink.runtime.scheduler.OperatorCoordinatorHandler;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleStatus;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.TriggerCause;
 import org.apache.flink.runtime.scheduler.exceptionhistory.ExceptionHistoryEntry;
 import org.apache.flink.runtime.scheduler.stopwithsavepoint.StopWithSavepointTerminationManager;
 import org.apache.flink.util.Preconditions;
@@ -43,6 +45,7 @@ import org.slf4j.Logger;
 import javax.annotation.Nullable;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -95,6 +98,16 @@ class Executing extends StateWithExecutionGraph
         this.rescaleOnFailedCheckpointCount = rescaleOnFailedCheckpointCount;
         this.failedCheckpointCountdown = null;
 
+        context.getRescaleTimeline()
+                .tryRolloutCurrentPendingRescale(
+                        false,
+                        null,
+                        rescale ->
+                                rescale.addSchedulerStateForced(this)
+                                        .setSealedDescription("Rescaled execution graph")
+                                        .setEndTimestamp(Instant.now().toEpochMilli())
+                                        .setStatus(RescaleStatus.Completed));
+
         deploy();
 
         // check if new resources have come available in the meantime
@@ -105,6 +118,11 @@ class Executing extends StateWithExecutionGraph
                     stateTransitionManager.onTrigger();
                 },
                 Duration.ZERO);
+    }
+
+    @Override
+    public Optional<RescaleStatus> getRescaleStatus() {
+        return Optional.of(RescaleStatus.Executing);
     }
 
     @Override
@@ -149,16 +167,22 @@ class Executing extends StateWithExecutionGraph
 
     @Override
     public void transitionToSubsequentState() {
+        Optional<VertexParallelism> availableVertexParallelism =
+                context.getAvailableVertexParallelism();
+        if (availableVertexParallelism.isEmpty()) {
+            IllegalStateException exception =
+                    new IllegalStateException("Resources must be available when rescaling.");
+            context.getRescaleTimeline()
+                    .tryRolloutCurrentPendingRescale(
+                            false, null, rescale -> rescale.setErrorInfo(exception));
+            throw exception;
+        }
         context.goToRestarting(
                 getExecutionGraph(),
                 getExecutionGraphHandler(),
                 getOperatorCoordinatorHandler(),
                 Duration.ofMillis(0L),
-                context.getAvailableVertexParallelism()
-                        .orElseThrow(
-                                () ->
-                                        new IllegalStateException(
-                                                "Resources must be available when rescaling.")),
+                availableVertexParallelism.get(),
                 getFailures());
     }
 
@@ -219,6 +243,38 @@ class Executing extends StateWithExecutionGraph
 
     @Override
     public void onNewResourcesAvailable() {
+        if (hasSufficientResources() && stateTransitionManager.inIdlingPhase()) {
+            context.getRescaleTimeline()
+                    .tryRolloutCurrentPendingRescale(
+                            false,
+                            rescale -> {
+                                if (rescale.getTriggerCause()
+                                        != TriggerCause.NEW_RESOURCE_AVAILABLE) {
+                                    getLogger()
+                                            .warn(
+                                                    "Unexpected rescale status {}, the status should be sealed. Forced seal when state is {}",
+                                                    rescale.getStatus(),
+                                                    this.getClass().getSimpleName());
+                                    rescale.addSchedulerStateForced(this)
+                                            .setEndTimestamp(Instant.now().toEpochMilli())
+                                            .setStatus(RescaleStatus.Ignored)
+                                            .setSealedDescription(
+                                                    "Ignored by onNewResourcesAvailable on state "
+                                                            + this.getClass().getSimpleName());
+                                }
+                            },
+                            rescale -> {
+                                if (rescale.getTriggerCause()
+                                        != TriggerCause.NEW_RESOURCE_AVAILABLE) {
+                                    rescale.setRequiredSlots()
+                                            .setTriggerCause(TriggerCause.NEW_RESOURCE_AVAILABLE)
+                                            .setStatus(RescaleStatus.Executing)
+                                            .setStartTimestamp(Instant.now().toEpochMilli())
+                                            .setCurrentSlotsAndParallelisms()
+                                            .setRequiredVertexParallelism();
+                                }
+                            });
+        }
         stateTransitionManager.onChange();
         initializeFailedCheckpointCountdownIfUnset();
     }

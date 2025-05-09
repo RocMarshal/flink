@@ -24,6 +24,7 @@ import org.apache.flink.runtime.executiongraph.ExecutionGraph;
 import org.apache.flink.runtime.scheduler.ExecutionGraphHandler;
 import org.apache.flink.runtime.scheduler.OperatorCoordinatorHandler;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
 import org.apache.flink.runtime.scheduler.exceptionhistory.ExceptionHistoryEntry;
 
 import javax.annotation.Nullable;
@@ -174,5 +175,9 @@ public interface StateTransitions {
 
         /** Transitions into the {@link WaitingForResources} state. */
         void goToWaitingForResources(@Nullable ExecutionGraph previousExecutionGraph);
+    }
+
+    default RescaleTimeline getRescaleTimeline() {
+        throw new UnsupportedOperationException();
     }
 }
