@@ -1324,15 +1324,9 @@ public class AdaptiveScheduler
             // For the normal rescaling restarting.
             rescaleTimeLine.tryRolloutCurrentPendingRescale(
                     false,
+                    null,
                     rescale ->
-                            rescale.addSchedulerStateForced(state)
-                                    .setStatus(RescaleStatus.Ignored)
-                                    .setEndTimestamp(Instant.now().toEpochMilli())
-                                    .setSealedDescription("Ignored by Restarting job.")
-                                    .log(),
-                    rescale ->
-                            rescale.setStartTimestamp(Instant.now().toEpochMilli())
-                                    .setStatus(state.getRescaleStatus())
+                            rescale.setStatus(state.getRescaleStatus())
                                     .setSufficientSlots()
                                     .setRequiredVertexParallelism()
                                     .setRequiredSlots());

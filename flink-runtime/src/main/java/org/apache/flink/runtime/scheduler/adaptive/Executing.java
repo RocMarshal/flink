@@ -35,7 +35,6 @@ import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.scheduler.ExecutionGraphHandler;
 import org.apache.flink.runtime.scheduler.OperatorCoordinatorHandler;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
-import org.apache.flink.runtime.scheduler.adaptive.timeline.Rescale;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleStatus;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.TriggerCause;
@@ -111,14 +110,6 @@ class Executing extends StateWithExecutionGraph
                                 .setEndTimestamp(Instant.now().toEpochMilli())
                                 .setStatus(RescaleStatus.Completed)
                                 .log());
-        Rescale rescale = rescaleTimeline.currentRescale();
-        if (rescale != null
-                && rescale.isSealed()
-                && rescale.getStatus() == RescaleStatus.Completed) {
-            rescale.log();
-        } else {
-            logger.warn("Rescale can't get the condition to report to FM. Rescale: {}", rescale);
-        }
 
         deploy();
 
