@@ -80,6 +80,7 @@ public class WordCount {
         config.set(JobManagerOptions.SCHEDULER, JobManagerOptions.SchedulerType.Adaptive);
         config.set(TaskManagerOptions.MINI_CLUSTER_NUM_TASK_MANAGERS, 10);
         config.set(TaskManagerOptions.NUM_TASK_SLOTS, 4);
+        config.setString("rest.port", "8081");
         // Create the execution environment. This is the main entrypoint
         // to building a Flink application.
         final StreamExecutionEnvironment env =
@@ -121,7 +122,7 @@ public class WordCount {
 
         DataStream<String> text =
                 env.addSource(
-                        new RichParallelSourceFunction<String>() {
+                        new RichParallelSourceFunction<>() {
                             volatile boolean running = true;
 
                             @Override
