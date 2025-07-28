@@ -19,23 +19,24 @@ package org.apache.flink.streaming.examples.wordcount;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.StateBackendOptions;
-import org.apache.flink.connector.file.sink.FileSink;
+import org.apache.flink.configuration.TaskManagerOptions;
+import org.apache.flink.configuration.WebOptions;
 import org.apache.flink.connector.file.src.FileSource;
 import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.DefaultRollingPolicy;
+import org.apache.flink.streaming.api.functions.sink.v2.DiscardingSink;
+import org.apache.flink.streaming.api.functions.source.legacy.RichParallelSourceFunction;
 import org.apache.flink.streaming.examples.wordcount.util.CLI;
 import org.apache.flink.streaming.examples.wordcount.util.WordCountData;
 import org.apache.flink.util.Collector;
 
-import java.time.Duration;
+import java.util.UUID;
 
 import static org.apache.flink.runtime.state.StateBackendLoader.FORST_STATE_BACKEND_NAME;
 
@@ -80,64 +81,46 @@ public class WordCount {
 
         // Create the execution environment. This is the main entrypoint
         // to building a Flink application.
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-
-        // For async state, by default we will use the forst state backend.
-        if (params.isAsyncState()) {
-            Configuration config = Configuration.fromMap(env.getConfiguration().toMap());
-            if (!config.containsKey(StateBackendOptions.STATE_BACKEND.key())) {
-                config.set(StateBackendOptions.STATE_BACKEND, FORST_STATE_BACKEND_NAME);
-                env.configure(config);
-            }
-        }
-
-        // Apache Flink’s unified approach to stream and batch processing means that a DataStream
-        // application executed over bounded input will produce the same final results regardless
-        // of the configured execution mode. It is important to note what final means here: a job
-        // executing in STREAMING mode might produce incremental updates (think upserts in
-        // a database) while in BATCH mode, it would only produce one final result at the end. The
-        // final result will be the same if interpreted correctly, but getting there can be
-        // different.
-        //
-        // The “classic” execution behavior of the DataStream API is called STREAMING execution
-        // mode. Applications should use streaming execution for unbounded jobs that require
-        // continuous incremental processing and are expected to stay online indefinitely.
-        //
-        // By enabling BATCH execution, we allow Flink to apply additional optimizations that we
-        // can only do when we know that our input is bounded. For example, different
-        // join/aggregation strategies can be used, in addition to a different shuffle
-        // implementation that allows more efficient task scheduling and failure recovery behavior.
-        //
-        // By setting the runtime mode to AUTOMATIC, Flink will choose BATCH if all sources
-        // are bounded and otherwise STREAMING.
+        Configuration conf = new Configuration();
+        conf.setString("rest.port", "12348");
+        conf.setString("execution.checkpointing.unaligned.enabled", "true");
+        conf.setString("execution.checkpointing.interval", "60s");
+        conf.setString("execution.checkpointing.min-pause", "10s");
+        conf.setString("state.checkpoints.dir", "file:///tmp/flinkjob");
+        conf.set(JobManagerOptions.SCHEDULER, JobManagerOptions.SchedulerType.Adaptive);
+        conf.set(TaskManagerOptions.NUM_TASK_SLOTS, 5);
+        conf.set(TaskManagerOptions.MINI_CLUSTER_NUM_TASK_MANAGERS, 5);
+//        conf.set(WebOptions.MAX_ADAPTIVE_SCHEDULER_RESCALE_HISTORY_SIZE, 5);
+        final StreamExecutionEnvironment env =
+                StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(conf);
         env.setRuntimeMode(params.getExecutionMode());
 
         // This optional step makes the input parameters
         // available in the Flink UI.
         env.getConfig().setGlobalJobParameters(params);
+        env.disableOperatorChaining();
 
         DataStream<String> text;
-        if (params.getInputs().isPresent()) {
-            // Create a new file source that will read files from a given set of directories.
-            // Each file will be processed as plain text and split based on newlines.
-            FileSource.FileSourceBuilder<String> builder =
-                    FileSource.forRecordStreamFormat(
-                            new TextLineInputFormat(), params.getInputs().get());
 
-            // If a discovery interval is provided, the source will
-            // continuously watch the given directories for new files.
-            params.getDiscoveryInterval().ifPresent(builder::monitorContinuously);
+            text =
+                    env.addSource(
+                            new RichParallelSourceFunction<String>() {
+                                @Override
+                                public void run(SourceContext<String> ctx) throws Exception {
+                                    while (true) {
+                                        ctx.collect(UUID.randomUUID().toString());
+                                    }
+                                }
 
-            text = env.fromSource(builder.build(), WatermarkStrategy.noWatermarks(), "file-input");
-        } else {
-            text = env.fromData(WordCountData.WORDS).name("in-memory-input");
-        }
+                                @Override
+                                public void cancel() {}
+                            }).setParallelism(4);
 
         KeyedStream<Tuple2<String, Integer>, String> keyedStream =
                 // The text lines read from the source are split into words
                 // using a user-defined function. The tokenizer, implemented below,
                 // will output each word as a (2-tuple) containing (word, 1)
-                text.flatMap(new Tokenizer())
+                text.flatMap(new Tokenizer()).setParallelism(4)
                         .name("tokenizer")
                         // keyBy groups tuples based on the "0" field, the word.
                         // Using a keyBy allows performing aggregations and other
@@ -160,18 +143,9 @@ public class WordCount {
             // Given an output directory, Flink will write the results to a file
             // using a simple string encoding. In a production environment, this might
             // be something more structured like CSV, Avro, JSON, or Parquet.
-            counts.sinkTo(
-                            FileSink.<Tuple2<String, Integer>>forRowFormat(
-                                            params.getOutput().get(), new SimpleStringEncoder<>())
-                                    .withRollingPolicy(
-                                            DefaultRollingPolicy.builder()
-                                                    .withMaxPartSize(MemorySize.ofMebiBytes(1))
-                                                    .withRolloverInterval(Duration.ofSeconds(10))
-                                                    .build())
-                                    .build())
-                    .name("file-sink");
+            counts.sinkTo(new DiscardingSink<>()).name("file-sink");
         } else {
-            counts.print().name("print-sink");
+            counts.sinkTo(new DiscardingSink<>()).name("file-sink");
         }
 
         // Apache Flink applications are composed lazily. Calling execute
