@@ -54,6 +54,7 @@ import org.apache.flink.runtime.query.UnknownKvStateLocation;
 import org.apache.flink.runtime.registration.RegistrationResponse;
 import org.apache.flink.runtime.resourcemanager.ResourceManagerId;
 import org.apache.flink.runtime.scheduler.ExecutionGraphInfo;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.shuffle.PartitionWithMetrics;
 import org.apache.flink.runtime.slots.ResourceRequirement;
 import org.apache.flink.runtime.state.KeyGroupRange;
@@ -126,6 +127,8 @@ public class TestingJobMasterGatewayBuilder {
     private Supplier<CompletableFuture<ExecutionGraphInfo>> requestJobSupplier =
             () -> FutureUtils.completedExceptionally(new UnsupportedOperationException());
     private Supplier<CompletableFuture<CheckpointStatsSnapshot>> checkpointStatsSnapshotSupplier =
+            () -> FutureUtils.completedExceptionally(new UnsupportedOperationException());
+    private Supplier<CompletableFuture<RescalesStatsSnapshot>> rescalesStatsSnapshotSupplier =
             () -> FutureUtils.completedExceptionally(new UnsupportedOperationException());
     private TriFunction<String, Boolean, SavepointFormatType, CompletableFuture<String>>
             triggerSavepointFunction =
@@ -308,6 +311,12 @@ public class TestingJobMasterGatewayBuilder {
         return this;
     }
 
+    public TestingJobMasterGatewayBuilder setRescalesStatsSnapshotSupplier(
+            Supplier<CompletableFuture<RescalesStatsSnapshot>> rescalesStatsSnapshotSupplier) {
+        this.rescalesStatsSnapshotSupplier = rescalesStatsSnapshotSupplier;
+        return this;
+    }
+
     public TestingJobMasterGatewayBuilder setTriggerSavepointFunction(
             TriFunction<String, Boolean, SavepointFormatType, CompletableFuture<String>>
                     triggerSavepointFunction) {
@@ -469,6 +478,7 @@ public class TestingJobMasterGatewayBuilder {
                 requestJobStatusSupplier,
                 requestJobSupplier,
                 checkpointStatsSnapshotSupplier,
+                rescalesStatsSnapshotSupplier,
                 triggerSavepointFunction,
                 triggerCheckpointFunction,
                 stopWithSavepointFunction,

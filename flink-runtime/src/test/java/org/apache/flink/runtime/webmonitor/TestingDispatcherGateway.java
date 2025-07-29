@@ -41,6 +41,7 @@ import org.apache.flink.runtime.rest.handler.job.AsynchronousJobOperationKey;
 import org.apache.flink.runtime.rest.messages.ThreadDumpInfo;
 import org.apache.flink.runtime.rpc.RpcTimeout;
 import org.apache.flink.runtime.scheduler.ExecutionGraphInfo;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.streaming.api.graph.ExecutionPlan;
 import org.apache.flink.util.SerializedValue;
 import org.apache.flink.util.concurrent.FutureUtils;
@@ -132,6 +133,8 @@ public final class TestingDispatcherGateway extends TestingRestfulGateway
                     requestExecutionGraphInfoFunction,
             Function<JobID, CompletableFuture<CheckpointStatsSnapshot>>
                     requestCheckpointStatsSnapshotFunction,
+            Function<JobID, CompletableFuture<RescalesStatsSnapshot>>
+                    requestRescalesStatsSnapshotFunction,
             Function<JobID, CompletableFuture<JobResult>> requestJobResultFunction,
             Function<JobID, CompletableFuture<JobStatus>> requestJobStatusFunction,
             Supplier<CompletableFuture<MultipleJobsDetails>> requestMultipleJobDetailsSupplier,
@@ -188,6 +191,7 @@ public final class TestingDispatcherGateway extends TestingRestfulGateway
                 requestJobFunction,
                 requestExecutionGraphInfoFunction,
                 requestCheckpointStatsSnapshotFunction,
+                requestRescalesStatsSnapshotFunction,
                 requestJobResultFunction,
                 requestJobStatusFunction,
                 requestMultipleJobDetailsSupplier,
@@ -390,6 +394,7 @@ public final class TestingDispatcherGateway extends TestingRestfulGateway
                     requestJobFunction,
                     requestExecutionGraphInfoFunction,
                     requestCheckpointStatsSnapshotFunction,
+                    requestRescalesStatsSnapshotFunction,
                     requestJobResultFunction,
                     requestJobStatusFunction,
                     requestMultipleJobDetailsSupplier,

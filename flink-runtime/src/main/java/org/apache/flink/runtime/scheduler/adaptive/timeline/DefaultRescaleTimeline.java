@@ -27,9 +27,15 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /** Default implementation of {@link RescaleTimeline}. */
@@ -39,6 +45,10 @@ public class DefaultRescaleTimeline implements RescaleTimeline {
 
     private final Supplier<JobInformation> jobInformationGetter;
 
+    // TODO: Need check the lock issue.
+    private final ReentrantLock statsReadWriteLock = new ReentrantLock();
+
+    private RescaleIdInfo rescaleIdInfo;
     private RescaleIdInfo rescaleIdInfo;
 
     @Nullable private Rescale currentRescale;
@@ -56,6 +66,17 @@ public class DefaultRescaleTimeline implements RescaleTimeline {
         this.latestRescales = new ConcurrentHashMap<>(TerminalState.values().length);
         this.rescaleHistory = new BoundedFIFOQueue<>(maxHistorySize);
         this.rescalesSummary = new RescalesSummary(maxHistorySize);
+    }
+
+    @Override
+    public RescalesStatsSnapshot createSnapshot() {
+        ArrayList<Rescale> rescales = rescaleHistory.toArrayList();
+        Collections.reverse(rescales);
+        return new RescalesStatsSnapshot(
+                Collections.unmodifiableList(rescales),
+                Collections.unmodifiableMap(latestRescales),
+                Collections.unmodifiableMap(recentRescales),
+                rescalesSummary.createSnapshot());
     }
 
     @Nullable

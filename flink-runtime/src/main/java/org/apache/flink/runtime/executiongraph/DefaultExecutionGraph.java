@@ -75,6 +75,8 @@ import org.apache.flink.runtime.scheduler.SsgNetworkMemoryCalculationUtils;
 import org.apache.flink.runtime.scheduler.VertexParallelismInformation;
 import org.apache.flink.runtime.scheduler.VertexParallelismStore;
 import org.apache.flink.runtime.scheduler.adapter.DefaultExecutionTopology;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.scheduler.adaptivebatch.ExecutionPlanSchedulingContext;
 import org.apache.flink.runtime.scheduler.strategy.ConsumedPartitionGroup;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
@@ -315,6 +317,7 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
 
     // Rescale related.
     @Nullable private final JobRescaleConfigInfo jobRescaleConfigInfo;
+    private final RescaleTimeline rescaleTimeline;
 
     // --------------------------------------------------------------------------------------------
     //   Constructors
@@ -343,7 +346,8 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
             TaskDeploymentDescriptorFactory taskDeploymentDescriptorFactory,
             List<JobStatusChangedListener> jobStatusChangedListeners,
             ExecutionPlanSchedulingContext executionPlanSchedulingContext,
-            JobRescaleConfigInfo jobRescaleConfigInfo) {
+            JobRescaleConfigInfo jobRescaleConfigInfo,
+            RescaleTimeline rescaleTimeline) {
 
         this.executionGraphId = new ExecutionGraphID();
 
@@ -418,6 +422,7 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         this.executionPlanSchedulingContext = checkNotNull(executionPlanSchedulingContext);
 
         this.jobRescaleConfigInfo = jobRescaleConfigInfo;
+        this.rescaleTimeline = rescaleTimeline;
 
         LOG.info(
                 "Created execution graph {} for job {}.",
@@ -612,6 +617,14 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         } else {
             return null;
         }
+    }
+
+    @Nullable
+    @Override
+    public RescalesStatsSnapshot getRescalesStatsSnapshot() {
+        return rescaleTimeline == null
+                ? RescalesStatsSnapshot.emptySnapshot()
+                : rescaleTimeline.createSnapshot();
     }
 
     private Collection<OperatorCoordinatorCheckpointContext>

@@ -61,6 +61,8 @@ public interface RescaleTimeline {
         void update(Rescale rescaleToUpdate);
     }
 
+    RescalesStatsSnapshot createSnapshot();
+
     /** Default implementation of {@link RescaleTimeline} without any actions. */
     enum NoOpRescaleTimeline implements RescaleTimeline {
         INSTANCE;
@@ -94,6 +96,21 @@ public interface RescaleTimeline {
         @Override
         public boolean inRescalingProgress() {
             return false;
+        }
+
+        @Override
+        public Rescale currentRescale() {
+            return null;
+        }
+
+        @Override
+        public JobInformation getJobInformation() {
+            return null;
+        }
+
+        @Override
+        public RescalesStatsSnapshot createSnapshot() {
+            return RescalesStatsSnapshot.emptySnapshot();
         }
     }
 }

@@ -100,4 +100,17 @@ public class RescalesSummary {
     public long getInProgressRescalesCount() {
         return inProgressRescalesCount;
     }
+
+    public RescalesSummarySnapshot createSnapshot() {
+        return new RescalesSummarySnapshot(
+                allSealedSummary.createSnapshot(),
+                completedRescalesSummary.createSnapshot(),
+                ignoredRescalesSummary.createSnapshot(),
+                failedRescalesSummary.createSnapshot(),
+                totalRescalesCount,
+                completedRescalesCount,
+                ignoredRescalesCount,
+                failedRescalesCount,
+                pendingRescalesCount);
+    }
 }

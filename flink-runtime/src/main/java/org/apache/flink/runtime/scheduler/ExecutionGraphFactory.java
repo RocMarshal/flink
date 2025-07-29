@@ -76,6 +76,7 @@ public interface ExecutionGraphFactory {
             MarkPartitionFinishedStrategy markPartitionFinishedStrategy,
             ExecutionPlanSchedulingContext executionPlanSchedulingContext,
             JobRescaleConfigInfo jobRescaleConfigInfo,
+            RescaleTimeline rescaleTimeline,
             Logger log)
             throws Exception;
 }

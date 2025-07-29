@@ -90,6 +90,7 @@ import org.apache.flink.runtime.rpc.FencedRpcEndpoint;
 import org.apache.flink.runtime.rpc.RpcService;
 import org.apache.flink.runtime.rpc.RpcServiceUtils;
 import org.apache.flink.runtime.scheduler.ExecutionGraphInfo;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.shuffle.ShuffleMasterSnapshotUtil;
 import org.apache.flink.runtime.webmonitor.retriever.GatewayRetriever;
 import org.apache.flink.streaming.api.graph.ExecutionPlan;
@@ -942,6 +943,18 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId>
                                 getExecutionGraphInfoFromStore(t, jobId)
                                         .getArchivedExecutionGraph()
                                         .getCheckpointStatsSnapshot());
+    }
+
+    @Override
+    public CompletableFuture<RescalesStatsSnapshot> requestRescalesStats(
+            JobID jobId, Duration timeout) {
+        return performOperationOnJobMasterGateway(
+                        jobId, gateway -> gateway.requestRescalesStats(timeout))
+                .exceptionally(
+                        t ->
+                                getExecutionGraphInfoFromStore(t, jobId)
+                                        .getArchivedExecutionGraph()
+                                        .getRescalesStatsSnapshot());
     }
 
     @Override

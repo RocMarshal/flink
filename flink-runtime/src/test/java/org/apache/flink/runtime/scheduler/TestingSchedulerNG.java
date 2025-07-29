@@ -44,6 +44,7 @@ import org.apache.flink.runtime.operators.coordination.CoordinationRequest;
 import org.apache.flink.runtime.operators.coordination.CoordinationResponse;
 import org.apache.flink.runtime.operators.coordination.OperatorEvent;
 import org.apache.flink.runtime.query.KvStateLocation;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.util.concurrent.FutureUtils;
 import org.apache.flink.util.function.TriFunction;
@@ -147,6 +148,12 @@ public class TestingSchedulerNG implements SchedulerNG {
 
     @Override
     public CheckpointStatsSnapshot requestCheckpointStats() {
+        failOperation();
+        return null;
+    }
+
+    @Override
+    public RescalesStatsSnapshot requestRescalesStats() {
         failOperation();
         return null;
     }

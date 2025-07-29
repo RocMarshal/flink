@@ -760,6 +760,13 @@ public class DispatcherTest extends AbstractDispatcherTest {
                 .hasMessageContaining("Could not find Flink job");
     }
 
+    // TODO: Hotfix for junit5 migration, then doing test cases.
+    @Test
+    public void testRetrieveRescalesStats() throws Exception {}
+
+    @Test
+    public void testRetrieveRescalesStatsOnNonExistentJob() throws Exception {}
+
     @Test
     public void testThrowExceptionIfJobExecutionResultNotFound() throws Exception {
         dispatcher =
