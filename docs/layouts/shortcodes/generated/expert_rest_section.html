@@ -33,6 +33,18 @@
             <td>Duration from write after which cached checkpoints statistics are cleaned up. For backwards compatibility, if no value is configured, <code class="highlighter-rouge">web.refresh-interval</code> will be used instead.</td>
         </tr>
         <tr>
+            <td><h5>rest.cache.rescales-statistics.size</h5></td>
+            <td style="word-wrap: break-word;">128</td>
+            <td>Integer</td>
+            <td>Maximum number of entries in the rescales statistics cache.</td>
+        </tr>
+        <tr>
+            <td><h5>rest.cache.rescales-statistics.timeout</h5></td>
+            <td style="word-wrap: break-word;">3 s</td>
+            <td>Duration</td>
+            <td>Duration from write after which cached rescales statistics are cleaned up. For backwards compatibility, if no value is configured, <code class="highlighter-rouge">web.refresh-interval</code> will be used instead.</td>
+        </tr>
+        <tr>
             <td><h5>rest.client.max-content-length</h5></td>
             <td style="word-wrap: break-word;">104857600</td>
             <td>Integer</td>
