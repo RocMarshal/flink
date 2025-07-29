@@ -22,6 +22,8 @@ import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.instance.SlotSharingGroupId;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
+import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleStatisticsDetails.VertexParallelismRescaleInfo;
+import org.apache.flink.runtime.rest.messages.job.rescales.SchedulerStateSpan;
 import org.apache.flink.runtime.scheduler.VertexParallelismInformation;
 import org.apache.flink.runtime.scheduler.adaptive.JobSchedulingPlan;
 import org.apache.flink.runtime.scheduler.adaptive.State;
@@ -60,7 +62,7 @@ public class Rescale implements Serializable {
     private final IdEpoch idEpoch;
 
     private final boolean newResourceRequirement;
-    private final Map<JobVertexID, VertexParallelismRescale> parallelisms;
+    private final Map<JobVertexID, VertexParallelismRescaleInfo> parallelisms;
     private final Map<SlotSharingGroupId, SlotSharingGroupRescale> slots;
 
     private final List<SchedulerStateSpan> schedulerStates;
@@ -243,9 +245,9 @@ public class Rescale implements Serializable {
         for (JobVertexID jobVertexID : parallelisms.keySet()) {
             Integer previousAcquiredParallelism =
                     lastCompletedRescale.parallelisms.get(jobVertexID).getAcquiredParallelism();
-            VertexParallelismRescale vertexParallelismRescale =
-                    parallelisms.computeIfAbsent(jobVertexID, VertexParallelismRescale::new);
-            vertexParallelismRescale.setCurrentParallelism(previousAcquiredParallelism);
+            VertexParallelismRescaleInfo vertexParallelismRescaleInfo =
+                    parallelisms.computeIfAbsent(jobVertexID, VertexParallelismRescaleInfo::new);
+            vertexParallelismRescaleInfo.setCurrentParallelism(previousAcquiredParallelism);
         }
 
         for (SlotSharingGroupId sharingGroupId : slots.keySet()) {
@@ -266,14 +268,14 @@ public class Rescale implements Serializable {
                 allParallelismInfo.entrySet()) {
             JobVertexID jvId = entry.getKey();
             VertexParallelismInformation vertexParallelInfo = entry.getValue();
-            VertexParallelismRescale vertexParallelismRescale =
+            VertexParallelismRescaleInfo vertexParallelismRescaleInfo =
                     this.parallelisms.computeIfAbsent(
-                            jvId, jobVertexID -> new VertexParallelismRescale(jvId));
+                            jvId, jobVertexID -> new VertexParallelismRescaleInfo(jvId));
             SlotSharingGroup slotSharingGroup =
                     jobInformation.getVertexInformation(jvId).getSlotSharingGroup();
-            vertexParallelismRescale.setSlotSharingGroupMetaInfo(slotSharingGroup);
-            vertexParallelismRescale.setJobVertexName(jobInformation.getVertexName(jvId));
-            vertexParallelismRescale.setRequiredParallelismWithBounds(vertexParallelInfo);
+            vertexParallelismRescaleInfo.setSlotSharingGroupMetaInfo(slotSharingGroup);
+            vertexParallelismRescaleInfo.setJobVertexName(jobInformation.getVertexName(jvId));
+            vertexParallelismRescaleInfo.setRequiredParallelismWithBounds(vertexParallelInfo);
         }
         return this;
     }
@@ -285,8 +287,9 @@ public class Rescale implements Serializable {
     public Rescale setAcquiredVertexParallelism(VertexParallelism acquiredVertexParallelism) {
         Set<JobVertexID> vertices = acquiredVertexParallelism.getVertices();
         for (JobVertexID vertexID : vertices) {
-            VertexParallelismRescale vertexParallelismRescale = this.parallelisms.get(vertexID);
-            vertexParallelismRescale.setAcquiredParallelism(
+            VertexParallelismRescaleInfo vertexParallelismRescaleInfo =
+                    this.parallelisms.get(vertexID);
+            vertexParallelismRescaleInfo.setAcquiredParallelism(
                     acquiredVertexParallelism.getParallelism(vertexID));
         }
         return this;
@@ -301,7 +304,7 @@ public class Rescale implements Serializable {
         LOG.info("Updated a {} rescale {}", status, this);
     }
 
-    public Map<JobVertexID, VertexParallelismRescale> getParallelisms() {
+    public Map<JobVertexID, VertexParallelismRescaleInfo> getParallelisms() {
         return parallelisms;
     }
 

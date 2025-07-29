@@ -16,9 +16,12 @@
  * limitations under the License.
  */
 
-package org.apache.flink.runtime.scheduler.adaptive.timeline;
+package org.apache.flink.runtime.rest.messages.job.rescales;
 
 import org.apache.flink.util.Preconditions;
+
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonCreator;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
 
 import javax.annotation.Nullable;
 
@@ -29,22 +32,38 @@ import java.util.Objects;
 public class SchedulerStateSpan implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static final String FIELD_NAME_STATE = "state";
+    public static final String FIELD_NAME_DURATION_START = "duration_start";
+    public static final String FIELD_NAME_DURATION_END = "duration_end";
+    public static final String FIELD_NAME_DURATION = "duration";
+    public static final String FIELD_NAME_EXCEPTION = "stringed_exception";
+
+    @JsonProperty(FIELD_NAME_STATE)
     private final String state;
 
-    @Nullable private final Long inTimestamp;
+    @Nullable
+    @JsonProperty(FIELD_NAME_DURATION_START)
+    private final Long inTimestamp;
 
-    @Nullable private final Long outTimestamp;
+    @Nullable
+    @JsonProperty(FIELD_NAME_DURATION_END)
+    private final Long outTimestamp;
 
-    @Nullable private final Long duration;
+    @Nullable
+    @JsonProperty(FIELD_NAME_DURATION)
+    private final Long duration;
 
-    @Nullable private final String stringedException;
+    @Nullable
+    @JsonProperty(FIELD_NAME_EXCEPTION)
+    private final String stringedException;
 
+    @JsonCreator
     public SchedulerStateSpan(
-            String state,
-            Long logicStartMillis,
-            Long logicEndMillis,
-            Long duration,
-            String stringedException) {
+            @JsonProperty(FIELD_NAME_STATE) String state,
+            @JsonProperty(FIELD_NAME_DURATION_START) Long logicStartMillis,
+            @JsonProperty(FIELD_NAME_DURATION_END) Long logicEndMillis,
+            @JsonProperty(FIELD_NAME_DURATION) Long duration,
+            @JsonProperty(FIELD_NAME_EXCEPTION) String stringedException) {
         this.state = Preconditions.checkNotNull(state);
         this.inTimestamp = logicStartMillis;
         this.outTimestamp = logicEndMillis;
