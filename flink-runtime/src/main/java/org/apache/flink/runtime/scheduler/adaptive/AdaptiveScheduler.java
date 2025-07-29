@@ -114,6 +114,11 @@ import org.apache.flink.runtime.scheduler.adaptive.allocator.JobInformation;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.ReservedSlots;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.SlotAllocator;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.DefaultRescaleTimeline;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.TerminalState;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.TerminatedReason;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.TriggerCause;
 import org.apache.flink.runtime.scheduler.adaptivebatch.NonAdaptiveExecutionPlanSchedulingContext;
 import org.apache.flink.runtime.scheduler.exceptionhistory.ExceptionHistoryEntry;
 import org.apache.flink.runtime.scheduler.exceptionhistory.RootExceptionHistoryEntry;
@@ -159,6 +164,7 @@ import java.util.function.Supplier;
 
 import static org.apache.flink.configuration.JobManagerOptions.SCHEDULER_RESCALE_TRIGGER_MAX_DELAY;
 import static org.apache.flink.runtime.executiongraph.ExecutionGraphUtils.isAnyOutputBlocking;
+import static org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline.NoOpRescaleTimeline;
 
 /**
  * A {@link SchedulerNG} implementation that uses the declarative resource management and
@@ -302,7 +308,8 @@ public class AdaptiveScheduler
                     configuration.get(
                             SCHEDULER_RESCALE_TRIGGER_MAX_DELAY,
                             maximumDelayForRescaleTriggerDefault),
-                    rescaleOnFailedCheckpointsCount);
+                    rescaleOnFailedCheckpointsCount,
+                    configuration.get(WebOptions.MAX_ADAPTIVE_SCHEDULER_RESCALE_HISTORY_SIZE));
         }
 
         private final SchedulerExecutionMode executionMode;
@@ -313,6 +320,7 @@ public class AdaptiveScheduler
         private final Duration executingResourceStabilizationTimeout;
         private final Duration maximumDelayForTriggeringRescale;
         private final int rescaleOnFailedCheckpointCount;
+        private final int rescaleHistoryMax;
 
         private Settings(
                 SchedulerExecutionMode executionMode,
@@ -322,7 +330,8 @@ public class AdaptiveScheduler
                 Duration executingCooldownTimeout,
                 Duration executingResourceStabilizationTimeout,
                 Duration maximumDelayForTriggeringRescale,
-                int rescaleOnFailedCheckpointCount) {
+                int rescaleOnFailedCheckpointCount,
+                int rescaleHistoryMax) {
             this.executionMode = executionMode;
             this.submissionResourceWaitTimeout = submissionResourceWaitTimeout;
             this.submissionResourceStabilizationTimeout = submissionResourceStabilizationTimeout;
@@ -331,6 +340,7 @@ public class AdaptiveScheduler
             this.executingResourceStabilizationTimeout = executingResourceStabilizationTimeout;
             this.maximumDelayForTriggeringRescale = maximumDelayForTriggeringRescale;
             this.rescaleOnFailedCheckpointCount = rescaleOnFailedCheckpointCount;
+            this.rescaleHistoryMax = rescaleHistoryMax;
         }
 
         public SchedulerExecutionMode getExecutionMode() {
@@ -363,6 +373,10 @@ public class AdaptiveScheduler
 
         public int getRescaleOnFailedCheckpointCount() {
             return rescaleOnFailedCheckpointCount;
+        }
+
+        public int getRescaleHistoryMax() {
+            return rescaleHistoryMax;
         }
     }
 
@@ -427,6 +441,8 @@ public class AdaptiveScheduler
     private final JobFailureMetricReporter jobFailureMetricReporter;
 
     private final Supplier<Temporal> clock = Instant::now;
+
+    private final RescaleTimeline rescaleTimeLine;
 
     public AdaptiveScheduler(
             Settings settings,
@@ -519,6 +535,12 @@ public class AdaptiveScheduler
 
         this.initialParallelismStore = vertexParallelismStore;
         this.jobInformation = new JobGraphJobInformation(jobGraph, vertexParallelismStore);
+
+        int rescaleHistoryMax = settings.getRescaleHistoryMax();
+        this.rescaleTimeLine =
+                rescaleHistoryMax <= 0
+                        ? NoOpRescaleTimeline.INSTANCE
+                        : new DefaultRescaleTimeline(() -> jobInformation, rescaleHistoryMax);
 
         this.declarativeSlotPool = declarativeSlotPool;
         this.initializationTimestamp = initializationTimestamp;
@@ -702,6 +724,11 @@ public class AdaptiveScheduler
         }
         return SchedulerBase.computeVertexParallelismStore(
                 jobGraph.getVertices(), defaultMaxParallelismFunc);
+    }
+
+    @Override
+    public RescaleTimeline getRescaleTimeline() {
+        return rescaleTimeLine;
     }
 
     private void newResourcesAvailable(Collection<? extends PhysicalSlot> physicalSlots) {
@@ -1090,6 +1117,24 @@ public class AdaptiveScheduler
         if (maybeUpdateVertexParallelismStore.isPresent()) {
             this.jobInformation =
                     new JobGraphJobInformation(jobGraph, maybeUpdateVertexParallelismStore.get());
+            rescaleTimeLine.updateCurrentRescale(
+                    rescale ->
+                            rescale.addSchedulerState(state)
+                                    .setTerminatedReason(
+                                            TerminatedReason.RESOURCE_REQUIREMENTS_UPDATED)
+                                    .setEndTimestamp(Instant.now().toEpochMilli())
+                                    .log());
+            rescaleTimeLine.newCurrentRescale(true);
+            rescaleTimeLine.updateCurrentRescale(
+                    rescale ->
+                            rescale.setStartTimestamp(Instant.now().toEpochMilli())
+                                    .setRequiredVertexParallelism(jobInformation)
+                                    .setTriggerCause(TriggerCause.UPDATE_REQUIREMENT)
+                                    .setRequiredSlots(jobInformation)
+                                    .setSufficientSlots(jobInformation)
+                                    .setCurrentSlotsAndParallelisms(
+                                            rescaleTimeLine.latestRescale(TerminalState.COMPLETED))
+                                    .log());
             declareDesiredResources();
             state.tryRun(
                     ResourceListener.class,
@@ -1152,15 +1197,26 @@ public class AdaptiveScheduler
             SlotAllocator slotAllocator, @Nullable ExecutionGraph previousExecutionGraph)
             throws NoResourceAvailableException {
 
-        return slotAllocator
-                .determineParallelismAndCalculateAssignment(
+        Optional<JobSchedulingPlan> jobSchedulingPlan =
+                slotAllocator.determineParallelismAndCalculateAssignment(
                         jobInformation,
                         declarativeSlotPool.getFreeSlotTracker().getFreeSlotsInformation(),
-                        getJobAllocationsInformationFromGraphAndState(previousExecutionGraph))
-                .orElseThrow(
-                        () ->
-                                new NoResourceAvailableException(
-                                        "Not enough resources available for scheduling."));
+                        getJobAllocationsInformationFromGraphAndState(previousExecutionGraph));
+
+        if (jobSchedulingPlan.isPresent()) {
+            return jobSchedulingPlan.get();
+        } else {
+            NoResourceAvailableException noResourceAvailableException =
+                    new NoResourceAvailableException(
+                            "Not enough resources available for scheduling.");
+
+            rescaleTimeLine.updateCurrentRescale(
+                    rescale ->
+                            rescale.setStringedException(
+                                    ExceptionUtils.stringifyException(
+                                            noResourceAvailableException)));
+            throw noResourceAvailableException;
+        }
     }
 
     @Override
@@ -1255,6 +1311,15 @@ public class AdaptiveScheduler
             OperatorCoordinatorHandler operatorCoordinatorHandler,
             List<ExceptionHistoryEntry> failureCollection) {
 
+        if (rescaleTimeLine.inRescalingProgress()) {
+            rescaleTimeLine.updateCurrentRescale(
+                    rescale ->
+                            rescale.addSchedulerState(state)
+                                    .setEndTimestamp(Instant.now().toEpochMilli())
+                                    .setTerminatedReason(TerminatedReason.JOB_CANCELING)
+                                    .log());
+        }
+
         transitionToState(
                 new Canceling.Factory(
                         this,
@@ -1274,7 +1339,39 @@ public class AdaptiveScheduler
             Duration backoffTime,
             @Nullable VertexParallelism restartWithParallelism,
             List<ExceptionHistoryEntry> failureCollection) {
+        if (restartWithParallelism == null) {
+            // For the failover restarting.
+            if (rescaleTimeLine.inRescalingProgress()) {
+                rescaleTimeLine.updateCurrentRescale(
+                        rescale ->
+                                rescale.addSchedulerState(state)
+                                        .setEndTimestamp(Instant.now().toEpochMilli())
+                                        .setTerminatedReason(
+                                                TerminatedReason.JOB_FAILOVER_RESTARTING)
+                                        .log());
+            } else if (rescaleTimeLine.inIdling()) {
+                rescaleTimeLine.newCurrentRescale(false);
+                rescaleTimeLine.updateCurrentRescale(
+                        rescale ->
+                                rescale.setStartTimestamp(Instant.now().toEpochMilli())
+                                        .setTriggerCause(TriggerCause.RECOVERABLE_FAILOVER)
+                                        .setSufficientSlots(jobInformation)
+                                        .setCurrentSlotsAndParallelisms(
+                                                rescaleTimeLine.latestRescale(
+                                                        TerminalState.COMPLETED))
+                                        .setRequiredVertexParallelism(jobInformation)
+                                        .setRequiredSlots(jobInformation));
+            }
 
+        } else {
+            // For the normal rescaling restarting.
+            rescaleTimeLine.updateCurrentRescale(
+                    rescale ->
+                            rescale.setSufficientSlots(jobInformation)
+                                    .setRequiredVertexParallelism(jobInformation)
+                                    .setRequiredSlots(jobInformation)
+                                    .log());
+        }
         for (ExecutionVertex executionVertex : executionGraph.getAllExecutionVertices()) {
             final int attemptNumber =
                     executionVertex.getCurrentExecutionAttempt().getAttemptNumber();
@@ -1310,6 +1407,14 @@ public class AdaptiveScheduler
             OperatorCoordinatorHandler operatorCoordinatorHandler,
             Throwable failureCause,
             List<ExceptionHistoryEntry> failureCollection) {
+        rescaleTimeLine.updateCurrentRescale(
+                rescale ->
+                        rescale.setEndTimestamp(Instant.now().toEpochMilli())
+                                .addSchedulerState(state, failureCause)
+                                .setTerminatedReason(TerminatedReason.JOB_FAILING)
+                                .setStringedException(
+                                        ExceptionUtils.stringifyException(failureCause))
+                                .log());
         transitionToState(
                 new Failing.Factory(
                         this,
@@ -1348,6 +1453,12 @@ public class AdaptiveScheduler
 
     @Override
     public void goToFinished(ArchivedExecutionGraph archivedExecutionGraph) {
+        rescaleTimeLine.updateCurrentRescale(
+                rescale ->
+                        rescale.addSchedulerState(state)
+                                .setEndTimestamp(Instant.now().toEpochMilli())
+                                .setTerminatedReason(TerminatedReason.JOB_FINISHED)
+                                .log());
         transitionToState(new Finished.Factory(this, archivedExecutionGraph, LOG));
     }
 
@@ -1614,6 +1725,9 @@ public class AdaptiveScheduler
             final JobStatus previousJobStatus = state.getJobStatus();
 
             state.onLeave(targetState.getStateClass());
+
+            rescaleTimeLine.updateCurrentRescale(rescale -> rescale.addSchedulerState(state));
+
             T targetStateInstance = targetState.getState();
             state = targetStateInstance;
 
