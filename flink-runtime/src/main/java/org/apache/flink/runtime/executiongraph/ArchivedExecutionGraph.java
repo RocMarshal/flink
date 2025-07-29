@@ -35,6 +35,7 @@ import org.apache.flink.runtime.rest.messages.JobPlanInfo;
 import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleConfigInfo;
 import org.apache.flink.runtime.scheduler.VertexParallelismInformation;
 import org.apache.flink.runtime.scheduler.VertexParallelismStore;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.util.OptionalFailure;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
@@ -118,6 +119,8 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
     @Nullable private final String streamGraphJson;
     @Nullable private final JobRescaleConfigInfo jobRescaleConfigInfo;
 
+    @Nullable private final RescalesStatsSnapshot rescalesStatsSnapshot;
+
     private final int pendingOperatorCount;
 
     public ArchivedExecutionGraph(
@@ -142,6 +145,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
             @Nullable String changelogStorageName,
             @Nullable String streamGraphJson,
             @Nullable JobRescaleConfigInfo jobRescaleConfigInfo,
+            RescalesStatsSnapshot rescalesStatsSnapshot,
             int pendingOperatorCount) {
 
         this.jobID = Preconditions.checkNotNull(jobID);
@@ -165,6 +169,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
         this.changelogStorageName = changelogStorageName;
         this.streamGraphJson = streamGraphJson;
         this.jobRescaleConfigInfo = jobRescaleConfigInfo;
+        this.rescalesStatsSnapshot = rescalesStatsSnapshot;
         this.pendingOperatorCount = pendingOperatorCount;
     }
 
@@ -274,6 +279,12 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
     @Override
     public CheckpointStatsSnapshot getCheckpointStatsSnapshot() {
         return checkpointStatsSnapshot;
+    }
+
+    @Nullable
+    @Override
+    public RescalesStatsSnapshot getRescalesStatsSnapshot() {
+        return rescalesStatsSnapshot;
     }
 
     @Override
@@ -398,6 +409,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
                 executionGraph.getChangelogStorageName().orElse(null),
                 executionGraph.getStreamGraphJson(),
                 executionGraph.getJobRescaleConfigInfo(),
+                executionGraph.getRescalesStatsSnapshot(),
                 executionGraph.getPendingOperatorCount());
     }
 
@@ -522,6 +534,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
                 checkpointingSettings == null ? null : "Unknown",
                 null,
                 null,
+                RescalesStatsSnapshot.emptySnapshot(),
                 0);
     }
 }

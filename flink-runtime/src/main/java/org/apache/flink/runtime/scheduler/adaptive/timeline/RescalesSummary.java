@@ -96,4 +96,17 @@ public class RescalesSummary {
     public long getPendingRescalesCount() {
         return pendingRescalesCount;
     }
+
+    public RescalesSummarySnapshot createSnapshot() {
+        return new RescalesSummarySnapshot(
+                allSealedSummary.createSnapshot(),
+                completedRescalesSummary.createSnapshot(),
+                ignoredRescalesSummary.createSnapshot(),
+                failedRescalesSummary.createSnapshot(),
+                totalRescalesCount,
+                completedRescalesCount,
+                ignoredRescalesCount,
+                failedRescalesCount,
+                pendingRescalesCount);
+    }
 }

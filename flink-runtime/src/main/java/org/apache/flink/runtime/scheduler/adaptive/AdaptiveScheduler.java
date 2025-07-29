@@ -118,6 +118,7 @@ import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.DefaultRescaleTimeline;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleStatus;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.TriggerCause;
 import org.apache.flink.runtime.scheduler.adaptivebatch.NonAdaptiveExecutionPlanSchedulingContext;
 import org.apache.flink.runtime.scheduler.exceptionhistory.ExceptionHistoryEntry;
@@ -877,6 +878,11 @@ public class AdaptiveScheduler
     }
 
     @Override
+    public RescalesStatsSnapshot requestRescalesStats() {
+        return rescaleTimeLine.createSnapshot();
+    }
+
+    @Override
     public void archiveFailure(RootExceptionHistoryEntry failure) {
         exceptionHistory.add(failure);
     }
@@ -1605,6 +1611,7 @@ public class AdaptiveScheduler
                 rp -> false,
                 NonAdaptiveExecutionPlanSchedulingContext.INSTANCE,
                 getJobRescaleConfigInfo(),
+                rescaleTimeLine,
                 LOG);
     }
 

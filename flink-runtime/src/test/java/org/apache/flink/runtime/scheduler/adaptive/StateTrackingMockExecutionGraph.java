@@ -60,6 +60,7 @@ import org.apache.flink.runtime.rest.messages.JobPlanInfo;
 import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleConfigInfo;
 import org.apache.flink.runtime.scheduler.InternalFailuresListener;
 import org.apache.flink.runtime.scheduler.VertexParallelismStore;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.scheduler.exceptionhistory.TestingAccessExecution;
 import org.apache.flink.runtime.scheduler.strategy.SchedulingTopology;
 import org.apache.flink.runtime.scheduler.strategy.TestingSchedulingTopology;
@@ -234,6 +235,12 @@ class StateTrackingMockExecutionGraph implements ExecutionGraph {
     @Nullable
     @Override
     public CheckpointStatsSnapshot getCheckpointStatsSnapshot() {
+        return null;
+    }
+
+    @Nullable
+    @Override
+    public RescalesStatsSnapshot getRescalesStatsSnapshot() {
         return null;
     }
 

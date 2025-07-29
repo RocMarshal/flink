@@ -88,6 +88,7 @@ import org.apache.flink.runtime.rpc.RpcService;
 import org.apache.flink.runtime.rpc.RpcServiceUtils;
 import org.apache.flink.runtime.scheduler.ExecutionGraphInfo;
 import org.apache.flink.runtime.scheduler.SchedulerNG;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.shuffle.JobShuffleContext;
 import org.apache.flink.runtime.shuffle.JobShuffleContextImpl;
 import org.apache.flink.runtime.shuffle.PartitionWithMetrics;
@@ -950,6 +951,11 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
     @Override
     public CompletableFuture<CheckpointStatsSnapshot> requestCheckpointStats(Duration timeout) {
         return CompletableFuture.completedFuture(schedulerNG.requestCheckpointStats());
+    }
+
+    @Override
+    public CompletableFuture<RescalesStatsSnapshot> requestRescalesStats(Duration timeout) {
+        return CompletableFuture.completedFuture(schedulerNG.requestRescalesStats());
     }
 
     @Override

@@ -51,6 +51,7 @@ import org.apache.flink.runtime.operators.coordination.OperatorEvent;
 import org.apache.flink.runtime.query.KvStateLocation;
 import org.apache.flink.runtime.query.UnknownKvStateLocation;
 import org.apache.flink.runtime.scheduler.adaptive.AdaptiveScheduler;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.taskmanager.TaskExecutionState;
 import org.apache.flink.util.AutoCloseableAsync;
@@ -102,6 +103,15 @@ public interface SchedulerNG extends GlobalFailureHandler, AutoCloseableAsync {
      * @return checkpoint statistics snapshot for job graph
      */
     CheckpointStatsSnapshot requestCheckpointStats();
+
+    /**
+     * Returns the rescales statistics for a given job. Although the {@link RescalesStatsSnapshot}
+     * is included in the {@link ExecutionGraphInfo}, this method is preferred to {@link
+     * SchedulerNG#requestJob()} because it is less expensive.
+     *
+     * @return rescales statistics snapshot for job graph
+     */
+    RescalesStatsSnapshot requestRescalesStats();
 
     JobStatus requestJobStatus();
 

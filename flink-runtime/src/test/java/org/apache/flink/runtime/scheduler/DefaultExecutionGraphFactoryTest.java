@@ -46,6 +46,7 @@ import org.apache.flink.runtime.jobmaster.DefaultExecutionDeploymentTracker;
 import org.apache.flink.runtime.jobmaster.TestUtils;
 import org.apache.flink.runtime.metrics.groups.JobManagerJobMetricGroup;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
 import org.apache.flink.runtime.scheduler.adaptivebatch.NonAdaptiveExecutionPlanSchedulingContext;
 import org.apache.flink.runtime.shuffle.ShuffleTestUtils;
 import org.apache.flink.runtime.testtasks.NoOpInvokable;
@@ -122,6 +123,7 @@ class DefaultExecutionGraphFactoryTest {
                                         rp -> false,
                                         NonAdaptiveExecutionPlanSchedulingContext.INSTANCE,
                                         null,
+                                        RescaleTimeline.NoOpRescaleTimeline.INSTANCE,
                                         log))
                 .withFailMessage(
                         "Expected ExecutionGraph creation to fail because of non restored state.")
@@ -153,6 +155,7 @@ class DefaultExecutionGraphFactoryTest {
                 rp -> false,
                 NonAdaptiveExecutionPlanSchedulingContext.INSTANCE,
                 null,
+                RescaleTimeline.NoOpRescaleTimeline.INSTANCE,
                 log);
 
         final CompletedCheckpoint savepoint = completedCheckpointStore.getLatestCheckpoint();
@@ -209,6 +212,7 @@ class DefaultExecutionGraphFactoryTest {
                         rp -> false,
                         NonAdaptiveExecutionPlanSchedulingContext.INSTANCE,
                         null,
+                        RescaleTimeline.NoOpRescaleTimeline.INSTANCE,
                         log);
 
         checkpointStatsTracker.reportRestoredCheckpoint(

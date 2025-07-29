@@ -78,6 +78,8 @@ public interface RescaleTimeline {
     /** Get the job information. */
     JobInformation getJobInformation();
 
+    RescalesStatsSnapshot createSnapshot();
+
     /** Default implementation of {@link RescaleTimeline} without any actions. */
     enum NoOpRescaleTimeline implements RescaleTimeline {
         INSTANCE;
@@ -115,6 +117,11 @@ public interface RescaleTimeline {
         @Override
         public JobInformation getJobInformation() {
             return null;
+        }
+
+        @Override
+        public RescalesStatsSnapshot createSnapshot() {
+            return RescalesStatsSnapshot.emptySnapshot();
         }
     }
 }

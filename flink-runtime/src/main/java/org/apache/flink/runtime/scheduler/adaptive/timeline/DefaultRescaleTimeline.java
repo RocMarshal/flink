@@ -27,10 +27,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -38,6 +41,9 @@ import java.util.function.Supplier;
 public class DefaultRescaleTimeline implements RescaleTimeline {
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultRescaleTimeline.class);
+
+    // TODO: Need check the lock issue.
+    private final ReentrantLock statsReadWriteLock = new ReentrantLock();
 
     private final Supplier<JobGraphJobInformation> jobInfoGetter;
 
@@ -67,6 +73,17 @@ public class DefaultRescaleTimeline implements RescaleTimeline {
                     }
                 };
         this.rescalesSummary = new RescalesSummary(maxHistorySize);
+    }
+
+    @Override
+    public RescalesStatsSnapshot createSnapshot() {
+        ArrayList<Rescale> rescales = rescaleHistory.toArrayList();
+        Collections.reverse(rescales);
+        return new RescalesStatsSnapshot(
+                Collections.unmodifiableList(rescales),
+                Collections.unmodifiableMap(latestRescales),
+                Collections.unmodifiableMap(recentRescales),
+                rescalesSummary.createSnapshot());
     }
 
     @Nullable

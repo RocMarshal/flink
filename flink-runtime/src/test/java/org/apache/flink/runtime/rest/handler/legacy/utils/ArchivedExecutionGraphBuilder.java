@@ -30,6 +30,7 @@ import org.apache.flink.runtime.jobgraph.JobType;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.rest.messages.JobPlanInfo;
 import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleConfigInfo;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.util.OptionalFailure;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
@@ -189,6 +190,7 @@ public class ArchivedExecutionGraphBuilder {
                 "changelogStorageName",
                 streamGraphJson,
                 jobRescaleConfigInfo,
+                RescalesStatsSnapshot.emptySnapshot(),
                 pendingOperatorCounts);
     }
 }

@@ -90,6 +90,8 @@ import org.apache.flink.runtime.operators.coordination.OperatorCoordinatorHolder
 import org.apache.flink.runtime.operators.coordination.OperatorEvent;
 import org.apache.flink.runtime.query.KvStateLocation;
 import org.apache.flink.runtime.query.UnknownKvStateLocation;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.scheduler.adaptivebatch.ExecutionPlanSchedulingContext;
 import org.apache.flink.runtime.scheduler.exceptionhistory.FailureHandlingResultSnapshot;
 import org.apache.flink.runtime.scheduler.exceptionhistory.RootExceptionHistoryEntry;
@@ -439,6 +441,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
                         getMarkPartitionFinishedStrategy(),
                         executionPlanSchedulingContext,
                         null,
+                        RescaleTimeline.NoOpRescaleTimeline.INSTANCE,
                         log);
 
         newExecutionGraph.setInternalTaskFailuresListener(
@@ -875,6 +878,12 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
     public CheckpointStatsSnapshot requestCheckpointStats() {
         mainThreadExecutor.assertRunningInMainThread();
         return executionGraph.getCheckpointStatsSnapshot();
+    }
+
+    @Override
+    public RescalesStatsSnapshot requestRescalesStats() {
+        log.warn("{} doesn't support adaptive rescales feature !", getClass().getSimpleName());
+        return RescalesStatsSnapshot.emptySnapshot();
     }
 
     @Override
