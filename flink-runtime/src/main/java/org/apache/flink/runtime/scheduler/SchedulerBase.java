@@ -438,6 +438,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
                         combinedExecutionStateUpdateListener,
                         getMarkPartitionFinishedStrategy(),
                         executionPlanSchedulingContext,
+                        null,
                         log);
 
         newExecutionGraph.setInternalTaskFailuresListener(

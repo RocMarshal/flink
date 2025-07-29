@@ -27,6 +27,7 @@ import org.apache.flink.runtime.jobgraph.JobType;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.tasks.CheckpointCoordinatorConfiguration;
 import org.apache.flink.runtime.rest.messages.JobPlanInfo;
+import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleConfigInfo;
 import org.apache.flink.util.OptionalFailure;
 import org.apache.flink.util.SerializedValue;
 import org.apache.flink.util.TernaryBoolean;
@@ -218,4 +219,11 @@ public interface AccessExecutionGraph extends JobStatusProvider {
      * @return the number of pending operators.
      */
     int getPendingOperatorCount();
+
+    /***
+     * Get the rescale related configuration when using {@link org.apache.flink.runtime.scheduler.adaptive.AdaptiveScheduler}.
+     * @return The rescale related configuration.
+     */
+    @Nullable
+    JobRescaleConfigInfo getJobRescaleConfigInfo();
 }
