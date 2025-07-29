@@ -137,6 +137,12 @@ class StateTrackingMockExecutionGraph implements ExecutionGraph {
         return jobType;
     }
 
+    @Nullable
+    @Override
+    public String getSchedulerName() {
+        return null;
+    }
+
     @Override
     public CompletableFuture<JobStatus> getTerminationFuture() {
         return terminationFuture;

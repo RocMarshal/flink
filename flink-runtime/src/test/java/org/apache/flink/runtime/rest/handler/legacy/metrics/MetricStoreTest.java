@@ -147,6 +147,8 @@ class MetricStoreTest {
                 new JobDetails(
                         JOB_ID,
                         "jobname",
+                        null,
+                        null,
                         0,
                         0,
                         0,
@@ -184,6 +186,8 @@ class MetricStoreTest {
                 new JobDetails(
                         JOB_ID,
                         "jobname",
+                        null,
+                        null,
                         0,
                         0,
                         0,
@@ -215,6 +219,8 @@ class MetricStoreTest {
                 new JobDetails(
                         JOB_ID,
                         "jobname",
+                        null,
+                        null,
                         0,
                         0,
                         0,
@@ -266,6 +272,8 @@ class MetricStoreTest {
                 new JobDetails(
                         JOB_ID,
                         "jobname",
+                        null,
+                        null,
                         0,
                         0,
                         0,

@@ -78,6 +78,7 @@ public class TestingJobMasterServiceProcessFactoryOld implements JobMasterServic
                 "test-job",
                 jobStatus,
                 JobType.STREAMING,
+                null,
                 cause,
                 null,
                 System.currentTimeMillis());

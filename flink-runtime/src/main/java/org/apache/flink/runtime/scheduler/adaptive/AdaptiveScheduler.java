@@ -1233,6 +1233,7 @@ public class AdaptiveScheduler
                 jobInformation.getName(),
                 jobStatus,
                 jobGraph.getJobType(),
+                this.getClass().getSimpleName(),
                 cause,
                 jobInformation.getCheckpointingSettings(),
                 initializationTimestamp,
@@ -1583,24 +1584,27 @@ public class AdaptiveScheduler
                                     new ExecutionStateUpdateListener[0]));
         }
 
-        return executionGraphFactory.createAndRestoreExecutionGraph(
-                jobInformation.copyJobGraph(),
-                completedCheckpointStore,
-                checkpointsCleaner,
-                checkpointIdCounter,
-                checkpointStatsTracker,
-                TaskDeploymentDescriptorFactory.PartitionLocationConstraint.MUST_BE_KNOWN,
-                initializationTimestamp,
-                vertexAttemptNumberStore,
-                adjustedParallelismStore,
-                combinedExecutionStateUpdateListener,
-                // adaptive scheduler works in streaming mode, actually it only
-                // supports must be pipelined result partition, mark partition finish is
-                // no need.
-                rp -> false,
-                NonAdaptiveExecutionPlanSchedulingContext.INSTANCE,
-                getJobRescaleConfigInfo(),
-                LOG);
+        ExecutionGraph eg =
+                executionGraphFactory.createAndRestoreExecutionGraph(
+                        jobInformation.copyJobGraph(),
+                        completedCheckpointStore,
+                        checkpointsCleaner,
+                        checkpointIdCounter,
+                        checkpointStatsTracker,
+                        TaskDeploymentDescriptorFactory.PartitionLocationConstraint.MUST_BE_KNOWN,
+                        initializationTimestamp,
+                        vertexAttemptNumberStore,
+                        adjustedParallelismStore,
+                        combinedExecutionStateUpdateListener,
+                        // adaptive scheduler works in streaming mode, actually it only
+                        // supports must be pipelined result partition, mark partition finish is
+                        // no need.
+                        rp -> false,
+                        NonAdaptiveExecutionPlanSchedulingContext.INSTANCE,
+                        getJobRescaleConfigInfo(),
+                        LOG);
+        eg.setSchedulerName(getClass().getSimpleName());
+        return eg;
     }
 
     @Override

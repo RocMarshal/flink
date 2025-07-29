@@ -77,6 +77,7 @@ public class DefaultJobMasterServiceProcessFactory implements JobMasterServicePr
                 jobName,
                 jobStatus,
                 jobType,
+                null,
                 cause,
                 checkpointingSettings,
                 initializationTimestamp);

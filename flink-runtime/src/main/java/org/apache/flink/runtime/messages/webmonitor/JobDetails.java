@@ -26,6 +26,7 @@ import org.apache.flink.runtime.executiongraph.AccessExecution;
 import org.apache.flink.runtime.executiongraph.AccessExecutionGraph;
 import org.apache.flink.runtime.executiongraph.AccessExecutionJobVertex;
 import org.apache.flink.runtime.executiongraph.AccessExecutionVertex;
+import org.apache.flink.runtime.jobgraph.JobType;
 import org.apache.flink.runtime.rest.messages.json.JobIDDeserializer;
 import org.apache.flink.runtime.rest.messages.json.JobIDSerializer;
 import org.apache.flink.util.Preconditions;
@@ -42,6 +43,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -54,6 +56,8 @@ public class JobDetails implements Serializable {
 
     private static final String FIELD_NAME_JOB_ID = "jid";
     private static final String FIELD_NAME_JOB_NAME = "name";
+    private static final String FIELD_NAME_JOB_TYPE = "job-type";
+    private static final String FIELD_NAME_JOB_SCHEDULER = "job-scheduler";
     private static final String FIELD_NAME_START_TIME = "start-time";
     private static final String FIELD_NAME_END_TIME = "end-time";
     private static final String FIELD_NAME_DURATION = "duration";
@@ -66,6 +70,10 @@ public class JobDetails implements Serializable {
     private final JobID jobId;
 
     private final String jobName;
+
+    private final JobType jobType;
+
+    private final String jobScheduler;
 
     private final long startTime;
 
@@ -100,6 +108,8 @@ public class JobDetails implements Serializable {
             @JsonProperty(FIELD_NAME_JOB_ID) @JsonDeserialize(using = JobIDDeserializer.class)
                     JobID jobId,
             @JsonProperty(FIELD_NAME_JOB_NAME) String jobName,
+            @JsonProperty(FIELD_NAME_JOB_TYPE) JobType jobType,
+            @JsonProperty(FIELD_NAME_JOB_SCHEDULER) String jobScheduler,
             @JsonProperty(FIELD_NAME_START_TIME) long startTime,
             @JsonProperty(FIELD_NAME_END_TIME) long endTime,
             @JsonProperty(FIELD_NAME_DURATION) long duration,
@@ -110,6 +120,8 @@ public class JobDetails implements Serializable {
         this(
                 jobId,
                 jobName,
+                jobType,
+                jobScheduler,
                 startTime,
                 endTime,
                 duration,
@@ -125,6 +137,8 @@ public class JobDetails implements Serializable {
     public JobDetails(
             JobID jobId,
             String jobName,
+            JobType jobType,
+            String jobScheduler,
             long startTime,
             long endTime,
             long duration,
@@ -135,6 +149,8 @@ public class JobDetails implements Serializable {
         this(
                 jobId,
                 jobName,
+                jobType,
+                jobScheduler,
                 startTime,
                 endTime,
                 duration,
@@ -148,6 +164,8 @@ public class JobDetails implements Serializable {
     public JobDetails(
             JobID jobId,
             String jobName,
+            JobType jobType,
+            String jobScheduler,
             long startTime,
             long endTime,
             long duration,
@@ -159,6 +177,8 @@ public class JobDetails implements Serializable {
         this(
                 jobId,
                 jobName,
+                jobType,
+                jobScheduler,
                 startTime,
                 endTime,
                 duration,
@@ -173,6 +193,8 @@ public class JobDetails implements Serializable {
     public JobDetails(
             JobID jobId,
             String jobName,
+            JobType jobType,
+            String jobScheduler,
             long startTime,
             long endTime,
             long duration,
@@ -184,6 +206,8 @@ public class JobDetails implements Serializable {
             int pendingOperators) {
         this.jobId = checkNotNull(jobId);
         this.jobName = checkNotNull(jobName);
+        this.jobType = jobType;
+        this.jobScheduler = checkNotNull(jobScheduler);
         this.startTime = startTime;
         this.endTime = endTime;
         this.duration = duration;
@@ -241,6 +265,8 @@ public class JobDetails implements Serializable {
         return new JobDetails(
                 job.getJobID(),
                 job.getJobName(),
+                job.getJobType(),
+                job.getSchedulerName(),
                 started,
                 finished,
                 duration,
@@ -263,6 +289,16 @@ public class JobDetails implements Serializable {
     @JsonProperty(FIELD_NAME_JOB_NAME)
     public String getJobName() {
         return jobName;
+    }
+
+    @JsonProperty(FIELD_NAME_JOB_TYPE)
+    public JobType getJobType() {
+        return jobType;
+    }
+
+    @JsonProperty(FIELD_NAME_JOB_SCHEDULER)
+    public String getJobScheduler() {
+        return jobScheduler;
     }
 
     @JsonProperty(FIELD_NAME_START_TIME)
@@ -350,6 +386,8 @@ public class JobDetails implements Serializable {
                     && this.status == that.status
                     && this.jobId.equals(that.jobId)
                     && this.jobName.equals(that.jobName)
+                    && Objects.equals(jobType, that.jobType)
+                    && Objects.equals(jobScheduler, that.jobScheduler)
                     && Arrays.equals(this.tasksPerState, that.tasksPerState)
                     && this.currentExecutionAttempts.equals(that.currentExecutionAttempts)
                     && this.pendingOperators == that.pendingOperators;
@@ -380,6 +418,12 @@ public class JobDetails implements Serializable {
                 + jobId
                 + ", jobName='"
                 + jobName
+                + '\''
+                + ", jobType='"
+                + jobType
+                + '\''
+                + ", jobScheduler='"
+                + jobScheduler
                 + '\''
                 + ", startTime="
                 + startTime

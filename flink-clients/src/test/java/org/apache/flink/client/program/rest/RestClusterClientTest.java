@@ -1432,10 +1432,30 @@ class RestClusterClientTest {
                 throws RestHandlerException {
             JobDetails running =
                     new JobDetails(
-                            new JobID(), "job1", 0, 0, 0, JobStatus.RUNNING, 0, new int[10], 0);
+                            new JobID(),
+                            "job1",
+                            null,
+                            null,
+                            0,
+                            0,
+                            0,
+                            JobStatus.RUNNING,
+                            0,
+                            new int[10],
+                            0);
             JobDetails finished =
                     new JobDetails(
-                            new JobID(), "job2", 0, 0, 0, JobStatus.FINISHED, 0, new int[10], 0);
+                            new JobID(),
+                            "job2",
+                            null,
+                            null,
+                            0,
+                            0,
+                            0,
+                            JobStatus.FINISHED,
+                            0,
+                            new int[10],
+                            0);
             return CompletableFuture.completedFuture(
                     new MultipleJobsDetails(Arrays.asList(running, finished)));
         }

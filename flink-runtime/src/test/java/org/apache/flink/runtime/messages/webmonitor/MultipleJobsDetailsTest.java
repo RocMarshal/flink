@@ -49,6 +49,8 @@ class MultipleJobsDetailsTest {
                 new JobDetails(
                         new JobID(),
                         "running",
+                        null,
+                        null,
                         1L,
                         -1L,
                         9L,
@@ -61,6 +63,8 @@ class MultipleJobsDetailsTest {
                 new JobDetails(
                         new JobID(),
                         "finished",
+                        null,
+                        null,
                         1L,
                         5L,
                         4L,

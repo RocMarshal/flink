@@ -420,6 +420,8 @@ class HistoryServerArchiveFetcher {
                 new JobDetails(
                         jobId,
                         name,
+                        null,
+                        null,
                         startTime,
                         endTime,
                         duration,

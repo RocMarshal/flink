@@ -42,6 +42,7 @@ class ExecutionGraphInfoTest {
                         "test job name",
                         JobStatus.FAILED,
                         JobType.STREAMING,
+                        null,
                         new RuntimeException("Expected RuntimeException"),
                         null,
                         System.currentTimeMillis());

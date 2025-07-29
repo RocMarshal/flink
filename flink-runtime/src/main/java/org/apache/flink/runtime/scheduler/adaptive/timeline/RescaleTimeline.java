@@ -90,5 +90,10 @@ public interface RescaleTimeline {
         public boolean inIdling() {
             return false;
         }
+
+        @Override
+        public boolean inRescalingProgress() {
+            return false;
+        }
     }
 }

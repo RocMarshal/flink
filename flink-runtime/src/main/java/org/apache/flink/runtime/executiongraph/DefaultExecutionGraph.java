@@ -311,6 +311,8 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
 
     private final ExecutionPlanSchedulingContext executionPlanSchedulingContext;
 
+    private String schedulerName;
+
     // Rescale related.
     @Nullable private final JobRescaleConfigInfo jobRescaleConfigInfo;
 
@@ -674,6 +676,12 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     @Override
     public JobType getJobType() {
         return jobInformation.getJobType();
+    }
+
+    @Nullable
+    @Override
+    public String getSchedulerName() {
+        return schedulerName;
     }
 
     @Override
@@ -1815,5 +1823,10 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     @Override
     public TaskDeploymentDescriptorFactory getTaskDeploymentDescriptorFactory() {
         return taskDeploymentDescriptorFactory;
+    }
+
+    @Override
+    public void setSchedulerName(String schedulerName) {
+        this.schedulerName = schedulerName;
     }
 }

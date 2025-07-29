@@ -90,6 +90,8 @@ class JobDetailsTest {
             new JobDetails(
                     JobID.fromHexString("7a7c3291accebd10b6be8d4f8c8d8dfc"),
                     "foobar",
+                    null,
+                    null,
                     1L,
                     10L,
                     9L,

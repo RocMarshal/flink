@@ -95,6 +95,8 @@ class WebMonitorMessagesTest {
                 new JobDetails(
                         jid,
                         name,
+                        null,
+                        null,
                         time,
                         endTime,
                         endTime - time,
@@ -106,6 +108,8 @@ class WebMonitorMessagesTest {
                 new JobDetails(
                         jid,
                         name,
+                        null,
+                        null,
                         time,
                         endTime,
                         endTime - time,
@@ -147,6 +151,8 @@ class WebMonitorMessagesTest {
                     new JobDetails(
                             jid,
                             name,
+                            null,
+                            null,
                             time,
                             endTime,
                             endTime - time,

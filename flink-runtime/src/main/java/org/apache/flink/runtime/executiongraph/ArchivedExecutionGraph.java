@@ -65,6 +65,8 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
     /** The name of the original job graph. */
     private final String jobName;
 
+    @Nullable private final String schedulerName;
+
     /** All job vertices that are part of this graph. */
     private final Map<JobVertexID, ArchivedExecutionJobVertex> tasks;
 
@@ -123,6 +125,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
     public ArchivedExecutionGraph(
             JobID jobID,
             String jobName,
+            @Nullable String schedulerName,
             Map<JobVertexID, ArchivedExecutionJobVertex> tasks,
             List<ArchivedExecutionJobVertex> verticesInCreationOrder,
             long[] stateTimestamps,
@@ -146,6 +149,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
 
         this.jobID = Preconditions.checkNotNull(jobID);
         this.jobName = Preconditions.checkNotNull(jobName);
+        this.schedulerName = schedulerName;
         this.tasks = Preconditions.checkNotNull(tasks);
         this.verticesInCreationOrder = Preconditions.checkNotNull(verticesInCreationOrder);
         this.stateTimestamps = Preconditions.checkNotNull(stateTimestamps);
@@ -198,6 +202,12 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
     @Override
     public JobType getJobType() {
         return jobType;
+    }
+
+    @Nullable
+    @Override
+    public String getSchedulerName() {
+        return schedulerName;
     }
 
     @Nullable
@@ -379,6 +389,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
         return new ArchivedExecutionGraph(
                 executionGraph.getJobID(),
                 executionGraph.getJobName(),
+                executionGraph.getSchedulerName(),
                 archivedTasks,
                 archivedVerticesInCreationOrder,
                 timestamps,
@@ -410,6 +421,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
             String jobName,
             JobStatus jobStatus,
             @Nullable JobType jobType,
+            @Nullable String schedulerName,
             @Nullable Throwable throwable,
             @Nullable JobCheckpointingSettings checkpointingSettings,
             long initializationTimestamp) {
@@ -418,6 +430,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
                 jobName,
                 jobStatus,
                 jobType,
+                schedulerName,
                 Collections.emptyMap(),
                 Collections.emptyList(),
                 throwable,
@@ -430,6 +443,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
             String jobName,
             JobStatus jobStatus,
             JobType jobType,
+            String schedulerName,
             @Nullable Throwable throwable,
             @Nullable JobCheckpointingSettings checkpointingSettings,
             long initializationTimestamp,
@@ -460,6 +474,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
                 jobName,
                 jobStatus,
                 jobType,
+                schedulerName,
                 archivedJobVertices,
                 archivedVerticesInCreationOrder,
                 throwable,
@@ -472,6 +487,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
             String jobName,
             JobStatus jobStatus,
             JobType jobType,
+            String schedulerName,
             Map<JobVertexID, ArchivedExecutionJobVertex> archivedTasks,
             List<ArchivedExecutionJobVertex> archivedVerticesInCreationOrder,
             @Nullable Throwable throwable,
@@ -499,6 +515,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
         return new ArchivedExecutionGraph(
                 jobId,
                 jobName,
+                schedulerName,
                 archivedTasks,
                 archivedVerticesInCreationOrder,
                 timestamps,

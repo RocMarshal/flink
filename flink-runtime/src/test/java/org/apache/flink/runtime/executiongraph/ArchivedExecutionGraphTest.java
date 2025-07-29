@@ -162,6 +162,7 @@ public class ArchivedExecutionGraphTest {
                         "TestJob",
                         JobStatus.SUSPENDED,
                         JobType.STREAMING,
+                        null,
                         new Exception("Test suspension exception"),
                         null,
                         System.currentTimeMillis());
@@ -181,6 +182,7 @@ public class ArchivedExecutionGraphTest {
                         "TestJob",
                         JobStatus.INITIALIZING,
                         JobType.STREAMING,
+                        null,
                         null,
                         new JobCheckpointingSettings(checkpointCoordinatorConfiguration, null),
                         System.currentTimeMillis());
@@ -215,6 +217,7 @@ public class ArchivedExecutionGraphTest {
                         "TestJob",
                         JobStatus.INITIALIZING,
                         JobType.STREAMING,
+                        null,
                         null,
                         null,
                         System.currentTimeMillis(),
