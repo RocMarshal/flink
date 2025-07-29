@@ -164,6 +164,11 @@ public class Rescale implements Serializable {
         return addSchedulerState(state, null);
     }
 
+    public Rescale clearSchedulerStates() {
+        this.schedulerStates.clear();
+        return this;
+    }
+
     public Rescale addSchedulerState(State schedulerState, @Nullable Throwable throwable) {
         Long outTimestamp = schedulerState.getDurable().getOutTimestamp();
         long logicEndMillis =
@@ -179,11 +184,6 @@ public class Rescale implements Serializable {
 
     public List<SchedulerStateSpan> getSchedulerStates() {
         return Collections.unmodifiableList(schedulerStates);
-    }
-
-    public Rescale clearSchedulerStates() {
-        this.schedulerStates.clear();
-        return this;
     }
 
     @Nullable
