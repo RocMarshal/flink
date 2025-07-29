@@ -21,6 +21,8 @@ package org.apache.flink.runtime.scheduler.adaptive;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.runtime.executiongraph.ArchivedExecutionGraph;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.Durable;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleStatus;
 import org.apache.flink.util.function.FunctionWithException;
 import org.apache.flink.util.function.ThrowingConsumer;
 
@@ -33,7 +35,25 @@ import java.util.function.Consumer;
  * State abstraction of the {@link AdaptiveScheduler}. This interface contains all methods every
  * state implementation must support.
  */
-interface State extends LabeledGlobalFailureHandler {
+public interface State extends LabeledGlobalFailureHandler {
+
+    /**
+     * Get the durable time information of the current state.
+     *
+     * @return The durable time information of the current state.
+     */
+    default Durable getDurable() {
+        return new Durable();
+    }
+
+    /**
+     * Get the status that is mapping to the current state in the current rescale.
+     *
+     * @return The status that is mapping to the current state in the current rescale.
+     */
+    default Optional<RescaleStatus> getRescaleStatus() {
+        return Optional.empty();
+    }
 
     /**
      * This method is called whenever one transitions out of this state.
