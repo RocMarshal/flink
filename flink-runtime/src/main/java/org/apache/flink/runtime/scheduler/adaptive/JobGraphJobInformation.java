@@ -78,11 +78,17 @@ public class JobGraphJobInformation implements JobInformation {
                 jobGraph.getVertices(), (vertex) -> getVertexInformation(vertex.getID()));
     }
 
+    @Override
+    public String getVertexName(JobVertexID jobVertexID) {
+        return jobGraph.findVertexByID(jobVertexID).getName();
+    }
+
     /** Returns a copy of a jobGraph that can be mutated. */
     public JobGraph copyJobGraph() {
         return InstantiationUtil.cloneUnchecked(jobGraph);
     }
 
+    @Override
     public VertexParallelismStore getVertexParallelismStore() {
         return vertexParallelismStore;
     }
