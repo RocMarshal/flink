@@ -68,6 +68,7 @@ import org.apache.flink.runtime.operators.coordination.CoordinatorStore;
 import org.apache.flink.runtime.operators.coordination.CoordinatorStoreImpl;
 import org.apache.flink.runtime.query.KvStateLocationRegistry;
 import org.apache.flink.runtime.rest.messages.JobPlanInfo;
+import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleConfigInfo;
 import org.apache.flink.runtime.scheduler.DefaultVertexParallelismStore;
 import org.apache.flink.runtime.scheduler.InternalFailuresListener;
 import org.apache.flink.runtime.scheduler.SsgNetworkMemoryCalculationUtils;
@@ -310,6 +311,9 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
 
     private final ExecutionPlanSchedulingContext executionPlanSchedulingContext;
 
+    // Rescale related.
+    @Nullable private final JobRescaleConfigInfo jobRescaleConfigInfo;
+
     // --------------------------------------------------------------------------------------------
     //   Constructors
     // --------------------------------------------------------------------------------------------
@@ -336,7 +340,8 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
             MarkPartitionFinishedStrategy markPartitionFinishedStrategy,
             TaskDeploymentDescriptorFactory taskDeploymentDescriptorFactory,
             List<JobStatusChangedListener> jobStatusChangedListeners,
-            ExecutionPlanSchedulingContext executionPlanSchedulingContext) {
+            ExecutionPlanSchedulingContext executionPlanSchedulingContext,
+            JobRescaleConfigInfo jobRescaleConfigInfo) {
 
         this.executionGraphId = new ExecutionGraphID();
 
@@ -410,6 +415,8 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
 
         this.executionPlanSchedulingContext = checkNotNull(executionPlanSchedulingContext);
 
+        this.jobRescaleConfigInfo = jobRescaleConfigInfo;
+
         LOG.info(
                 "Created execution graph {} for job {}.",
                 executionGraphId,
@@ -461,6 +468,12 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     @Override
     public int getPendingOperatorCount() {
         return executionPlanSchedulingContext.getPendingOperatorCount();
+    }
+
+    @Nullable
+    @Override
+    public JobRescaleConfigInfo getJobRescaleConfigInfo() {
+        return jobRescaleConfigInfo;
     }
 
     @Override
