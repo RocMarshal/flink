@@ -38,6 +38,12 @@ public class RestHandlerConfiguration {
 
     private final int checkpointCacheSize;
 
+    private final int rescaleHistorySize;
+
+    private final Duration rescalesCacheExpireAfterWrite;
+
+    private final int rescaleCacheSize;
+
     private final Duration timeout;
 
     private final File webUiDir;
@@ -53,6 +59,9 @@ public class RestHandlerConfiguration {
             int checkpointHistorySize,
             Duration checkpointCacheExpireAfterWrite,
             int checkpointCacheSize,
+            int rescaleHistorySize,
+            Duration rescalesCacheExpireAfterWrite,
+            int rescaleCacheSize,
             Duration timeout,
             File webUiDir,
             boolean webSubmitEnabled,
@@ -65,6 +74,10 @@ public class RestHandlerConfiguration {
         this.checkpointHistorySize = checkpointHistorySize;
         this.checkpointCacheExpireAfterWrite = checkpointCacheExpireAfterWrite;
         this.checkpointCacheSize = checkpointCacheSize;
+
+        this.rescaleHistorySize = rescaleHistorySize;
+        this.rescalesCacheExpireAfterWrite = rescalesCacheExpireAfterWrite;
+        this.rescaleCacheSize = rescaleCacheSize;
 
         this.timeout = Preconditions.checkNotNull(timeout);
         this.webUiDir = Preconditions.checkNotNull(webUiDir);
@@ -87,6 +100,18 @@ public class RestHandlerConfiguration {
 
     public int getCheckpointCacheSize() {
         return checkpointCacheSize;
+    }
+
+    public int getRescaleHistorySize() {
+        return rescaleHistorySize;
+    }
+
+    public Duration getRescalesCacheExpireAfterWrite() {
+        return rescalesCacheExpireAfterWrite;
+    }
+
+    public int getRescaleCacheSize() {
+        return rescaleCacheSize;
     }
 
     public Duration getTimeout() {
@@ -118,6 +143,13 @@ public class RestHandlerConfiguration {
         final int checkpointStatsSnapshotCacheSize =
                 configuration.get(RestOptions.CACHE_CHECKPOINT_STATISTICS_SIZE);
 
+        final int rescaleHistorySize =
+                configuration.get(WebOptions.MAX_ADAPTIVE_SCHEDULER_RESCALE_HISTORY_SIZE);
+        final Duration rescalesStatsSnapshotCacheExpireAfterWrite =
+                configuration.get(RestOptions.CACHE_RESCALES_STATISTICS_TIMEOUT);
+        final int rescalesStatsSnapshotCacheSize =
+                configuration.get(RestOptions.CACHE_RESCALES_STATISTICS_SIZE);
+
         final Duration timeout = configuration.get(WebOptions.TIMEOUT);
 
         final String rootDir = "flink-web-ui";
@@ -136,6 +168,9 @@ public class RestHandlerConfiguration {
                 checkpointHistorySize,
                 checkpointStatsSnapshotCacheExpireAfterWrite,
                 checkpointStatsSnapshotCacheSize,
+                rescaleHistorySize,
+                rescalesStatsSnapshotCacheExpireAfterWrite,
+                rescalesStatsSnapshotCacheSize,
                 timeout,
                 webUiDir,
                 webSubmitEnabled,
