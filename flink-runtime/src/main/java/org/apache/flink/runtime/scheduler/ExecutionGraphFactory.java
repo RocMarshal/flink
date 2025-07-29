@@ -28,6 +28,8 @@ import org.apache.flink.runtime.executiongraph.ExecutionStateUpdateListener;
 import org.apache.flink.runtime.executiongraph.MarkPartitionFinishedStrategy;
 import org.apache.flink.runtime.executiongraph.VertexAttemptNumberStore;
 import org.apache.flink.runtime.jobgraph.JobGraph;
+import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleConfigInfo;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
 import org.apache.flink.runtime.scheduler.adaptivebatch.ExecutionPlanSchedulingContext;
 
 import org.slf4j.Logger;
@@ -52,6 +54,8 @@ public interface ExecutionGraphFactory {
      *     max parallelism settings
      * @param executionStateUpdateListener listener for state transitions of the individual
      *     executions
+     * @param rescaleTimeline The {@link RescaleTimeline} that's used for collection the rescale
+     *     related statistics.
      * @param log log to use for logging
      * @param executionPlanSchedulingContext execution plan scheduling context that retrieve
      *     execution context details for adaptive batch jobs
@@ -71,6 +75,7 @@ public interface ExecutionGraphFactory {
             ExecutionStateUpdateListener executionStateUpdateListener,
             MarkPartitionFinishedStrategy markPartitionFinishedStrategy,
             ExecutionPlanSchedulingContext executionPlanSchedulingContext,
+            JobRescaleConfigInfo jobRescaleConfigInfo,
             Logger log)
             throws Exception;
 }

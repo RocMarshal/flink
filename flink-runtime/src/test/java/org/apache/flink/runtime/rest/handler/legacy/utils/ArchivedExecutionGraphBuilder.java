@@ -29,6 +29,7 @@ import org.apache.flink.runtime.executiongraph.ErrorInfo;
 import org.apache.flink.runtime.jobgraph.JobType;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.rest.messages.JobPlanInfo;
+import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleConfigInfo;
 import org.apache.flink.util.OptionalFailure;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
@@ -60,6 +61,7 @@ public class ArchivedExecutionGraphBuilder {
     private CheckpointStatsSnapshot checkpointStatsSnapshot;
     private String streamGraphJson;
     private int pendingOperatorCounts = 0;
+    private JobRescaleConfigInfo jobRescaleConfigInfo;
 
     public ArchivedExecutionGraphBuilder setJobID(JobID jobID) {
         this.jobID = jobID;
@@ -138,6 +140,10 @@ public class ArchivedExecutionGraphBuilder {
         return this;
     }
 
+    public void setJobRescaleConfigInfo(JobRescaleConfigInfo jobRescaleConfigInfo) {
+        this.jobRescaleConfigInfo = jobRescaleConfigInfo;
+    }
+
     public ArchivedExecutionGraphBuilder setPendingOperatorCounts(int pendingOperatorCounts) {
         this.pendingOperatorCounts = pendingOperatorCounts;
         return this;
@@ -183,6 +189,7 @@ public class ArchivedExecutionGraphBuilder {
                 TernaryBoolean.UNDEFINED,
                 "changelogStorageName",
                 streamGraphJson,
+                jobRescaleConfigInfo,
                 pendingOperatorCounts);
     }
 }

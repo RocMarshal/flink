@@ -94,6 +94,7 @@ import org.apache.flink.runtime.operators.coordination.OperatorEvent;
 import org.apache.flink.runtime.operators.coordination.TaskNotRunningException;
 import org.apache.flink.runtime.query.KvStateLocation;
 import org.apache.flink.runtime.query.UnknownKvStateLocation;
+import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleConfigInfo;
 import org.apache.flink.runtime.rpc.FatalErrorHandler;
 import org.apache.flink.runtime.scheduler.CoordinatorNotExistException;
 import org.apache.flink.runtime.scheduler.DefaultVertexParallelismInfo;
@@ -1600,6 +1601,7 @@ public class AdaptiveScheduler
                         // no need.
                         rp -> false,
                         NonAdaptiveExecutionPlanSchedulingContext.INSTANCE,
+                        getJobRescaleConfigInfo(),
                         LOG);
         executionGraph.setScheduler(getClass().getSimpleName());
         return executionGraph;
@@ -1823,5 +1825,18 @@ public class AdaptiveScheduler
                                                                 state.getClass().getName())));
             }
         };
+    }
+
+    private JobRescaleConfigInfo getJobRescaleConfigInfo() {
+        return new JobRescaleConfigInfo(
+                settings.getRescaleHistoryMax(),
+                settings.getExecutionMode(),
+                settings.getSubmissionResourceWaitTimeout().toMillis(),
+                settings.getSubmissionResourceStabilizationTimeout().toMillis(),
+                settings.getSlotIdleTimeout().toMillis(),
+                settings.getExecutingCooldownTimeout().toMillis(),
+                settings.getExecutingResourceStabilizationTimeout().toMillis(),
+                settings.getMaximumDelayForTriggeringRescale().toMillis(),
+                settings.getRescaleOnFailedCheckpointCount());
     }
 }
