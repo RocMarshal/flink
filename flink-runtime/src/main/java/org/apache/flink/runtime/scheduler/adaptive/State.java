@@ -28,6 +28,7 @@ import org.apache.flink.util.function.ThrowingConsumer;
 
 import org.slf4j.Logger;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -42,9 +43,7 @@ public interface State extends LabeledGlobalFailureHandler {
      *
      * @return The durable time information of the current state.
      */
-    default Durable getDurable() {
-        return new Durable();
-    }
+    Durable getDurable();
 
     /**
      * Get the status that is mapping to the current state in the current rescale.
@@ -60,7 +59,9 @@ public interface State extends LabeledGlobalFailureHandler {
      *
      * @param newState newState is the state into which the scheduler transitions
      */
-    default void onLeave(Class<? extends State> newState) {}
+    default void onLeave(Class<? extends State> newState) {
+        getDurable().setOutTimestamp(Instant.now().toEpochMilli());
+    }
 
     /** Cancels the job execution. */
     void cancel();

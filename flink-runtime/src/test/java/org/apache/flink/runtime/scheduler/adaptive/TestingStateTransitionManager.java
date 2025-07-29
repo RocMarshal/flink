@@ -18,6 +18,8 @@
 
 package org.apache.flink.runtime.scheduler.adaptive;
 
+import org.apache.flink.runtime.scheduler.adaptive.timeline.DrivenType;
+
 /** Testing implementation for {@link StateTransitionManager}. */
 public class TestingStateTransitionManager implements StateTransitionManager {
 
@@ -40,6 +42,9 @@ public class TestingStateTransitionManager implements StateTransitionManager {
         this.onChangeRunnable = onChangeRunnable;
         this.onTriggerRunnable = onTriggerRunnable;
     }
+
+    @Override
+    public void onChange(DrivenType drivenType) {}
 
     @Override
     public void onChange() {
