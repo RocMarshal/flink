@@ -94,7 +94,7 @@ public class Rescale implements Serializable {
         return terminalState;
     }
 
-    private boolean isTerminated() {
+    public boolean isTerminated() {
         return terminalState != null;
     }
 
