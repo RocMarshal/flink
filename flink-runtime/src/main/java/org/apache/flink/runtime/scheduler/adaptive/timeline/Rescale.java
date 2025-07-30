@@ -192,11 +192,20 @@ public class Rescale implements Serializable {
     }
 
     @Nullable
+    public TerminatedReason getTerminatedReason() {
+        return terminatedReason;
+    }
+
+    public RescaleIdInfo getRescaleIdInfo() {
+        return rescaleIdInfo;
+    }
+
+    @Nullable
     public String getStringedException() {
         return stringedException;
     }
 
-    private boolean isTerminated() {
+    boolean isTerminated() {
         return terminalState != null;
     }
 
