@@ -38,6 +38,7 @@ import org.apache.flink.runtime.rest.handler.async.OperationResult;
 import org.apache.flink.runtime.rest.handler.job.AsynchronousJobOperationKey;
 import org.apache.flink.runtime.rest.messages.ThreadDumpInfo;
 import org.apache.flink.runtime.scheduler.ExecutionGraphInfo;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.util.SerializedValue;
 import org.apache.flink.util.concurrent.FutureUtils;
 import org.apache.flink.util.function.TriFunction;
@@ -67,6 +68,10 @@ public class TestingRestfulGateway implements RestfulGateway {
                             FutureUtils.completedExceptionally(new UnsupportedOperationException());
     static final Function<JobID, CompletableFuture<CheckpointStatsSnapshot>>
             DEFAULT_REQUEST_CHECKPOINT_STATS_SNAPSHOT =
+                    jobId ->
+                            FutureUtils.completedExceptionally(new UnsupportedOperationException());
+    static final Function<JobID, CompletableFuture<RescalesStatsSnapshot>>
+            DEFAULT_REQUEST_RESCALES_STATS_SNAPSHOT =
                     jobId ->
                             FutureUtils.completedExceptionally(new UnsupportedOperationException());
     static final Function<JobID, CompletableFuture<JobStatus>> DEFAULT_REQUEST_JOB_STATUS_FUNCTION =
@@ -155,6 +160,9 @@ public class TestingRestfulGateway implements RestfulGateway {
     protected Function<JobID, CompletableFuture<CheckpointStatsSnapshot>>
             requestCheckpointStatsSnapshotFunction;
 
+    protected Function<JobID, CompletableFuture<RescalesStatsSnapshot>>
+            requestRescalesStatsSnapshotFunction;
+
     protected Function<JobID, CompletableFuture<JobResult>> requestJobResultFunction;
 
     protected Function<JobID, CompletableFuture<JobStatus>> requestJobStatusFunction;
@@ -210,6 +218,7 @@ public class TestingRestfulGateway implements RestfulGateway {
                 DEFAULT_REQUEST_JOB_FUNCTION,
                 DEFAULT_REQUEST_EXECUTION_GRAPH_INFO,
                 DEFAULT_REQUEST_CHECKPOINT_STATS_SNAPSHOT,
+                DEFAULT_REQUEST_RESCALES_STATS_SNAPSHOT,
                 DEFAULT_REQUEST_JOB_RESULT_FUNCTION,
                 DEFAULT_REQUEST_JOB_STATUS_FUNCTION,
                 DEFAULT_REQUEST_MULTIPLE_JOB_DETAILS_SUPPLIER,
@@ -235,6 +244,8 @@ public class TestingRestfulGateway implements RestfulGateway {
                     requestExecutionGraphInfoFunction,
             Function<JobID, CompletableFuture<CheckpointStatsSnapshot>>
                     requestCheckpointStatsSnapshotFunction,
+            Function<JobID, CompletableFuture<RescalesStatsSnapshot>>
+                    requestRescalesStatsSnapshotFunction,
             Function<JobID, CompletableFuture<JobResult>> requestJobResultFunction,
             Function<JobID, CompletableFuture<JobStatus>> requestJobStatusFunction,
             Supplier<CompletableFuture<MultipleJobsDetails>> requestMultipleJobDetailsSupplier,
@@ -275,6 +286,7 @@ public class TestingRestfulGateway implements RestfulGateway {
         this.requestJobFunction = requestJobFunction;
         this.requestExecutionGraphInfoFunction = requestExecutionGraphInfoFunction;
         this.requestCheckpointStatsSnapshotFunction = requestCheckpointStatsSnapshotFunction;
+        this.requestRescalesStatsSnapshotFunction = requestRescalesStatsSnapshotFunction;
         this.requestJobResultFunction = requestJobResultFunction;
         this.requestJobStatusFunction = requestJobStatusFunction;
         this.requestMultipleJobDetailsSupplier = requestMultipleJobDetailsSupplier;
@@ -319,6 +331,12 @@ public class TestingRestfulGateway implements RestfulGateway {
     public CompletableFuture<CheckpointStatsSnapshot> requestCheckpointStats(
             JobID jobId, Duration timeout) {
         return requestCheckpointStatsSnapshotFunction.apply(jobId);
+    }
+
+    @Override
+    public CompletableFuture<RescalesStatsSnapshot> requestRescalesStats(
+            JobID jobId, Duration timeout) {
+        return requestRescalesStatsSnapshotFunction.apply(jobId);
     }
 
     @Override
@@ -432,6 +450,8 @@ public class TestingRestfulGateway implements RestfulGateway {
                 requestExecutionGraphInfoFunction;
         protected Function<JobID, CompletableFuture<CheckpointStatsSnapshot>>
                 requestCheckpointStatsSnapshotFunction;
+        protected Function<JobID, CompletableFuture<RescalesStatsSnapshot>>
+                requestRescalesStatsSnapshotFunction;
         protected Function<JobID, CompletableFuture<JobResult>> requestJobResultFunction;
         protected Function<JobID, CompletableFuture<JobStatus>> requestJobStatusFunction;
         protected Supplier<CompletableFuture<MultipleJobsDetails>>
@@ -475,6 +495,7 @@ public class TestingRestfulGateway implements RestfulGateway {
             requestJobFunction = DEFAULT_REQUEST_JOB_FUNCTION;
             requestExecutionGraphInfoFunction = DEFAULT_REQUEST_EXECUTION_GRAPH_INFO;
             requestCheckpointStatsSnapshotFunction = DEFAULT_REQUEST_CHECKPOINT_STATS_SNAPSHOT;
+            requestRescalesStatsSnapshotFunction = DEFAULT_REQUEST_RESCALES_STATS_SNAPSHOT;
             requestJobResultFunction = DEFAULT_REQUEST_JOB_RESULT_FUNCTION;
             requestJobStatusFunction = DEFAULT_REQUEST_JOB_STATUS_FUNCTION;
             requestMultipleJobDetailsSupplier = DEFAULT_REQUEST_MULTIPLE_JOB_DETAILS_SUPPLIER;
@@ -526,6 +547,13 @@ public class TestingRestfulGateway implements RestfulGateway {
                 Function<JobID, CompletableFuture<CheckpointStatsSnapshot>>
                         requestCheckpointStatsSnapshotFunction) {
             this.requestCheckpointStatsSnapshotFunction = requestCheckpointStatsSnapshotFunction;
+            return self();
+        }
+
+        public T setRequestRescalesStatsSnapshotFunction(
+                Function<JobID, CompletableFuture<RescalesStatsSnapshot>>
+                        requestRescalesStatsSnapshotFunction) {
+            this.requestRescalesStatsSnapshotFunction = requestRescalesStatsSnapshotFunction;
             return self();
         }
 
@@ -656,6 +684,7 @@ public class TestingRestfulGateway implements RestfulGateway {
                     requestJobFunction,
                     requestExecutionGraphInfoFunction,
                     requestCheckpointStatsSnapshotFunction,
+                    requestRescalesStatsSnapshotFunction,
                     requestJobResultFunction,
                     requestJobStatusFunction,
                     requestMultipleJobDetailsSupplier,

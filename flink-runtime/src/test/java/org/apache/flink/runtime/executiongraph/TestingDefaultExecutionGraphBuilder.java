@@ -41,6 +41,7 @@ import org.apache.flink.runtime.metrics.groups.JobManagerJobMetricGroup;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
 import org.apache.flink.runtime.scheduler.SchedulerBase;
 import org.apache.flink.runtime.scheduler.VertexParallelismStore;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
 import org.apache.flink.runtime.scheduler.adaptivebatch.ExecutionPlanSchedulingContext;
 import org.apache.flink.runtime.scheduler.adaptivebatch.NonAdaptiveExecutionPlanSchedulingContext;
 import org.apache.flink.runtime.shuffle.ShuffleMaster;
@@ -223,7 +224,9 @@ public class TestingDefaultExecutionGraphBuilder {
                 markPartitionFinishedStrategy,
                 nonFinishedHybridPartitionShouldBeUnknown,
                 metricGroup,
-                executionPlanSchedulingContext);
+                executionPlanSchedulingContext,
+                null,
+                RescaleTimeline.NoOpRescaleTimeline.INSTANCE);
     }
 
     public DefaultExecutionGraph build(ScheduledExecutorService executorService)

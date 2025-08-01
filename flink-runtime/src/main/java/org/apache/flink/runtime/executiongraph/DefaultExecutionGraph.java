@@ -68,12 +68,15 @@ import org.apache.flink.runtime.operators.coordination.CoordinatorStore;
 import org.apache.flink.runtime.operators.coordination.CoordinatorStoreImpl;
 import org.apache.flink.runtime.query.KvStateLocationRegistry;
 import org.apache.flink.runtime.rest.messages.JobPlanInfo;
+import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleConfigInfo;
 import org.apache.flink.runtime.scheduler.DefaultVertexParallelismStore;
 import org.apache.flink.runtime.scheduler.InternalFailuresListener;
 import org.apache.flink.runtime.scheduler.SsgNetworkMemoryCalculationUtils;
 import org.apache.flink.runtime.scheduler.VertexParallelismInformation;
 import org.apache.flink.runtime.scheduler.VertexParallelismStore;
 import org.apache.flink.runtime.scheduler.adapter.DefaultExecutionTopology;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.scheduler.adaptivebatch.ExecutionPlanSchedulingContext;
 import org.apache.flink.runtime.scheduler.strategy.ConsumedPartitionGroup;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
@@ -310,6 +313,10 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
 
     private final ExecutionPlanSchedulingContext executionPlanSchedulingContext;
 
+    // Rescale related.
+    @Nullable private final JobRescaleConfigInfo jobRescaleConfigInfo;
+    private final RescaleTimeline rescaleTimeline;
+
     // --------------------------------------------------------------------------------------------
     //   Constructors
     // --------------------------------------------------------------------------------------------
@@ -336,7 +343,9 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
             MarkPartitionFinishedStrategy markPartitionFinishedStrategy,
             TaskDeploymentDescriptorFactory taskDeploymentDescriptorFactory,
             List<JobStatusChangedListener> jobStatusChangedListeners,
-            ExecutionPlanSchedulingContext executionPlanSchedulingContext) {
+            ExecutionPlanSchedulingContext executionPlanSchedulingContext,
+            JobRescaleConfigInfo jobRescaleConfigInfo,
+            RescaleTimeline rescaleTimeline) {
 
         this.executionGraphId = new ExecutionGraphID();
 
@@ -410,6 +419,9 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
 
         this.executionPlanSchedulingContext = checkNotNull(executionPlanSchedulingContext);
 
+        this.jobRescaleConfigInfo = jobRescaleConfigInfo;
+        this.rescaleTimeline = rescaleTimeline;
+
         LOG.info(
                 "Created execution graph {} for job {}.",
                 executionGraphId,
@@ -461,6 +473,12 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
     @Override
     public int getPendingOperatorCount() {
         return executionPlanSchedulingContext.getPendingOperatorCount();
+    }
+
+    @Nullable
+    @Override
+    public JobRescaleConfigInfo getJobRescaleConfigInfo() {
+        return jobRescaleConfigInfo;
     }
 
     @Override
@@ -597,6 +615,14 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         } else {
             return null;
         }
+    }
+
+    @Nullable
+    @Override
+    public RescalesStatsSnapshot getRescalesStatsSnapshot() {
+        return rescaleTimeline == null
+                ? RescalesStatsSnapshot.emptySnapshot()
+                : rescaleTimeline.createSnapshot();
     }
 
     private Collection<OperatorCoordinatorCheckpointContext>

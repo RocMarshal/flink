@@ -21,6 +21,8 @@ package org.apache.flink.runtime.scheduler.adaptive;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.runtime.executiongraph.ExecutionGraph;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleStatus;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
 import org.apache.flink.util.Preconditions;
 
 import org.slf4j.Logger;
@@ -28,6 +30,7 @@ import org.slf4j.Logger;
 import javax.annotation.Nullable;
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.ScheduledFuture;
 import java.util.function.Function;
 
@@ -74,6 +77,21 @@ class WaitingForResources extends StateWithoutExecutionGraph
         }
         this.previousExecutionGraph = previousExecutionGraph;
         context.runIfState(this, this::checkPotentialStateTransition, Duration.ZERO);
+    }
+
+    @Override
+    public State schedulerstate() {
+        return this;
+    }
+
+    @Override
+    public RescaleTimeline getRescaleTimeline() {
+        return context.getRescaleTimeline();
+    }
+
+    @Override
+    public Optional<RescaleStatus> getRescaleStatus() {
+        return Optional.of(RescaleStatus.WAITING_FOR_RESOURCES);
     }
 
     @Override

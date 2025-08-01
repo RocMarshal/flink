@@ -19,6 +19,8 @@
 package org.apache.flink.runtime.scheduler.adaptive;
 
 import org.apache.flink.api.common.JobID;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.DrivenType;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
 
 import java.time.Duration;
 import java.util.concurrent.ScheduledFuture;
@@ -31,8 +33,17 @@ public interface StateTransitionManager {
 
     /**
      * Is called if the environment changed in a way that a state transition could be considered.
+     *
+     * @param drivenType The type of the change.
      */
-    void onChange();
+    void onChange(DrivenType drivenType);
+
+    /**
+     * Is called if the environment changed in a way that a state transition could be considered.
+     */
+    default void onChange() {
+        onChange(DrivenType.ANONYMOUS);
+    }
 
     /**
      * Is called when any previous observed environment changes shall be verified possibly
@@ -48,6 +59,10 @@ public interface StateTransitionManager {
      * underlying system.
      */
     interface Context {
+
+        State schedulerstate();
+
+        RescaleTimeline getRescaleTimeline();
 
         /**
          * Returns {@code true} if the available resources are sufficient enough for a state

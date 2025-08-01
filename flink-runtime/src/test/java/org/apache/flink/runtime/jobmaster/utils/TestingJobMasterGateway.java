@@ -54,6 +54,7 @@ import org.apache.flink.runtime.query.KvStateLocation;
 import org.apache.flink.runtime.registration.RegistrationResponse;
 import org.apache.flink.runtime.resourcemanager.ResourceManagerId;
 import org.apache.flink.runtime.scheduler.ExecutionGraphInfo;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.shuffle.PartitionWithMetrics;
 import org.apache.flink.runtime.slots.ResourceRequirement;
 import org.apache.flink.runtime.state.KeyGroupRange;
@@ -137,6 +138,9 @@ public class TestingJobMasterGateway implements JobMasterGateway {
     @Nonnull
     private final Supplier<CompletableFuture<CheckpointStatsSnapshot>>
             checkpointStatsSnapshotSupplier;
+
+    @Nonnull
+    private final Supplier<CompletableFuture<RescalesStatsSnapshot>> rescalesStatsSnapshotSupplier;
 
     @Nonnull
     private final TriFunction<String, Boolean, SavepointFormatType, CompletableFuture<String>>
@@ -258,6 +262,9 @@ public class TestingJobMasterGateway implements JobMasterGateway {
                     Supplier<CompletableFuture<CheckpointStatsSnapshot>>
                             checkpointStatsSnapshotSupplier,
             @Nonnull
+                    Supplier<CompletableFuture<RescalesStatsSnapshot>>
+                            rescalesStatsSnapshotSupplier,
+            @Nonnull
                     TriFunction<String, Boolean, SavepointFormatType, CompletableFuture<String>>
                             triggerSavepointFunction,
             @Nonnull
@@ -344,6 +351,7 @@ public class TestingJobMasterGateway implements JobMasterGateway {
         this.requestJobStatusSupplier = requestJobStatusSupplier;
         this.requestJobSupplier = requestJobSupplier;
         this.checkpointStatsSnapshotSupplier = checkpointStatsSnapshotSupplier;
+        this.rescalesStatsSnapshotSupplier = rescalesStatsSnapshotSupplier;
         this.triggerSavepointFunction = triggerSavepointFunction;
         this.triggerCheckpointFunction = triggerCheckpointFunction;
         this.stopWithSavepointFunction = stopWithSavepointFunction;
@@ -446,6 +454,11 @@ public class TestingJobMasterGateway implements JobMasterGateway {
     @Override
     public CompletableFuture<CheckpointStatsSnapshot> requestCheckpointStats(Duration timeout) {
         return checkpointStatsSnapshotSupplier.get();
+    }
+
+    @Override
+    public CompletableFuture<RescalesStatsSnapshot> requestRescalesStats(Duration timeout) {
+        return rescalesStatsSnapshotSupplier.get();
     }
 
     @Override

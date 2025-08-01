@@ -39,6 +39,8 @@ import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.jobmaster.ExecutionDeploymentTracker;
 import org.apache.flink.runtime.jobmaster.ExecutionDeploymentTrackerDeploymentListenerAdapter;
 import org.apache.flink.runtime.metrics.groups.JobManagerJobMetricGroup;
+import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleConfigInfo;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
 import org.apache.flink.runtime.scheduler.adaptivebatch.ExecutionPlanSchedulingContext;
 import org.apache.flink.runtime.shuffle.ShuffleMaster;
 
@@ -139,6 +141,8 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
             ExecutionStateUpdateListener executionStateUpdateListener,
             MarkPartitionFinishedStrategy markPartitionFinishedStrategy,
             ExecutionPlanSchedulingContext executionPlanSchedulingContext,
+            JobRescaleConfigInfo jobRescaleConfigInfo,
+            RescaleTimeline rescaleTimeline,
             Logger log)
             throws Exception {
         ExecutionDeploymentListener executionDeploymentListener =
@@ -178,7 +182,9 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
                         markPartitionFinishedStrategy,
                         nonFinishedHybridPartitionShouldBeUnknown,
                         jobManagerJobMetricGroup,
-                        executionPlanSchedulingContext);
+                        executionPlanSchedulingContext,
+                        jobRescaleConfigInfo,
+                        rescaleTimeline);
 
         final CheckpointCoordinator checkpointCoordinator =
                 newExecutionGraph.getCheckpointCoordinator();

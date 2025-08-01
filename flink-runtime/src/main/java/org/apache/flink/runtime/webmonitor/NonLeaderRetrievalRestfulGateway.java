@@ -28,6 +28,7 @@ import org.apache.flink.runtime.messages.webmonitor.ClusterOverview;
 import org.apache.flink.runtime.messages.webmonitor.MultipleJobsDetails;
 import org.apache.flink.runtime.rest.messages.ThreadDumpInfo;
 import org.apache.flink.runtime.scheduler.ExecutionGraphInfo;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -72,6 +73,12 @@ public class NonLeaderRetrievalRestfulGateway implements RestfulGateway {
 
     @Override
     public CompletableFuture<CheckpointStatsSnapshot> requestCheckpointStats(
+            JobID jobId, Duration timeout) {
+        throw new UnsupportedOperationException(MESSAGE);
+    }
+
+    @Override
+    public CompletableFuture<RescalesStatsSnapshot> requestRescalesStats(
             JobID jobId, Duration timeout) {
         throw new UnsupportedOperationException(MESSAGE);
     }

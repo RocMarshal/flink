@@ -45,6 +45,7 @@ import org.apache.flink.runtime.resourcemanager.ResourceManagerId;
 import org.apache.flink.runtime.rpc.FencedRpcGateway;
 import org.apache.flink.runtime.rpc.RpcTimeout;
 import org.apache.flink.runtime.scheduler.ExecutionGraphInfo;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.shuffle.PartitionWithMetrics;
 import org.apache.flink.runtime.slots.ResourceRequirement;
 import org.apache.flink.runtime.taskexecutor.TaskExecutorToJobManagerHeartbeatPayload;
@@ -208,6 +209,14 @@ public interface JobMasterGateway
      * @return Future which is completed with the {@link CheckpointStatsSnapshot} of the job
      */
     CompletableFuture<CheckpointStatsSnapshot> requestCheckpointStats(@RpcTimeout Duration timeout);
+
+    /**
+     * Requests the {@link RescalesStatsSnapshot} of the job.
+     *
+     * @param timeout for the rpc call
+     * @return Future which is completed with the {@link RescalesStatsSnapshot} of the job
+     */
+    CompletableFuture<RescalesStatsSnapshot> requestRescalesStats(@RpcTimeout Duration timeout);
 
     /**
      * Triggers taking a savepoint of the executed job.

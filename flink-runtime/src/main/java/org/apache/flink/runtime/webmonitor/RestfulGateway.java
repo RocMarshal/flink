@@ -43,6 +43,7 @@ import org.apache.flink.runtime.rest.messages.ThreadDumpInfo;
 import org.apache.flink.runtime.rpc.RpcGateway;
 import org.apache.flink.runtime.rpc.RpcTimeout;
 import org.apache.flink.runtime.scheduler.ExecutionGraphInfo;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.util.SerializedValue;
 import org.apache.flink.util.concurrent.FutureUtils;
 
@@ -103,6 +104,16 @@ public interface RestfulGateway extends RpcGateway {
      * @return Future containing the {@link CheckpointStatsSnapshot} for the given jobId
      */
     CompletableFuture<CheckpointStatsSnapshot> requestCheckpointStats(
+            JobID jobId, @RpcTimeout Duration timeout);
+
+    /**
+     * Requests the {@link RescalesStatsSnapshot} containing rescales information.
+     *
+     * @param jobId identifying the job whose {@link RescalesStatsSnapshot} is requested
+     * @param timeout for the asynchronous operation
+     * @return Future containing the {@link RescalesStatsSnapshot} for the given jobId
+     */
+    CompletableFuture<RescalesStatsSnapshot> requestRescalesStats(
             JobID jobId, @RpcTimeout Duration timeout);
 
     /**

@@ -20,6 +20,11 @@ package org.apache.flink.runtime.scheduler.adaptive;
 
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.JobID;
+import org.apache.flink.runtime.scheduler.adaptive.allocator.JobInformation;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.DrivenType;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleStatus;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.TriggerCause;
 import org.apache.flink.util.Preconditions;
 
 import org.slf4j.Logger;
@@ -29,6 +34,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.temporal.Temporal;
 import java.util.ArrayList;
 import java.util.List;
@@ -108,10 +114,22 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
                         Preconditions.checkNotNull(cooldownTimeout));
     }
 
+    boolean inExecutingState() {
+        return transitionContext.schedulerstate() instanceof Executing;
+    }
+
+    State schedulerState() {
+        return transitionContext.schedulerstate();
+    }
+
+    RescaleTimeline getRescaleTimeline() {
+        return transitionContext.getRescaleTimeline();
+    }
+
     @Override
-    public void onChange() {
+    public void onChange(DrivenType drivenType) {
         LOG.debug("OnChange event received in phase {} for job {}.", getPhase(), getJobId());
-        phase.onChange();
+        phase.onChange(drivenType);
     }
 
     @Override
@@ -231,7 +249,7 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
             return context.transitionContext.hasSufficientResources();
         }
 
-        void onChange() {}
+        void onChange(DrivenType drivenType) {}
 
         void onTrigger() {}
 
@@ -266,9 +284,10 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
         }
 
         @Override
-        void onChange() {
+        void onChange(DrivenType drivenType) {
             if (hasSufficientResources() && firstChangeEventTimestamp == null) {
                 firstChangeEventTimestamp = now();
+                recordRescale(context(), drivenType);
             }
         }
 
@@ -295,8 +314,9 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
         }
 
         @Override
-        void onChange() {
+        void onChange(DrivenType drivenType) {
             if (hasSufficientResources()) {
+                recordRescale(context(), drivenType);
                 context().progressToStabilizing(now());
             }
         }
@@ -333,7 +353,7 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
         }
 
         @Override
-        void onChange() {
+        void onChange(DrivenType drivenType) {
             // schedule another desired-resource evaluation in scenarios where the previous change
             // event was already handled by a onTrigger callback with a no-op
             onChangeEventTimestamp = now();
@@ -408,6 +428,17 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
                 LOG.debug(
                         "Sufficient resources are not met, progressing to idling, job {}.",
                         getJobId());
+                if (context().inExecutingState()) {
+                    context()
+                            .getRescaleTimeline()
+                            .updateCurrentRescale(
+                                    rescale ->
+                                            rescale.setStatus(RescaleStatus.IGNORED)
+                                                    .setSealedDescription(
+                                                            "Ignored due to no sufficient resources or no parallelisms change.")
+                                                    .setEndTimestamp(Instant.now().toEpochMilli())
+                                                    .addSchedulerState(context().schedulerState()));
+                }
                 context().progressToIdling();
             }
         }
@@ -422,6 +453,30 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
     static final class Transitioning extends Phase {
         private Transitioning(Supplier<Temporal> clock, DefaultStateTransitionManager context) {
             super(clock, context);
+        }
+    }
+
+    static void recordRescale(DefaultStateTransitionManager context, DrivenType drivenType) {
+        if (context.inExecutingState() && drivenType == DrivenType.NEW_RESOURCES) {
+            RescaleTimeline rescaleTimeline = context.getRescaleTimeline();
+            if (rescaleTimeline.inIdling()) {
+                JobInformation jobInformation = rescaleTimeline.getJobInformation();
+                rescaleTimeline.newCurrentRescale(false);
+                rescaleTimeline.updateCurrentRescale(
+                        rescale ->
+                                rescale.setRequiredSlots(jobInformation)
+                                        .setRequiredVertexParallelism(jobInformation)
+                                        .setSufficientSlots(jobInformation)
+                                        .setStatus(RescaleStatus.EXECUTING)
+                                        .setTriggerCause(TriggerCause.NEW_RESOURCE_AVAILABLE)
+                                        .setStartTimestamp(Instant.now().toEpochMilli())
+                                        .setCurrentSlotsAndParallelisms(
+                                                rescaleTimeline.latestRescale(
+                                                        RescaleStatus.COMPLETED))
+                                        .log());
+            } else {
+                LOG.warn("Unexpected currentRescale: {}.", rescaleTimeline.currentRescale());
+            }
         }
     }
 }

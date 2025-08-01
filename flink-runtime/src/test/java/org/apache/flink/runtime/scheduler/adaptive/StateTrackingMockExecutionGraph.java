@@ -57,8 +57,10 @@ import org.apache.flink.runtime.jobgraph.tasks.CheckpointCoordinatorConfiguratio
 import org.apache.flink.runtime.metrics.groups.JobManagerJobMetricGroup;
 import org.apache.flink.runtime.query.KvStateLocationRegistry;
 import org.apache.flink.runtime.rest.messages.JobPlanInfo;
+import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleConfigInfo;
 import org.apache.flink.runtime.scheduler.InternalFailuresListener;
 import org.apache.flink.runtime.scheduler.VertexParallelismStore;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.scheduler.exceptionhistory.TestingAccessExecution;
 import org.apache.flink.runtime.scheduler.strategy.SchedulingTopology;
 import org.apache.flink.runtime.scheduler.strategy.TestingSchedulingTopology;
@@ -236,6 +238,12 @@ class StateTrackingMockExecutionGraph implements ExecutionGraph {
         return null;
     }
 
+    @Nullable
+    @Override
+    public RescalesStatsSnapshot getRescalesStatsSnapshot() {
+        return null;
+    }
+
     @Override
     public Optional<String> getStateBackendName() {
         return Optional.empty();
@@ -259,6 +267,12 @@ class StateTrackingMockExecutionGraph implements ExecutionGraph {
     @Override
     public int getPendingOperatorCount() {
         return 0;
+    }
+
+    @Nullable
+    @Override
+    public JobRescaleConfigInfo getJobRescaleConfigInfo() {
+        return null;
     }
 
     @Override

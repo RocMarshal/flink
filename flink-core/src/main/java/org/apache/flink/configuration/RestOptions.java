@@ -215,6 +215,20 @@ public class RestOptions {
                                             code(WebOptions.REFRESH_INTERVAL.key()))
                                     .build());
 
+    /** Duration from write, after which cached rescales statistics are cleaned up. */
+    @Documentation.Section(Documentation.Sections.EXPERT_REST)
+    public static final ConfigOption<Duration> CACHE_RESCALES_STATISTICS_TIMEOUT =
+            key("rest.cache.rescales-statistics.timeout")
+                    .durationType()
+                    .defaultValue(WebOptions.REFRESH_INTERVAL.defaultValue())
+                    .withFallbackKeys(WebOptions.REFRESH_INTERVAL.key())
+                    .withDescription(
+                            Description.builder()
+                                    .text(
+                                            "Duration from write after which cached rescales statistics are cleaned up. For backwards compatibility, if no value is configured, %s will be used instead.",
+                                            code(WebOptions.REFRESH_INTERVAL.key()))
+                                    .build());
+
     /** Maximum number of entries in the checkpoint statistics cache. */
     @Documentation.Section(Documentation.Sections.EXPERT_REST)
     public static final ConfigOption<Integer> CACHE_CHECKPOINT_STATISTICS_SIZE =
@@ -223,6 +237,14 @@ public class RestOptions {
                     .defaultValue(1000)
                     .withDescription(
                             "Maximum number of entries in the checkpoint statistics cache.");
+
+    /** Maximum number of entries in the rescales statistics cache. */
+    @Documentation.Section(Documentation.Sections.EXPERT_REST)
+    public static final ConfigOption<Integer> CACHE_RESCALES_STATISTICS_SIZE =
+            key("rest.cache.rescales-statistics.size")
+                    .intType()
+                    .defaultValue(128)
+                    .withDescription("Maximum number of entries in the rescales statistics cache.");
 
     /** Enables the experimental flame graph feature. */
     @Documentation.Section(Documentation.Sections.EXPERT_REST)
