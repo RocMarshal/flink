@@ -22,6 +22,8 @@ import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.configuration.description.Description;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.apache.flink.configuration.ConfigOptions.key;
 import static org.apache.flink.configuration.description.TextElement.code;
@@ -142,6 +144,45 @@ public class HistoryServerOptions {
                                             "If set to `0` or less than `-1` HistoryServer will throw an %s. ",
                                             code("IllegalConfigurationException"))
                                     .build());
+
+    public static final ConfigOption<JobArchivedRetainedMode> HISTORY_SERVER_RETAINED_JOBS_MODE =
+            key("historyserver.archive.retained-jobs.mode")
+                    .enumType(JobArchivedRetainedMode.class)
+                    .defaultValue(JobArchivedRetainedMode.NONE);
+
+    public static final ConfigOption<Map<String, String>>
+            HISTORY_SERVER_RETAINED_JOBS_MODE_TTL_THRESHOLDS =
+                    key("historyserver.archive.retained-jobs.thresholds")
+                            .mapType()
+                            .defaultValue(
+                                    new HashMap<>() {
+                                        {
+                                            put("ttl", "0ms");
+                                            put("quantity", "-1");
+                                        }
+                                    });
+
+    public enum JobArchivedRetainedMode {
+        /** Keep all jobs archive files. */
+        NONE,
+        /** Keep the jobs archive files whose modified time in the time to live duration. */
+        TTL,
+        /**
+         * Keep the jobs archive files whose ordered index based on modified time is smaller or
+         * equals to the quantity threshold.
+         */
+        QUANTITY,
+        /**
+         * Keep the jobs archive files whose conditions are meet with {@link
+         * JobArchivedRetainedMode#TTL} and {@link JobArchivedRetainedMode#QUANTITY}.
+         */
+        TTL_AND_QUANTITY,
+        /**
+         * Keep the jobs archive files whose conditions are meet with {@link
+         * JobArchivedRetainedMode#TTL} or {@link JobArchivedRetainedMode#QUANTITY}.
+         */
+        TTL_OR_QUANTITY
+    }
 
     private HistoryServerOptions() {}
 }

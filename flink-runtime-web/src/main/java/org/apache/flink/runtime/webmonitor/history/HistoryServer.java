@@ -38,6 +38,7 @@ import org.apache.flink.runtime.security.SecurityConfiguration;
 import org.apache.flink.runtime.security.SecurityUtils;
 import org.apache.flink.runtime.util.EnvironmentInformation;
 import org.apache.flink.runtime.util.Runnables;
+import org.apache.flink.runtime.webmonitor.history.retaining.CompositeBasedJobRetainedStrategy;
 import org.apache.flink.runtime.webmonitor.utils.LogUrlUtil;
 import org.apache.flink.runtime.webmonitor.utils.WebFrontendBootstrap;
 import org.apache.flink.util.ExceptionUtils;
@@ -250,7 +251,7 @@ public class HistoryServer {
                         webDir,
                         jobArchiveEventListener,
                         cleanupExpiredArchives,
-                        maxHistorySize);
+                        CompositeBasedJobRetainedStrategy.createFrom(config));
 
         this.shutdownHook =
                 ShutdownHookUtil.addShutdownHook(
