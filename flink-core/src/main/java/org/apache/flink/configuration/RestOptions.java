@@ -215,6 +215,7 @@ public class RestOptions {
                                             code(WebOptions.REFRESH_INTERVAL.key()))
                                     .build());
 
+    // TODO: 是否移除这些参数？取决于 邮件讨论结果
     /** Duration from write, after which cached rescales statistics are cleaned up. */
     @Documentation.Section(Documentation.Sections.EXPERT_REST)
     public static final ConfigOption<Duration> CACHE_RESCALES_STATISTICS_TIMEOUT =
@@ -238,6 +239,7 @@ public class RestOptions {
                     .withDescription(
                             "Maximum number of entries in the checkpoint statistics cache.");
 
+    // TODO: 是否移除这些参数？取决于 邮件讨论结果
     /** Maximum number of entries in the rescales statistics cache. */
     @Documentation.Section(Documentation.Sections.EXPERT_REST)
     public static final ConfigOption<Integer> CACHE_RESCALES_STATISTICS_SIZE =

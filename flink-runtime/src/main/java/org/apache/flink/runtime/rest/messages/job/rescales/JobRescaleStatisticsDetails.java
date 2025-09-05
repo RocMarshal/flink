@@ -35,6 +35,8 @@ import org.apache.flink.runtime.rest.messages.json.SlotSharingGroupIDSerializer;
 import org.apache.flink.runtime.scheduler.VertexParallelismInformation;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.Rescale;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.SlotSharingGroupRescale;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.TerminalState;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.TerminatedReason;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.TriggerCause;
 import org.apache.flink.util.Preconditions;
 
@@ -49,6 +51,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import javax.annotation.Nullable;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,42 +65,31 @@ import java.util.stream.Collectors;
 public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
     private static final long serialVersionUID = 1L;
 
-    public static final String FIELD_NAME_RESCALE_ID = "rescale_id";
-    public static final String FIELD_NAME_RESCALE_UID = "rescale_uid";
-    public static final String FIELD_NAME_RESOURCE_REQUIREMENTS_EPOCH =
-            "resource_requirements_epoch";
-    public static final String FIELD_NAME_CURRENT_EPOCH_SUB_RESCALE_ID =
-            "current_epoch_sub_rescale_id";
-    public static final String FIELD_NAME_RESOURCE_REQUIREMENTS_CHANGED =
-            "resource_requirements_changed";
-    public static final String FIELD_NAME_PARALLELISMS = "parallelisms";
+    public static final String FIELD_NAME_RESCALE_UUID = "rescale_uuid";
+    public static final String FIELD_NAME_RESOURCE_REQUIREMENTS_ID = "resource_requirements_id";
+    public static final String FIELD_NAME_RESCALE_ATTEMPT_ID = "rescale_attempt_id";
+    public static final String FIELD_NAME_VERTICES = "vertices";
     public static final String FIELD_NAME_SLOTS = "slots";
     public static final String FIELD_NAME_SCHEDULER_STATES = "scheduler_states";
-    public static final String FIELD_NAME_TRIGGER_TIMESTAMP = "trigger_timestamp";
+    public static final String FIELD_NAME_START_TIMESTAMP = "start_timestamp";
     public static final String FIELD_NAME_END_TIMESTAMP = "end_timestamp";
     public static final String FIELD_NAME_DURATION = "duration";
-    public static final String FIELD_NAME_STATUS = "status";
     public static final String FIELD_NAME_TRIGGER_CAUSE = "trigger_cause";
-    public static final String FIELD_NAME_SEALED_DESCRIPTION = "sealed_description";
+    public static final String FIELD_NAME_TERMINAL_STATE = "terminal_state";
+    public static final String FIELD_NAME_TERMINATED_REASON = "terminated_reason";
 
-    @JsonProperty(FIELD_NAME_RESCALE_ID)
-    private final long rescaleId;
+    @JsonProperty(FIELD_NAME_RESCALE_UUID)
+    private final String rescaleUuid;
 
-    @JsonProperty(FIELD_NAME_RESCALE_UID)
-    private final String rescaleUid;
+    @JsonProperty(FIELD_NAME_RESOURCE_REQUIREMENTS_ID)
+    private final String resourceRequirementsId;
 
-    @JsonProperty(FIELD_NAME_RESOURCE_REQUIREMENTS_EPOCH)
-    private final String resourceRequirementsEpoch;
+    @JsonProperty(FIELD_NAME_RESCALE_ATTEMPT_ID)
+    private final long rescaleAttemptId;
 
-    @JsonProperty(FIELD_NAME_CURRENT_EPOCH_SUB_RESCALE_ID)
-    private final long subRescaleIdOfCurrentEpoch;
-
-    @JsonProperty(FIELD_NAME_RESOURCE_REQUIREMENTS_CHANGED)
-    private final boolean newResourceRequirement;
-
-    @JsonProperty(FIELD_NAME_PARALLELISMS)
+    @JsonProperty(FIELD_NAME_VERTICES)
     @JsonSerialize(keyUsing = JobVertexIDKeySerializer.class)
-    private final Map<JobVertexID, VertexParallelismRescaleInfo> parallelisms;
+    private final Map<JobVertexID, VertexParallelismRescaleInfo> vertices;
 
     @JsonProperty(FIELD_NAME_SLOTS)
     @JsonSerialize(keyUsing = SlotSharingGroupIDKeySerializer.class)
@@ -106,7 +98,7 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
     @JsonProperty(FIELD_NAME_SCHEDULER_STATES)
     private final List<SchedulerStateSpan> schedulerStates;
 
-    @JsonProperty(FIELD_NAME_TRIGGER_TIMESTAMP)
+    @JsonProperty(FIELD_NAME_START_TIMESTAMP)
     private final Long startTimestamp;
 
     @JsonProperty(FIELD_NAME_END_TIMESTAMP)
@@ -115,49 +107,45 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
     @JsonProperty(FIELD_NAME_DURATION)
     private final Long duration;
 
-    @JsonProperty(FIELD_NAME_STATUS)
-    private final RescaleStatus status;
+    @JsonProperty(FIELD_NAME_TERMINAL_STATE)
+    private final TerminalState terminalState;
 
     @JsonProperty(FIELD_NAME_TRIGGER_CAUSE)
     private final TriggerCause triggerCause;
 
-    @JsonProperty(FIELD_NAME_SEALED_DESCRIPTION)
-    private final String sealedDescription;
+    @JsonProperty(FIELD_NAME_TERMINATED_REASON)
+    private final TerminatedReason terminatedReason;
 
     @JsonCreator
     public JobRescaleStatisticsDetails(
-            @JsonProperty(FIELD_NAME_RESCALE_ID) long rescaleId,
-            @JsonProperty(FIELD_NAME_RESCALE_UID) String rescaleUid,
-            @JsonProperty(FIELD_NAME_RESOURCE_REQUIREMENTS_EPOCH) String resourceRequirementsEpoch,
-            @JsonProperty(FIELD_NAME_CURRENT_EPOCH_SUB_RESCALE_ID) long subRescaleIdOfCurrentEpoch,
-            @JsonProperty(FIELD_NAME_RESOURCE_REQUIREMENTS_CHANGED) boolean newResourceRequirement,
+            @JsonProperty(FIELD_NAME_RESCALE_UUID) String rescaleUuid,
+            @JsonProperty(FIELD_NAME_RESOURCE_REQUIREMENTS_ID) String resourceRequirementsId,
+            @JsonProperty(FIELD_NAME_RESCALE_ATTEMPT_ID) long rescaleAttemptId,
             @JsonDeserialize(keyUsing = JobVertexIDKeyDeserializer.class)
-                    @JsonProperty(FIELD_NAME_PARALLELISMS)
-                    Map<JobVertexID, VertexParallelismRescaleInfo> parallelisms,
+                    @JsonProperty(FIELD_NAME_VERTICES)
+                    Map<JobVertexID, VertexParallelismRescaleInfo> vertices,
             @JsonDeserialize(keyUsing = SlotSharingGroupIDKeyDeserializer.class)
                     @JsonProperty(FIELD_NAME_SLOTS)
                     Map<SlotSharingGroupId, SlotSharingGroupRescaleInfo> slots,
             @JsonProperty(FIELD_NAME_SCHEDULER_STATES) List<SchedulerStateSpan> schedulerStates,
-            @JsonProperty(FIELD_NAME_TRIGGER_TIMESTAMP) Long startTimestamp,
+            @JsonProperty(FIELD_NAME_START_TIMESTAMP) Long startTimestamp,
             @JsonProperty(FIELD_NAME_END_TIMESTAMP) Long endTimestamp,
             @JsonProperty(FIELD_NAME_DURATION) Long duration,
-            @JsonProperty(FIELD_NAME_STATUS) RescaleStatus status,
+            @JsonProperty(FIELD_NAME_TERMINAL_STATE) TerminalState terminalState,
             @JsonProperty(FIELD_NAME_TRIGGER_CAUSE) TriggerCause triggerCause,
-            @JsonProperty(FIELD_NAME_SEALED_DESCRIPTION) String sealedDescription) {
-        this.rescaleId = rescaleId;
-        this.rescaleUid = rescaleUid;
-        this.resourceRequirementsEpoch = resourceRequirementsEpoch;
-        this.subRescaleIdOfCurrentEpoch = subRescaleIdOfCurrentEpoch;
-        this.newResourceRequirement = newResourceRequirement;
-        this.parallelisms = parallelisms;
+            @JsonProperty(FIELD_NAME_TERMINATED_REASON) TerminatedReason terminatedReason) {
+        this.rescaleUuid = rescaleUuid;
+        this.resourceRequirementsId = resourceRequirementsId;
+        this.rescaleAttemptId = rescaleAttemptId;
+        this.vertices = vertices;
         this.slots = slots;
         this.schedulerStates = schedulerStates;
         this.startTimestamp = startTimestamp;
         this.endTimestamp = endTimestamp;
         this.duration = duration;
-        this.status = status;
+        this.terminalState = terminalState;
         this.triggerCause = triggerCause;
-        this.sealedDescription = sealedDescription;
+        this.terminatedReason = terminatedReason;
     }
 
     @Override
@@ -166,45 +154,40 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
             return false;
         }
         JobRescaleStatisticsDetails that = (JobRescaleStatisticsDetails) o;
-        return rescaleId == that.rescaleId
-                && subRescaleIdOfCurrentEpoch == that.subRescaleIdOfCurrentEpoch
-                && newResourceRequirement == that.newResourceRequirement
-                && Objects.equals(rescaleUid, that.rescaleUid)
-                && Objects.equals(resourceRequirementsEpoch, that.resourceRequirementsEpoch)
-                && Objects.equals(parallelisms, that.parallelisms)
+        return rescaleAttemptId == that.rescaleAttemptId
+                && Objects.equals(rescaleUuid, that.rescaleUuid)
+                && Objects.equals(resourceRequirementsId, that.resourceRequirementsId)
+                && Objects.equals(vertices, that.vertices)
                 && Objects.equals(slots, that.slots)
                 && Objects.equals(schedulerStates, that.schedulerStates)
                 && Objects.equals(startTimestamp, that.startTimestamp)
                 && Objects.equals(endTimestamp, that.endTimestamp)
                 && Objects.equals(duration, that.duration)
-                && status == that.status
+                && terminalState == that.terminalState
                 && triggerCause == that.triggerCause
-                && Objects.equals(sealedDescription, that.sealedDescription);
+                && Objects.equals(terminatedReason, that.terminatedReason);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(
-                rescaleId,
-                rescaleUid,
-                resourceRequirementsEpoch,
-                subRescaleIdOfCurrentEpoch,
-                newResourceRequirement,
-                parallelisms,
+                rescaleUuid,
+                resourceRequirementsId,
+                rescaleAttemptId,
+                vertices,
                 slots,
                 schedulerStates,
                 startTimestamp,
                 endTimestamp,
                 duration,
-                status,
+                terminalState,
                 triggerCause,
-                sealedDescription);
+                terminatedReason);
     }
 
     public static JobRescaleStatisticsDetails fromRescale(
             Rescale rescale, boolean includeSchedulerStates) {
         return new JobRescaleStatisticsDetails(
-                rescale.getRescaleIdInfo().getRescaleUuid(),
                 rescale.getRescaleIdInfo().getRescaleUuid().toString(),
                 rescale.getRescaleIdInfo().getResourceRequirementsId().toString(),
                 rescale.getRescaleIdInfo().getRescaleAttemptId(),
@@ -212,13 +195,13 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
                 convertMapValues(
                         rescale.getSlots(),
                         SlotSharingGroupRescaleInfo::fromSlotSharingGroupRescale),
-                includeSchedulerStates ? rescale.getSchedulerStates() : null,
+                includeSchedulerStates ? rescale.getSchedulerStates() : Collections.emptyList(),
                 rescale.getStartTimestamp(),
                 rescale.getEndTimestamp(),
                 rescale.getDuration().toMillis(),
-                rescale.getStatus(),
+                rescale.getTerminalState(),
                 rescale.getTriggerCause(),
-                rescale.getSealedDescription());
+                rescale.getTerminatedReason());
     }
 
     private static <K, NV, OV> Map<K, NV> convertMapValues(
@@ -238,14 +221,12 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
         public static final String FIELD_NAME_JOB_VERTEX_ID = "job_vertex_id";
         public static final String FIELD_NAME_VERTEX_NAME = "job_vertex_name";
         public static final String FIELD_NAME_SLOT_SHARING_GROUP_ID = "slot_sharing_group_id";
+        // TODO: The field may be removed.
         public static final String FIELD_NAME_SLOT_SHARING_GROUP_NAME = "slot_sharing_group_name";
-        public static final String FIELD_NAME_REQUIRED_PARALLELISM = "required_parallelism";
-        public static final String FIELD_NAME_REQUIRED_PARALLELISM_LOWER_BOUND =
-                "required_parallelism_lower_bound";
-        public static final String FIELD_NAME_REQUIRED_PARALLELISM_UPPER_BOUND =
-                "required_parallelism_upper_bound";
-        public static final String FIELD_NAME_CURRENT_PARALLELISM = "current_parallelism";
-        public static final String FIELD_NAME_ACQUIRED_PARALLELISM = "acquired_parallelism";
+        public static final String FIELD_NAME_DESIRED_PARALLELISM = "desired_parallelism";
+        public static final String FIELD_NAME_SUFFICIENT_PARALLELISM = "sufficient_parallelism";
+        public static final String FIELD_NAME_PRE_RESCALE_PARALLELISM = "pre_rescale_parallelism";
+        public static final String FIELD_NAME_POST_RESCALE_PARALLELISM = "post_rescale_parallelism";
 
         @JsonProperty(FIELD_NAME_JOB_VERTEX_ID)
         @JsonSerialize(using = JobVertexIDSerializer.class)
@@ -261,22 +242,19 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
         @JsonProperty(FIELD_NAME_SLOT_SHARING_GROUP_NAME)
         private String slotSharingGroupName;
 
-        @JsonProperty(FIELD_NAME_REQUIRED_PARALLELISM)
-        private Integer requiredParallelism;
+        @JsonProperty(FIELD_NAME_DESIRED_PARALLELISM)
+        private Integer desiredParallelism;
 
-        @JsonProperty(FIELD_NAME_REQUIRED_PARALLELISM_LOWER_BOUND)
-        private Integer requiredParallelismLowerBound;
-
-        @JsonProperty(FIELD_NAME_REQUIRED_PARALLELISM_UPPER_BOUND)
-        private Integer requiredParallelismUpperBound;
+        @JsonProperty(FIELD_NAME_SUFFICIENT_PARALLELISM)
+        private Integer sufficientParallelism;
 
         @Nullable
-        @JsonProperty(FIELD_NAME_CURRENT_PARALLELISM)
-        private Integer currentParallelism;
+        @JsonProperty(FIELD_NAME_PRE_RESCALE_PARALLELISM)
+        private Integer preRescaleParallelism;
 
         @Nullable
-        @JsonProperty(FIELD_NAME_ACQUIRED_PARALLELISM)
-        private Integer acquiredParallelism;
+        @JsonProperty(FIELD_NAME_POST_RESCALE_PARALLELISM)
+        private Integer postRescaleParallelism;
 
         @JsonIgnore
         public VertexParallelismRescaleInfo(JobVertexID jobVertexId) {
@@ -293,22 +271,19 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
                         @JsonProperty(FIELD_NAME_SLOT_SHARING_GROUP_ID)
                         SlotSharingGroupId slotSharingGroupId,
                 @JsonProperty(FIELD_NAME_SLOT_SHARING_GROUP_NAME) String slotSharingGroupName,
-                @JsonProperty(FIELD_NAME_REQUIRED_PARALLELISM) Integer requiredParallelism,
-                @JsonProperty(FIELD_NAME_REQUIRED_PARALLELISM_LOWER_BOUND)
-                        Integer requiredParallelismLowerBound,
-                @JsonProperty(FIELD_NAME_REQUIRED_PARALLELISM_UPPER_BOUND)
-                        Integer requiredParallelismUpperBound,
-                @Nullable @JsonProperty(FIELD_NAME_CURRENT_PARALLELISM) Integer currentParallelism,
-                @JsonProperty(FIELD_NAME_ACQUIRED_PARALLELISM) Integer acquiredParallelism) {
+                @JsonProperty(FIELD_NAME_DESIRED_PARALLELISM) Integer desiredParallelism,
+                @JsonProperty(FIELD_NAME_SUFFICIENT_PARALLELISM) Integer sufficientParallelism,
+                @Nullable @JsonProperty(FIELD_NAME_PRE_RESCALE_PARALLELISM)
+                        Integer preRescaleParallelism,
+                @JsonProperty(FIELD_NAME_POST_RESCALE_PARALLELISM) Integer postRescaleParallelism) {
             this.jobVertexId = jobVertexId;
             this.jobVertexName = jobVertexName;
             this.slotSharingGroupId = slotSharingGroupId;
             this.slotSharingGroupName = slotSharingGroupName;
-            this.requiredParallelism = requiredParallelism;
-            this.requiredParallelismLowerBound = requiredParallelismLowerBound;
-            this.requiredParallelismUpperBound = requiredParallelismUpperBound;
-            this.currentParallelism = currentParallelism;
-            this.acquiredParallelism = acquiredParallelism;
+            this.desiredParallelism = desiredParallelism;
+            this.sufficientParallelism = sufficientParallelism;
+            this.preRescaleParallelism = preRescaleParallelism;
+            this.postRescaleParallelism = postRescaleParallelism;
         }
 
         @JsonIgnore
@@ -317,19 +292,19 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
         }
 
         @JsonIgnore
-        public void setCurrentParallelism(@Nullable Integer currentParallelism) {
-            this.currentParallelism = currentParallelism;
+        public void setPreRescaleParallelism(@Nullable Integer preRescaleParallelism) {
+            this.preRescaleParallelism = preRescaleParallelism;
         }
 
         @JsonIgnore
         @Nullable
-        public Integer getAcquiredParallelism() {
-            return acquiredParallelism;
+        public Integer getPostRescaleParallelism() {
+            return postRescaleParallelism;
         }
 
         @JsonIgnore
-        public void setAcquiredParallelism(Integer acquiredParallelism) {
-            this.acquiredParallelism = acquiredParallelism;
+        public void setPostRescaleParallelism(Integer postRescaleParallelism) {
+            this.postRescaleParallelism = postRescaleParallelism;
         }
 
         @JsonIgnore
@@ -339,11 +314,10 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
         }
 
         @JsonIgnore
-        public void setRequiredParallelismWithBounds(
+        public void setDesiredAndSufficientParallelisms(
                 VertexParallelismInformation vertexParallelismInformation) {
-            this.requiredParallelismLowerBound = vertexParallelismInformation.getMinParallelism();
-            this.requiredParallelismUpperBound = vertexParallelismInformation.getMaxParallelism();
-            this.requiredParallelism = vertexParallelismInformation.getParallelism();
+            this.sufficientParallelism = vertexParallelismInformation.getMinParallelism();
+            this.desiredParallelism = vertexParallelismInformation.getParallelism();
         }
 
         @Override
@@ -356,13 +330,10 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
                     && Objects.equals(jobVertexName, that.jobVertexName)
                     && Objects.equals(slotSharingGroupId, that.slotSharingGroupId)
                     && Objects.equals(slotSharingGroupName, that.slotSharingGroupName)
-                    && Objects.equals(requiredParallelism, that.requiredParallelism)
-                    && Objects.equals(
-                            requiredParallelismLowerBound, that.requiredParallelismLowerBound)
-                    && Objects.equals(
-                            requiredParallelismUpperBound, that.requiredParallelismUpperBound)
-                    && Objects.equals(currentParallelism, that.currentParallelism)
-                    && Objects.equals(acquiredParallelism, that.acquiredParallelism);
+                    && Objects.equals(desiredParallelism, that.desiredParallelism)
+                    && Objects.equals(sufficientParallelism, that.sufficientParallelism)
+                    && Objects.equals(preRescaleParallelism, that.preRescaleParallelism)
+                    && Objects.equals(postRescaleParallelism, that.postRescaleParallelism);
         }
 
         @Override
@@ -372,38 +343,33 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
                     jobVertexName,
                     slotSharingGroupId,
                     slotSharingGroupName,
-                    requiredParallelism,
-                    requiredParallelismLowerBound,
-                    requiredParallelismUpperBound,
-                    currentParallelism,
-                    acquiredParallelism);
+                    desiredParallelism,
+                    sufficientParallelism,
+                    preRescaleParallelism,
+                    postRescaleParallelism);
         }
 
         @Override
         public String toString() {
-            return "VertexParallelismRescale{"
-                    + "jobVertexId='"
+            return "VertexParallelismRescaleInfo{"
+                    + "jobVertexId="
                     + jobVertexId
-                    + '\''
                     + ", jobVertexName='"
                     + jobVertexName
                     + '\''
-                    + ", slotSharingGroupId='"
+                    + ", slotSharingGroupId="
                     + slotSharingGroupId
-                    + '\''
                     + ", slotSharingGroupName='"
                     + slotSharingGroupName
                     + '\''
-                    + ", currentParallelism="
-                    + currentParallelism
-                    + ", requiredParallelism="
-                    + requiredParallelism
-                    + ", requiredParallelismLowerBound="
-                    + requiredParallelismLowerBound
-                    + ", requiredParallelismUpperBound="
-                    + requiredParallelismUpperBound
-                    + ", acquiredParallelism="
-                    + acquiredParallelism
+                    + ", desiredParallelism="
+                    + desiredParallelism
+                    + ", sufficientParallelism="
+                    + sufficientParallelism
+                    + ", preRescaleParallelism="
+                    + preRescaleParallelism
+                    + ", postRescaleParallelism="
+                    + postRescaleParallelism
                     + '}';
         }
     }
@@ -412,11 +378,12 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
         private static final long serialVersionUID = 1L;
         public static final String FIELD_NAME_SLOT_SHARING_GROUP_ID = "slot_sharing_group_id";
         public static final String FIELD_NAME_SLOT_SHARING_GROUP_NAME = "slot_sharing_group_name";
-        public static final String FIELD_NAME_REQUEST_RESOURCE_PROFILE = "request_resource_profile";
+        public static final String FIELD_NAME_REQUIRED_RESOURCE_PROFILE =
+                "required_resource_profile";
         public static final String FIELD_NAME_DESIRED_SLOTS = "desired_slots";
-        public static final String FIELD_NAME_SUFFICIENT_SLOTS = "sufficient_slots";
-        public static final String FIELD_NAME_CURRENT_SLOTS = "current_slots";
-        public static final String FIELD_NAME_ACQUIRED_SLOTS = "acquired_slots";
+        public static final String FIELD_NAME_MINIMAL_REQUIRED_SLOTS = "minimal_required_slots";
+        public static final String FIELD_NAME_PRE_RESCALE_SLOTS = "pre_rescale_slots";
+        public static final String FIELD_NAME_POST_RESCALE_SLOTS = "post_rescale_slots";
         public static final String FIELD_NAME_ACQUIRED_RESOURCE_PROFILE =
                 "acquired_resource_profile";
 
@@ -427,20 +394,20 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
         @JsonProperty(FIELD_NAME_SLOT_SHARING_GROUP_NAME)
         private final String slotSharingGroupName;
 
-        @JsonProperty(FIELD_NAME_REQUEST_RESOURCE_PROFILE)
+        @JsonProperty(FIELD_NAME_REQUIRED_RESOURCE_PROFILE)
         private final ResourceProfileInfo requiredResourceProfileInfo;
 
         @JsonProperty(FIELD_NAME_DESIRED_SLOTS)
         private final Integer desiredSlots;
 
-        @JsonProperty(FIELD_NAME_SUFFICIENT_SLOTS)
-        private final Integer sufficientSlots;
+        @JsonProperty(FIELD_NAME_MINIMAL_REQUIRED_SLOTS)
+        private final Integer minimalRequiredSlots;
 
-        @JsonProperty(FIELD_NAME_CURRENT_SLOTS)
-        private final Integer currentSlots;
+        @JsonProperty(FIELD_NAME_PRE_RESCALE_SLOTS)
+        private final Integer preRescaleSlots;
 
-        @JsonProperty(FIELD_NAME_ACQUIRED_SLOTS)
-        private final Integer acquiredSlots;
+        @JsonProperty(FIELD_NAME_POST_RESCALE_SLOTS)
+        private final Integer postRescaleSlots;
 
         @JsonProperty(FIELD_NAME_ACQUIRED_RESOURCE_PROFILE)
         private final ResourceProfileInfo acquiredResourceProfileInfo;
@@ -451,21 +418,21 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
                         @JsonProperty(FIELD_NAME_SLOT_SHARING_GROUP_ID)
                         SlotSharingGroupId slotSharingGroupId,
                 @JsonProperty(FIELD_NAME_SLOT_SHARING_GROUP_NAME) String slotSharingGroupName,
-                @JsonProperty(FIELD_NAME_REQUEST_RESOURCE_PROFILE)
+                @JsonProperty(FIELD_NAME_REQUIRED_RESOURCE_PROFILE)
                         ResourceProfileInfo requiredResourceProfileInfo,
                 @JsonProperty(FIELD_NAME_DESIRED_SLOTS) Integer desiredSlots,
-                @JsonProperty(FIELD_NAME_SUFFICIENT_SLOTS) Integer sufficientSlots,
-                @JsonProperty(FIELD_NAME_CURRENT_SLOTS) Integer currentSlots,
-                @JsonProperty(FIELD_NAME_ACQUIRED_SLOTS) Integer acquiredSlots,
+                @JsonProperty(FIELD_NAME_MINIMAL_REQUIRED_SLOTS) Integer minimalRequiredSlots,
+                @JsonProperty(FIELD_NAME_PRE_RESCALE_SLOTS) Integer preRescaleSlots,
+                @JsonProperty(FIELD_NAME_POST_RESCALE_SLOTS) Integer postRescaleSlots,
                 @JsonProperty(FIELD_NAME_ACQUIRED_RESOURCE_PROFILE)
                         ResourceProfileInfo acquiredResourceProfileInfo) {
             this.slotSharingGroupId = slotSharingGroupId;
             this.slotSharingGroupName = slotSharingGroupName;
             this.requiredResourceProfileInfo = requiredResourceProfileInfo;
             this.desiredSlots = desiredSlots;
-            this.sufficientSlots = sufficientSlots;
-            this.currentSlots = currentSlots;
-            this.acquiredSlots = acquiredSlots;
+            this.minimalRequiredSlots = minimalRequiredSlots;
+            this.preRescaleSlots = preRescaleSlots;
+            this.postRescaleSlots = postRescaleSlots;
             this.acquiredResourceProfileInfo = acquiredResourceProfileInfo;
         }
 
@@ -479,9 +446,9 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
                     && Objects.equals(slotSharingGroupName, that.slotSharingGroupName)
                     && Objects.equals(requiredResourceProfileInfo, that.requiredResourceProfileInfo)
                     && Objects.equals(desiredSlots, that.desiredSlots)
-                    && Objects.equals(sufficientSlots, that.sufficientSlots)
-                    && Objects.equals(currentSlots, that.currentSlots)
-                    && Objects.equals(acquiredSlots, that.acquiredSlots)
+                    && Objects.equals(minimalRequiredSlots, that.minimalRequiredSlots)
+                    && Objects.equals(preRescaleSlots, that.preRescaleSlots)
+                    && Objects.equals(postRescaleSlots, that.postRescaleSlots)
                     && Objects.equals(
                             acquiredResourceProfileInfo, that.acquiredResourceProfileInfo);
         }
@@ -493,10 +460,33 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
                     slotSharingGroupName,
                     requiredResourceProfileInfo,
                     desiredSlots,
-                    sufficientSlots,
-                    currentSlots,
-                    acquiredSlots,
+                    minimalRequiredSlots,
+                    preRescaleSlots,
+                    postRescaleSlots,
                     acquiredResourceProfileInfo);
+        }
+
+        @Override
+        public String toString() {
+            return "SlotSharingGroupRescaleInfo{"
+                    + "slotSharingGroupId="
+                    + slotSharingGroupId
+                    + ", slotSharingGroupName='"
+                    + slotSharingGroupName
+                    + '\''
+                    + ", requiredResourceProfileInfo="
+                    + requiredResourceProfileInfo
+                    + ", desiredSlots="
+                    + desiredSlots
+                    + ", minimalRequiredSlots="
+                    + minimalRequiredSlots
+                    + ", preRescaleSlots="
+                    + preRescaleSlots
+                    + ", postRescaleSlots="
+                    + postRescaleSlots
+                    + ", acquiredResourceProfileInfo="
+                    + acquiredResourceProfileInfo
+                    + '}';
         }
 
         public static SlotSharingGroupRescaleInfo fromSlotSharingGroupRescale(

@@ -1139,7 +1139,7 @@ public class AdaptiveScheduler
                                     .setTriggerCause(TriggerCause.UPDATE_REQUIREMENT)
                                     .setRequiredSlots(jobInformation)
                                     .setSufficientSlots(jobInformation)
-                                    .setCurrentSlotsAndParallelisms(
+                                    .setPreRescaleSlotsAndParallelisms(
                                             rescaleTimeLine.latestRescale(TerminalState.COMPLETED))
                                     .log());
             declareDesiredResources();
@@ -1350,12 +1350,19 @@ public class AdaptiveScheduler
         if (restartWithParallelism == null) {
             // For the failover restarting.
             if (rescaleTimeLine.inRescalingProgress()) {
+                // When a rescale event is triggered first and a job failover occurs during the
+                // rescaling process,
+                // we forcibly use the current rescaling trigger cause of the failover job and
+                // adjust the corresponding to rescale information.
+                // https://lists.apache.org/thread/hh7w2p6lnmbo1q6d9ngkttdyrw4lp74h
+                LOG.warn(
+                        "It forcibly uses the {} as the trigger cause of the current rescaling and adjust the corresponding to rescale information",
+                        TriggerCause.RECOVERABLE_FAILOVER);
                 rescaleTimeLine.updateCurrentRescale(
                         rescale ->
-                                rescale.addSchedulerState(state)
-                                        .setEndTimestamp(Instant.now().toEpochMilli())
-                                        .setTerminatedReason(
-                                                TerminatedReason.JOB_FAILOVER_RESTARTING)
+                                rescale.setStartTimestamp(Instant.now().toEpochMilli())
+                                        .setTriggerCause(TriggerCause.RECOVERABLE_FAILOVER)
+                                        .clearSchedulerStates()
                                         .log());
             } else if (rescaleTimeLine.inIdling()) {
                 rescaleTimeLine.newCurrentRescale(false);
@@ -1364,7 +1371,7 @@ public class AdaptiveScheduler
                                 rescale.setStartTimestamp(Instant.now().toEpochMilli())
                                         .setTriggerCause(TriggerCause.RECOVERABLE_FAILOVER)
                                         .setSufficientSlots(jobInformation)
-                                        .setCurrentSlotsAndParallelisms(
+                                        .setPreRescaleSlotsAndParallelisms(
                                                 rescaleTimeLine.latestRescale(
                                                         TerminalState.COMPLETED))
                                         .setRequiredVertexParallelism(jobInformation)

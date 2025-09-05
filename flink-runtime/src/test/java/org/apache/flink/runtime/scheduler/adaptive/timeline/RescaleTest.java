@@ -39,7 +39,7 @@ class RescaleTest {
     void testSetSufficientSlots() {}
 
     @Test
-    void testSetCurrentSlotsAndParallelisms() {}
+    void testSetPreRescaleSlotsAndParallelisms() {}
 
     @Test
     void testSetRequiredVertexParallelism() {}

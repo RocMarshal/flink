@@ -62,7 +62,7 @@ public class Rescale implements Serializable {
 
     private final RescaleIdInfo rescaleIdInfo;
 
-    private final Map<JobVertexID, VertexParallelismRescale> vertices;
+    private final Map<JobVertexID, VertexParallelismRescaleInfo> vertices;
     private final Map<SlotSharingGroupId, SlotSharingGroupRescale> slots;
 
     public List<SchedulerStateSpan> getSchedulerStates() {
@@ -96,9 +96,28 @@ public class Rescale implements Serializable {
         return this;
     }
 
-
     public RescaleIdInfo getRescaleIdInfo() {
         return rescaleIdInfo;
+    }
+
+    public Map<JobVertexID, VertexParallelismRescaleInfo> getVertices() {
+        return vertices;
+    }
+
+    public Long getStartTimestamp() {
+        return startTimestamp;
+    }
+
+    public Long getEndTimestamp() {
+        return endTimestamp;
+    }
+
+    public TriggerCause getTriggerCause() {
+        return triggerCause;
+    }
+
+    public TerminatedReason getTerminatedReason() {
+        return terminatedReason;
     }
 
     @Nullable
@@ -226,7 +245,7 @@ public class Rescale implements Serializable {
         return this;
     }
 
-    public Rescale setCurrentSlotsAndParallelisms(Rescale lastCompletedRescale) {
+    public Rescale setPreRescaleSlotsAndParallelisms(Rescale lastCompletedRescale) {
         if (lastCompletedRescale == null) {
             LOG.info("No available previous parallelism to set.");
             return this;
@@ -236,11 +255,8 @@ public class Rescale implements Serializable {
                     lastCompletedRescale.vertices.get(jobVertexID).getPostRescaleParallelism();
             VertexParallelismRescaleInfo vertexParallelismRescaleInfo =
                     vertices.computeIfAbsent(jobVertexID, VertexParallelismRescaleInfo::new);
-            vertexParallelismRescaleInfo.setCurrentParallelism(previousAcquiredParallelism);
-            lastCompletedRescale.vertices.get(jobVertexID).getPostRescaleParallelism();
-            VertexParallelismRescale vertexParallelismRescale =
-                    vertices.computeIfAbsent(jobVertexID, VertexParallelismRescale::new);
-            vertexParallelismRescale.setPreRescaleParallelism(previousAcquiredParallelism);
+            vertexParallelismRescaleInfo.setPreRescaleParallelism(previousAcquiredParallelism);
+            vertexParallelismRescaleInfo.setPreRescaleParallelism(previousAcquiredParallelism);
         }
 
         for (SlotSharingGroupId sharingGroupId : slots.keySet()) {
@@ -262,13 +278,13 @@ public class Rescale implements Serializable {
             JobVertexID jvId = entry.getKey();
             VertexParallelismInformation vertexParallelInfo = entry.getValue();
             VertexParallelismRescaleInfo vertexParallelismRescaleInfo =
-                    this.parallelisms.computeIfAbsent(
+                    this.vertices.computeIfAbsent(
                             jvId, jobVertexID -> new VertexParallelismRescaleInfo(jvId));
             SlotSharingGroup slotSharingGroup =
                     jobInformation.getVertexInformation(jvId).getSlotSharingGroup();
             vertexParallelismRescaleInfo.setSlotSharingGroupMetaInfo(slotSharingGroup);
             vertexParallelismRescaleInfo.setJobVertexName(jobInformation.getVertexName(jvId));
-            vertexParallelismRescaleInfo.setRequiredParallelismWithBounds(vertexParallelInfo);
+            vertexParallelismRescaleInfo.setDesiredAndSufficientParallelisms(vertexParallelInfo);
         }
         return this;
     }
@@ -276,9 +292,8 @@ public class Rescale implements Serializable {
     public Rescale setAcquiredVertexParallelism(VertexParallelism acquiredVertexParallelism) {
         Set<JobVertexID> vertices = acquiredVertexParallelism.getVertices();
         for (JobVertexID vertexID : vertices) {
-            VertexParallelismRescaleInfo vertexParallelismRescaleInfo =
-                    this.parallelisms.get(vertexID);
-            vertexParallelismRescaleInfo.setAcquiredParallelism(
+            VertexParallelismRescaleInfo vertexParallelismRescaleInfo = this.vertices.get(vertexID);
+            vertexParallelismRescaleInfo.setPostRescaleParallelism(
                     acquiredVertexParallelism.getParallelism(vertexID));
         }
         return this;
@@ -289,12 +304,17 @@ public class Rescale implements Serializable {
         return this;
     }
 
+    public Rescale clearSchedulerStates() {
+        this.schedulerStates.clear();
+        return this;
+    }
+
     public void log() {
         LOG.info("Updated rescale is: {}", this);
     }
 
     public Map<JobVertexID, VertexParallelismRescaleInfo> getParallelisms() {
-        return parallelisms;
+        return vertices;
     }
 
     public Map<SlotSharingGroupId, SlotSharingGroupRescale> getSlots() {

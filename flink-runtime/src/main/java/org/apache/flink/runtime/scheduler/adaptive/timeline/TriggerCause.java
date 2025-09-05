@@ -26,9 +26,6 @@ public enum TriggerCause {
     UPDATE_REQUIREMENT,
     /** New resources available. */
     NEW_RESOURCE_AVAILABLE,
-    // TODO: When here's in_progress rescale not completed, and a recoverable failover occurs here,
-    // the rescale should be squished in one and the trigger cause will be set as
-    // RECOVERABLE_FAILOVER.
     /** Recoverable failover. */
     RECOVERABLE_FAILOVER
 }
