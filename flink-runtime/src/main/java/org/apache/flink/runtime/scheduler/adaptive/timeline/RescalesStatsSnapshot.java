@@ -21,23 +21,20 @@ package org.apache.flink.runtime.scheduler.adaptive.timeline;
 import org.apache.flink.runtime.util.stats.StatsSummarySnapshot;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class RescalesStatsSnapshot implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final List<Rescale> rescaleHistory;
-    private final Map<RescaleStatus, Rescale> latestRescales;
-    private final Map<Long, Rescale> recentRescales;
+    private final Map<TerminalState, Rescale> latestRescales;
+    private final Map<String, Rescale> recentRescales;
     private final RescalesSummarySnapshot rescalesSummarySnapshot;
 
     public RescalesStatsSnapshot(
             List<Rescale> rescaleHistory,
-            Map<RescaleStatus, Rescale> latestRescales,
-            Map<Long, Rescale> recentRescales,
+            Map<TerminalState, Rescale> latestRescales,
+            Map<String, Rescale> recentRescales,
             RescalesSummarySnapshot rescalesSummarySnapshot) {
         this.rescaleHistory = rescaleHistory;
         this.latestRescales = latestRescales;
@@ -49,11 +46,11 @@ public class RescalesStatsSnapshot implements Serializable {
         return rescaleHistory;
     }
 
-    public Map<RescaleStatus, Rescale> getLatestRescales() {
+    public Map<TerminalState, Rescale> getLatestRescales() {
         return latestRescales;
     }
 
-    public Map<Long, Rescale> getRecentRescales() {
+    public Map<String, Rescale> getRecentRescales() {
         return recentRescales;
     }
 

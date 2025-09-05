@@ -33,9 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /** Default implementation of {@link RescaleTimeline}. */
@@ -49,13 +47,13 @@ public class DefaultRescaleTimeline implements RescaleTimeline {
     private final ReentrantLock statsReadWriteLock = new ReentrantLock();
 
     private RescaleIdInfo rescaleIdInfo;
-    private RescaleIdInfo rescaleIdInfo;
 
     @Nullable private Rescale currentRescale;
 
     private final BoundedFIFOQueue<Rescale> rescaleHistory;
 
     private final Map<TerminalState, Rescale> latestRescales;
+    private final LinkedHashMap<String, Rescale> recentRescales;
 
     private final RescalesSummary rescalesSummary;
 
@@ -65,6 +63,13 @@ public class DefaultRescaleTimeline implements RescaleTimeline {
         this.rescaleIdInfo = new RescaleIdInfo(new AbstractID(), 0L);
         this.latestRescales = new ConcurrentHashMap<>(TerminalState.values().length);
         this.rescaleHistory = new BoundedFIFOQueue<>(maxHistorySize);
+        this.recentRescales =
+                new LinkedHashMap<>() {
+                    @Override
+                    protected boolean removeEldestEntry(Map.Entry eldest) {
+                        return size() > maxHistorySize;
+                    }
+                };
         this.rescalesSummary = new RescalesSummary(maxHistorySize);
     }
 
@@ -106,6 +111,8 @@ public class DefaultRescaleTimeline implements RescaleTimeline {
         if (inIdling()) {
             currentRescale = new Rescale(nextRescaleId(newRescaleEpoch));
             rescaleHistory.add(currentRescale);
+            recentRescales.put(
+                    currentRescale.getRescaleIdInfo().getRescaleUuid().toString(), currentRescale);
             rescalesSummary.addInProgress(currentRescale);
             return true;
         }

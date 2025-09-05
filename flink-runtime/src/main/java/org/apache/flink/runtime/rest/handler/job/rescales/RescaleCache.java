@@ -28,7 +28,7 @@ import javax.annotation.Nullable;
 /** A size-based cache of accessed rescales for completed, failed and ignored rescales. */
 public class RescaleCache {
 
-    @Nullable private final Cache<Long, Rescale> cache;
+    @Nullable private final Cache<String, Rescale> cache;
 
     public RescaleCache(int maxNumEntries) {
         if (maxNumEntries > 0) {
@@ -46,11 +46,8 @@ public class RescaleCache {
     public void tryAdd(Rescale rescale) {
         // Don't add in progress rescales as they will be replaced by their
         // completed/failed version eventually.
-        if (cache != null
-                && rescale != null
-                && rescale.getStatus() != null
-                && rescale.getStatus().isSealed()) {
-            cache.put(rescale.getIdEpoch().getRescaleId(), rescale);
+        if (cache != null && rescale != null && rescale.isTerminated()) {
+            cache.put(rescale.getRescaleIdInfo().getRescaleUuid().toString(), rescale);
         }
     }
 

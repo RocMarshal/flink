@@ -34,7 +34,6 @@ import org.apache.flink.runtime.rest.messages.json.SlotSharingGroupIDKeySerializ
 import org.apache.flink.runtime.rest.messages.json.SlotSharingGroupIDSerializer;
 import org.apache.flink.runtime.scheduler.VertexParallelismInformation;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.Rescale;
-import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleStatus;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.SlotSharingGroupRescale;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.TriggerCause;
 import org.apache.flink.util.Preconditions;
@@ -205,11 +204,10 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
     public static JobRescaleStatisticsDetails fromRescale(
             Rescale rescale, boolean includeSchedulerStates) {
         return new JobRescaleStatisticsDetails(
-                rescale.getIdEpoch().getRescaleId(),
-                rescale.getIdEpoch().getRescaleUid().toString(),
-                rescale.getIdEpoch().getResourceRequirementsEpoch().toString(),
-                rescale.getIdEpoch().getSubRescaleIdOfCurrentEpoch(),
-                rescale.isNewResourceRequirement(),
+                rescale.getRescaleIdInfo().getRescaleUuid(),
+                rescale.getRescaleIdInfo().getRescaleUuid().toString(),
+                rescale.getRescaleIdInfo().getResourceRequirementsId().toString(),
+                rescale.getRescaleIdInfo().getRescaleAttemptId(),
                 rescale.getParallelisms(),
                 convertMapValues(
                         rescale.getSlots(),
@@ -509,9 +507,9 @@ public class JobRescaleStatisticsDetails implements ResponseBody, Serializable {
                     ResourceProfileInfo.fromResourceProfile(
                             slotSharingGroupRescale.getRequiredResourceProfile()),
                     slotSharingGroupRescale.getDesiredSlots(),
-                    slotSharingGroupRescale.getSufficientSlots(),
-                    slotSharingGroupRescale.getCurrentSlots(),
-                    slotSharingGroupRescale.getAcquiredSlots(),
+                    slotSharingGroupRescale.getMinimalRequiredSlots(),
+                    slotSharingGroupRescale.getPreRescaleSlots(),
+                    slotSharingGroupRescale.getPostRescaleSlots(),
                     ResourceProfileInfo.fromResourceProfile(
                             Optional.ofNullable(
                                             slotSharingGroupRescale.getAcquiredResourceProfile())

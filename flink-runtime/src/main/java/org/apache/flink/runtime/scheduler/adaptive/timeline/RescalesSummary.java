@@ -111,6 +111,6 @@ public class RescalesSummary {
                 completedRescalesCount,
                 ignoredRescalesCount,
                 failedRescalesCount,
-                pendingRescalesCount);
+                inProgressRescalesCount);
     }
 }

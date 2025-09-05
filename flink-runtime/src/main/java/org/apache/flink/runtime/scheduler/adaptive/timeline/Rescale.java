@@ -43,6 +43,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,10 +62,12 @@ public class Rescale implements Serializable {
 
     private final RescaleIdInfo rescaleIdInfo;
 
-    private final boolean newResourceRequirement;
-    private final Map<JobVertexID, VertexParallelismRescaleInfo> parallelisms;
     private final Map<JobVertexID, VertexParallelismRescale> vertices;
     private final Map<SlotSharingGroupId, SlotSharingGroupRescale> slots;
+
+    public List<SchedulerStateSpan> getSchedulerStates() {
+        return Collections.unmodifiableList(schedulerStates);
+    }
 
     private final List<SchedulerStateSpan> schedulerStates;
 
@@ -91,6 +94,11 @@ public class Rescale implements Serializable {
         }
         this.schedulerStates.add(schedulerStateSpan);
         return this;
+    }
+
+
+    public RescaleIdInfo getRescaleIdInfo() {
+        return rescaleIdInfo;
     }
 
     @Nullable
@@ -225,11 +233,11 @@ public class Rescale implements Serializable {
         }
         for (JobVertexID jobVertexID : vertices.keySet()) {
             Integer previousAcquiredParallelism =
-                    lastCompletedRescale.parallelisms.get(jobVertexID).getAcquiredParallelism();
-            VertexParallelismRescaleInfo vertexParallelismRescaleInfo =
-                    parallelisms.computeIfAbsent(jobVertexID, VertexParallelismRescaleInfo::new);
-            vertexParallelismRescaleInfo.setCurrentParallelism(previousAcquiredParallelism);
                     lastCompletedRescale.vertices.get(jobVertexID).getPostRescaleParallelism();
+            VertexParallelismRescaleInfo vertexParallelismRescaleInfo =
+                    vertices.computeIfAbsent(jobVertexID, VertexParallelismRescaleInfo::new);
+            vertexParallelismRescaleInfo.setCurrentParallelism(previousAcquiredParallelism);
+            lastCompletedRescale.vertices.get(jobVertexID).getPostRescaleParallelism();
             VertexParallelismRescale vertexParallelismRescale =
                     vertices.computeIfAbsent(jobVertexID, VertexParallelismRescale::new);
             vertexParallelismRescale.setPreRescaleParallelism(previousAcquiredParallelism);

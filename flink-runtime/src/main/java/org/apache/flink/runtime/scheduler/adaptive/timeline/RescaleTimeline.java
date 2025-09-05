@@ -84,11 +84,6 @@ public interface RescaleTimeline {
         }
 
         @Override
-        public JobInformation getJobInformation() {
-            return null;
-        }
-
-        @Override
         public boolean inIdling() {
             return false;
         }
@@ -96,11 +91,6 @@ public interface RescaleTimeline {
         @Override
         public boolean inRescalingProgress() {
             return false;
-        }
-
-        @Override
-        public Rescale currentRescale() {
-            return null;
         }
 
         @Override

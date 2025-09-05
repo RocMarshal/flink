@@ -21,9 +21,9 @@ package org.apache.flink.runtime.rest.messages.job.rescales;
 import org.apache.flink.runtime.rest.messages.ResponseBody;
 import org.apache.flink.runtime.rest.messages.util.stats.StatsSummaryDto;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.Rescale;
-import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleStatus;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesSummarySnapshot;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.TerminalState;
 
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonCreator;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
@@ -287,9 +287,9 @@ public class JobRescalesStatistics implements ResponseBody, Serializable {
         }
 
         public static LatestRescales fromRescalesStatsSnapshot(RescalesStatsSnapshot snapshot) {
-            Rescale completedRescale = snapshot.getLatestRescales().get(RescaleStatus.COMPLETED);
-            Rescale failedRescale = snapshot.getLatestRescales().get(RescaleStatus.FAILED);
-            Rescale ignoredRescale = snapshot.getLatestRescales().get(RescaleStatus.IGNORED);
+            Rescale completedRescale = snapshot.getLatestRescales().get(TerminalState.COMPLETED);
+            Rescale failedRescale = snapshot.getLatestRescales().get(TerminalState.FAILED);
+            Rescale ignoredRescale = snapshot.getLatestRescales().get(TerminalState.IGNORED);
             return new LatestRescales(
                     Objects.isNull(completedRescale)
                             ? null
