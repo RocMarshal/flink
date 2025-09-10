@@ -21,7 +21,10 @@ package org.apache.flink.runtime.scheduler;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.executiongraph.ArchivedExecutionGraph;
 import org.apache.flink.runtime.executiongraph.ExecutionGraph;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescalesStatsSnapshot;
 import org.apache.flink.runtime.scheduler.exceptionhistory.RootExceptionHistoryEntry;
+
+import javax.annotation.Nullable;
 
 import java.io.Serializable;
 import java.util.Collections;
@@ -37,6 +40,13 @@ public class ExecutionGraphInfo implements Serializable {
     private final ArchivedExecutionGraph executionGraph;
     private final Iterable<RootExceptionHistoryEntry> exceptionHistory;
 
+    /**
+     * The field is non-null when the {@link
+     * org.apache.flink.configuration.WebOptions#MAX_ADAPTIVE_SCHEDULER_RESCALE_HISTORY_SIZE} is
+     * enabled.
+     */
+    @Nullable private final RescalesStatsSnapshot rescalesStatsSnapshot;
+
     public ExecutionGraphInfo(ArchivedExecutionGraph executionGraph) {
         this(
                 executionGraph,
@@ -44,14 +54,17 @@ public class ExecutionGraphInfo implements Serializable {
                         ? Collections.singleton(
                                 RootExceptionHistoryEntry.fromGlobalFailure(
                                         executionGraph.getFailureInfo()))
-                        : Collections.emptyList());
+                        : Collections.emptyList(),
+                null);
     }
 
     public ExecutionGraphInfo(
             ArchivedExecutionGraph executionGraph,
-            Iterable<RootExceptionHistoryEntry> exceptionHistory) {
+            Iterable<RootExceptionHistoryEntry> exceptionHistory,
+            @Nullable RescalesStatsSnapshot rescalesStatsSnapshot) {
         this.executionGraph = executionGraph;
         this.exceptionHistory = exceptionHistory;
+        this.rescalesStatsSnapshot = rescalesStatsSnapshot;
     }
 
     public JobID getJobId() {
@@ -64,5 +77,10 @@ public class ExecutionGraphInfo implements Serializable {
 
     public Iterable<RootExceptionHistoryEntry> getExceptionHistory() {
         return exceptionHistory;
+    }
+
+    @Nullable
+    public RescalesStatsSnapshot getRescalesStatsSnapshot() {
+        return rescalesStatsSnapshot;
     }
 }
