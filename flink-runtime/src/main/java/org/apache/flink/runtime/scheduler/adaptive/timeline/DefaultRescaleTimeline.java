@@ -29,11 +29,11 @@ import javax.annotation.Nullable;
 
 import java.util.Collections;
 import java.util.List;
-import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /** Default implementation of {@link RescaleTimeline}. */
 public class DefaultRescaleTimeline implements RescaleTimeline {
@@ -114,6 +114,17 @@ public class DefaultRescaleTimeline implements RescaleTimeline {
     @Nullable
     Rescale currentRescale() {
         return currentRescale;
+    }
+
+    @Override
+    public RescalesStatsSnapshot createSnapshot() {
+        List<Rescale> rescales =
+                rescaleHistory.toArrayList().stream()
+                        .filter(r -> r.isTerminated())
+                        .collect(Collectors.toList());
+        Collections.reverse(rescales);
+        return new RescalesStatsSnapshot(
+                Collections.unmodifiableList(rescales), rescalesSummary.createSnapshot());
     }
 
     private RescaleIdInfo nextRescaleId(boolean newRescaleEpoch) {

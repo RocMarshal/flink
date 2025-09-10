@@ -57,6 +57,8 @@ public interface RescaleTimeline {
      */
     boolean updateCurrentRescale(RescaleUpdater rescaleUpdater);
 
+    RescalesStatsSnapshot createSnapshot();
+
     /** Rescale operation interface. */
     interface RescaleUpdater {
         void update(Rescale rescaleToUpdate);
@@ -86,6 +88,11 @@ public interface RescaleTimeline {
         @Override
         public JobInformation getJobInformation() {
             return null;
+        }
+
+        @Override
+        public RescalesStatsSnapshot createSnapshot() {
+            return RescalesStatsSnapshot.emptySnapshot();
         }
 
         @Override
