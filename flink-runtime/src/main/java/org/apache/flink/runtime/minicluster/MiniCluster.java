@@ -845,6 +845,12 @@ public class MiniCluster implements AutoCloseableAsync {
                                 .thenApply(ExecutionGraphInfo::getArchivedExecutionGraph));
     }
 
+    public CompletableFuture<ExecutionGraphInfo> getExecutionGraphInfo(JobID jobId) {
+        return runDispatcherCommand(
+                dispatcherGateway ->
+                        dispatcherGateway.requestExecutionGraphInfo(jobId, rpcTimeout));
+    }
+
     public CompletableFuture<Collection<JobStatusMessage>> listJobs() {
         return runDispatcherCommand(
                 dispatcherGateway ->
