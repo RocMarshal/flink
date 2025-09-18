@@ -1144,6 +1144,7 @@ public class AdaptiveScheduler
                                 .setDesiredSlots(jobInformation)
                                 .setMinimalRequiredSlots(jobInformation)
                                 .setPreRescaleSlotsAndParallelisms(
+                                        jobInformation,
                                         rescaleTimeline.latestRescale(TerminalState.COMPLETED))
                                 .log());
     }
@@ -1392,6 +1393,7 @@ public class AdaptiveScheduler
                                     .setTriggerCause(TriggerCause.RECOVERABLE_FAILOVER)
                                     .setMinimalRequiredSlots(jobInformation)
                                     .setPreRescaleSlotsAndParallelisms(
+                                            jobInformation,
                                             rescaleTimeline.latestRescale(TerminalState.COMPLETED))
                                     .setDesiredVertexParallelism(jobInformation)
                                     .setDesiredSlots(jobInformation)

@@ -471,6 +471,7 @@ public class DefaultStateTransitionManager implements StateTransitionManager {
                                         .setTriggerCause(TriggerCause.NEW_RESOURCE_AVAILABLE)
                                         .setStartTimestamp(Instant.now().toEpochMilli())
                                         .setPreRescaleSlotsAndParallelisms(
+                                                jobInformation,
                                                 rescaleTimeline.latestRescale(
                                                         TerminalState.COMPLETED))
                                         .log());

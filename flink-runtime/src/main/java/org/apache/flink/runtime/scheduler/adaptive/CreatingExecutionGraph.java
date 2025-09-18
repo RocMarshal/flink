@@ -33,6 +33,7 @@ import org.apache.flink.runtime.scheduler.ExecutionGraphHandler;
 import org.apache.flink.runtime.scheduler.GlobalFailureHandler;
 import org.apache.flink.runtime.scheduler.OperatorCoordinatorHandler;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
+import org.apache.flink.runtime.scheduler.adaptive.timeline.RescaleTimeline;
 import org.apache.flink.runtime.scheduler.adaptive.timeline.TerminatedReason;
 import org.apache.flink.util.IterableUtils;
 import org.apache.flink.util.Preconditions;
@@ -164,16 +165,16 @@ public class CreatingExecutionGraph extends StateWithoutExecutionGraph {
 
     private void driveRescaleTimelineByGraphCreation(
             ExecutionGraphWithVertexParallelism executionGraphWithVertexParallelism) {
-        context.getRescaleTimeline()
-                .updateCurrentRescale(
-                        rescale ->
-                                rescale.setPostRescaleVertexParallelism(
-                                                executionGraphWithVertexParallelism
-                                                        .getVertexParallelism())
-                                        .setPostRescaleSlots(
-                                                executionGraphWithVertexParallelism
-                                                        .jobSchedulingPlan.getSlotAssignments())
-                                        .log());
+        RescaleTimeline rescaleTimeline = context.getRescaleTimeline();
+        rescaleTimeline.updateCurrentRescale(
+                rescale ->
+                        rescale.setPostRescaleVertexParallelism(
+                                        rescaleTimeline.getJobInformation(),
+                                        executionGraphWithVertexParallelism.getVertexParallelism())
+                                .setPostRescaleSlots(
+                                        executionGraphWithVertexParallelism.jobSchedulingPlan
+                                                .getSlotAssignments())
+                                .log());
     }
 
     private void driveRescaleTimelineByException(Throwable throwable) {
