@@ -89,6 +89,8 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
     /** The job type of the job execution. */
     @Nullable private final JobType jobType;
 
+    @Nullable private final String scheduler;
+
     /**
      * The exception that caused the job to fail. This is set to the first root exception that was
      * not recoverable and triggered job failure
@@ -126,6 +128,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
             long[] stateTimestamps,
             JobStatus state,
             @Nullable JobType jobType,
+            @Nullable String scheduler,
             @Nullable ErrorInfo failureCause,
             JobPlanInfo.Plan plan,
             StringifiedAccumulatorResult[] archivedUserAccumulators,
@@ -148,6 +151,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
         this.stateTimestamps = Preconditions.checkNotNull(stateTimestamps);
         this.state = Preconditions.checkNotNull(state);
         this.jobType = jobType;
+        this.scheduler = scheduler;
         this.failureCause = failureCause;
         this.plan = Preconditions.checkNotNull(plan);
         this.archivedUserAccumulators = Preconditions.checkNotNull(archivedUserAccumulators);
@@ -317,6 +321,12 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
         return pendingOperatorCount;
     }
 
+    @Nullable
+    @Override
+    public String getScheduler() {
+        return scheduler;
+    }
+
     /**
      * Create a {@link ArchivedExecutionGraph} from the given {@link ExecutionGraph}.
      *
@@ -374,6 +384,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
                 timestamps,
                 statusOverride == null ? executionGraph.getState() : statusOverride,
                 executionGraph.getJobType(),
+                executionGraph.getScheduler(),
                 executionGraph.getFailureInfo(),
                 executionGraph.getPlan(),
                 executionGraph.getAccumulatorResultsStringified(),
@@ -407,6 +418,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
                 jobName,
                 jobStatus,
                 jobType,
+                null,
                 Collections.emptyMap(),
                 Collections.emptyList(),
                 throwable,
@@ -419,6 +431,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
             String jobName,
             JobStatus jobStatus,
             JobType jobType,
+            @Nullable String scheduler,
             @Nullable Throwable throwable,
             @Nullable JobCheckpointingSettings checkpointingSettings,
             long initializationTimestamp,
@@ -449,6 +462,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
                 jobName,
                 jobStatus,
                 jobType,
+                scheduler,
                 archivedJobVertices,
                 archivedVerticesInCreationOrder,
                 throwable,
@@ -461,6 +475,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
             String jobName,
             JobStatus jobStatus,
             JobType jobType,
+            @Nullable String scheduler,
             Map<JobVertexID, ArchivedExecutionJobVertex> archivedTasks,
             List<ArchivedExecutionJobVertex> archivedVerticesInCreationOrder,
             @Nullable Throwable throwable,
@@ -493,6 +508,7 @@ public class ArchivedExecutionGraph implements AccessExecutionGraph, Serializabl
                 timestamps,
                 jobStatus,
                 jobType,
+                scheduler,
                 failureInfo,
                 plan,
                 archivedUserAccumulators,

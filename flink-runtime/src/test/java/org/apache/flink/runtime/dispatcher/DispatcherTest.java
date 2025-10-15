@@ -1691,6 +1691,7 @@ public class DispatcherTest extends AbstractDispatcherTest {
                                                         JobType.STREAMING,
                                                         null,
                                                         null,
+                                                        null,
                                                         System.currentTimeMillis(),
                                                         jobGraph.getVertices(),
                                                         SchedulerBase.computeVertexParallelismStore(

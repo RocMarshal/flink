@@ -218,4 +218,14 @@ public interface AccessExecutionGraph extends JobStatusProvider {
      * @return the number of pending operators.
      */
     int getPendingOperatorCount();
+
+    /**
+     * Returns the scheduler of the current execution graph.
+     *
+     * @return The scheduler of the current execution graph.
+     */
+    @Nullable
+    default String getScheduler() {
+        return null;
+    }
 }
