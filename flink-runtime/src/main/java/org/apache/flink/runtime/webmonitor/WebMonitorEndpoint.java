@@ -91,6 +91,7 @@ import org.apache.flink.runtime.rest.handler.job.metrics.JobVertexWatermarksHand
 import org.apache.flink.runtime.rest.handler.job.metrics.SubtaskMetricsHandler;
 import org.apache.flink.runtime.rest.handler.job.metrics.TaskManagerMetricsHandler;
 import org.apache.flink.runtime.rest.handler.job.rescales.JobRescaleConfigHandler;
+import org.apache.flink.runtime.rest.handler.job.rescales.JobRescaleStatisticsDetailsHandler;
 import org.apache.flink.runtime.rest.handler.job.rescaling.RescalingHandlers;
 import org.apache.flink.runtime.rest.handler.job.savepoints.SavepointDisposalHandlers;
 import org.apache.flink.runtime.rest.handler.job.savepoints.SavepointHandlers;
@@ -153,6 +154,7 @@ import org.apache.flink.runtime.rest.messages.job.SubtaskExecutionAttemptAccumul
 import org.apache.flink.runtime.rest.messages.job.SubtaskExecutionAttemptDetailsHeaders;
 import org.apache.flink.runtime.rest.messages.job.coordination.ClientCoordinationHeaders;
 import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleConfigHeaders;
+import org.apache.flink.runtime.rest.messages.job.rescales.JobRescaleStatisticsDetailsHeaders;
 import org.apache.flink.runtime.rest.messages.taskmanager.TaskManagerCustomLogHeaders;
 import org.apache.flink.runtime.rest.messages.taskmanager.TaskManagerDetailsHeaders;
 import org.apache.flink.runtime.rest.messages.taskmanager.TaskManagerLogFileHeaders;
@@ -1141,6 +1143,19 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
                         executor);
         handlers.add(
                 Tuple2.of(jobRescaleConfigHandler.getMessageHeaders(), jobRescaleConfigHandler));
+
+        final JobRescaleStatisticsDetailsHandler jobRescaleStatisticsDetailsHandler =
+                new JobRescaleStatisticsDetailsHandler(
+                        leaderRetriever,
+                        timeout,
+                        responseHeaders,
+                        JobRescaleStatisticsDetailsHeaders.getInstance(),
+                        executionGraphCache,
+                        executor);
+        handlers.add(
+                Tuple2.of(
+                        jobRescaleStatisticsDetailsHandler.getMessageHeaders(),
+                        jobRescaleStatisticsDetailsHandler));
 
         handlers.stream()
                 .map(tuple -> tuple.f1)
