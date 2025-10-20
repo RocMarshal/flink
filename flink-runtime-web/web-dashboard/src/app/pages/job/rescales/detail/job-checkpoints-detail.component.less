@@ -15,37 +15,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@import "theme";
 
-export interface JobOverview {
-  jobs: JobsItem[];
+.name {
+  overflow: hidden;
+  width: 400px;
+  word-break: break-all;
 }
 
-export interface JobsItem {
-  jid: string;
-  name: string;
-  state: string;
-  'job-type': string;
-  scheduler: string;
-  'start-time': number;
-  'end-time': number;
-  duration: number;
-  'last-modification': number;
-  tasks: TaskStatus;
-  completed?: boolean;
-  'pending-operators'?: number;
+.more-detail {
+  display: inline-block;
+  margin-left: 24px;
 }
 
-export interface TaskStatus {
-  CANCELED: number;
-  CANCELING: number;
-  CREATED: number;
-  DEPLOYING: number;
-  FAILED: number;
-  FINISHED: number;
-  RECONCILING: number;
-  RUNNING: number;
-  SCHEDULED: number;
-  TOTAL: number;
-  INITIALIZING: number;
-  PENDING: number;
+.extra {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid @border-color-split;
+  background: darken(@component-background, 1%);
+}
+
+.operators {
+  padding: 12px;
+  border: 1px solid @border-color-split;
+  background: darken(@component-background, 1%);
 }

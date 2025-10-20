@@ -16,36 +16,24 @@
  * limitations under the License.
  */
 
-export interface JobOverview {
-  jobs: JobsItem[];
+:host {
+  ::ng-deep {
+    .ant-tabs-tabpane {
+      position: relative;
+      top: -16px;
+      padding: 24px;
+    }
+
+    .ant-tabs-nav-list {
+      padding: 4px 16px;
+    }
+  }
 }
 
-export interface JobsItem {
-  jid: string;
-  name: string;
-  state: string;
-  'job-type': string;
-  scheduler: string;
-  'start-time': number;
-  'end-time': number;
-  duration: number;
-  'last-modification': number;
-  tasks: TaskStatus;
-  completed?: boolean;
-  'pending-operators'?: number;
+.refresh {
+  margin-right: 12px;
 }
 
-export interface TaskStatus {
-  CANCELED: number;
-  CANCELING: number;
-  CREATED: number;
-  DEPLOYING: number;
-  FAILED: number;
-  FINISHED: number;
-  RECONCILING: number;
-  RUNNING: number;
-  SCHEDULED: number;
-  TOTAL: number;
-  INITIALIZING: number;
-  PENDING: number;
+nz-empty {
+  padding: 24px;
 }
