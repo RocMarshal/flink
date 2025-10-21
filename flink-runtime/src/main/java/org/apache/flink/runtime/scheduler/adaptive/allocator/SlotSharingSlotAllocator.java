@@ -327,7 +327,7 @@ public class SlotSharingSlotAllocator implements SlotAllocator {
                                 slotInfo.getAllocationId(), null, System.currentTimeMillis()));
     }
 
-    static class ExecutionSlotSharingGroup implements WeightLoadable {
+    public static class ExecutionSlotSharingGroup implements WeightLoadable {
         private final String id;
         private final Set<ExecutionVertexID> containedExecutionVertices;
 
