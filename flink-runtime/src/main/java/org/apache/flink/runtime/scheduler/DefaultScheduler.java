@@ -374,6 +374,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
 
         addVerticesToRestartPending(verticesToRestart);
 
+        // 停止作业
         final CompletableFuture<?> cancelFuture = cancelTasksAsync(verticesToRestart);
 
         archiveFromFailureHandlingResult(
