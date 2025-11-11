@@ -218,7 +218,7 @@ public class DefaultExecutionTopology implements SchedulingTopology {
 
         generateNewExecutionVerticesAndResultPartitions(newExecutionVertices);
 
-        generateNewPipelinedRegions(newExecutionVertices);
+        generateNewSchedulingPipelinedRegions(newExecutionVertices);
 
         ensureCoLocatedVerticesInSameRegion(pipelinedRegions, executionGraph);
 
@@ -339,7 +339,8 @@ public class DefaultExecutionTopology implements SchedulingTopology {
         return schedulingVertex;
     }
 
-    private void generateNewPipelinedRegions(Iterable<ExecutionVertex> newExecutionVertices) {
+    private void generateNewSchedulingPipelinedRegions(
+            Iterable<ExecutionVertex> newExecutionVertices) {
 
         final Iterable<DefaultExecutionVertex> newSchedulingExecutionVertices =
                 IterableUtils.toStream(newExecutionVertices)
@@ -348,20 +349,13 @@ public class DefaultExecutionTopology implements SchedulingTopology {
                         .collect(Collectors.toList());
 
         Map<DefaultLogicalPipelinedRegion, List<DefaultExecutionVertex>>
-                sortedExecutionVerticesInPipelinedRegion = new IdentityHashMap<>();
-
-        for (DefaultExecutionVertex schedulingVertex : newSchedulingExecutionVertices) {
-            sortedExecutionVerticesInPipelinedRegion
-                    .computeIfAbsent(
-                            logicalPipelinedRegionsByJobVertexId.get(
-                                    schedulingVertex.getId().getJobVertexId()),
-                            ignore -> new ArrayList<>())
-                    .add(schedulingVertex);
-        }
+                sortedExecutionVerticesInPipelinedRegion =
+                        getLogicalPipelinedRegionToExecutionVerticesMap(
+                                newSchedulingExecutionVertices);
 
         long buildRegionsStartTime = System.nanoTime();
 
-        Set<Set<SchedulingExecutionVertex>> rawPipelinedRegions =
+        Set<Set<SchedulingExecutionVertex>> rawSchedulingPipelinedRegions =
                 Collections.newSetFromMap(new IdentityHashMap<>());
 
         // A SchedulingPipelinedRegion can be derived from just one LogicalPipelinedRegion.
@@ -392,12 +386,12 @@ public class DefaultExecutionTopology implements SchedulingTopology {
                 // Therefore, if a LogicalPipelinedRegion contains any intra-region all-to-all
                 // edge, we just convert the entire LogicalPipelinedRegion to a sole
                 // SchedulingPipelinedRegion directly.
-                rawPipelinedRegions.add(new HashSet<>(schedulingExecutionVertices));
+                rawSchedulingPipelinedRegions.add(new HashSet<>(schedulingExecutionVertices));
             } else {
                 // If there are only pointwise edges inside the LogicalPipelinedRegion, we can use
                 // SchedulingPipelinedRegionComputeUtil to compute the regions with O(N) computation
                 // complexity.
-                rawPipelinedRegions.addAll(
+                rawSchedulingPipelinedRegions.addAll(
                         SchedulingPipelinedRegionComputeUtil.computePipelinedRegions(
                                 schedulingExecutionVertices,
                                 executionVerticesById::get,
@@ -405,7 +399,7 @@ public class DefaultExecutionTopology implements SchedulingTopology {
             }
         }
 
-        for (Set<? extends SchedulingExecutionVertex> rawPipelinedRegion : rawPipelinedRegions) {
+        for (Set<? extends SchedulingExecutionVertex> rawPipelinedRegion : rawSchedulingPipelinedRegions) {
             //noinspection unchecked
             final DefaultSchedulingPipelinedRegion pipelinedRegion =
                     new DefaultSchedulingPipelinedRegion(
@@ -421,9 +415,26 @@ public class DefaultExecutionTopology implements SchedulingTopology {
         long buildRegionsDuration = (System.nanoTime() - buildRegionsStartTime) / 1_000_000;
         LOG.info(
                 "Built {} new pipelined regions in {} ms, total {} pipelined regions currently.",
-                rawPipelinedRegions.size(),
+                rawSchedulingPipelinedRegions.size(),
                 buildRegionsDuration,
                 pipelinedRegions.size());
+    }
+
+    private Map<DefaultLogicalPipelinedRegion, List<DefaultExecutionVertex>>
+            getLogicalPipelinedRegionToExecutionVerticesMap(
+                    Iterable<DefaultExecutionVertex> newSchedulingExecutionVertices) {
+        Map<DefaultLogicalPipelinedRegion, List<DefaultExecutionVertex>>
+                sortedExecutionVerticesInPipelinedRegion = new IdentityHashMap<>();
+
+        for (DefaultExecutionVertex schedulingVertex : newSchedulingExecutionVertices) {
+            sortedExecutionVerticesInPipelinedRegion
+                    .computeIfAbsent(
+                            logicalPipelinedRegionsByJobVertexId.get(
+                                    schedulingVertex.getId().getJobVertexId()),
+                            ignore -> new ArrayList<>())
+                    .add(schedulingVertex);
+        }
+        return sortedExecutionVerticesInPipelinedRegion;
     }
 
     /**

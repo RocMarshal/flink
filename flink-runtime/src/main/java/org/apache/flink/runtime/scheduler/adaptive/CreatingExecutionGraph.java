@@ -33,6 +33,7 @@ import org.apache.flink.runtime.scheduler.ExecutionGraphHandler;
 import org.apache.flink.runtime.scheduler.GlobalFailureHandler;
 import org.apache.flink.runtime.scheduler.OperatorCoordinatorHandler;
 import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
+import org.apache.flink.runtime.scheduler.adaptive.utils.RegionalRestartableReferences;
 import org.apache.flink.util.IterableUtils;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.concurrent.FutureUtils;
@@ -69,6 +70,27 @@ public class CreatingExecutionGraph extends StateWithoutExecutionGraph {
             Logger logger,
             OperatorCoordinatorHandlerFactory operatorCoordinatorFactory,
             @Nullable ExecutionGraph previousExecutionGraph) {
+        this(
+                context,
+                executionGraphWithParallelismFuture,
+                logger,
+                operatorCoordinatorFactory,
+                previousExecutionGraph,
+                null);
+    }
+
+    public CreatingExecutionGraph(
+            Context context,
+            CompletableFuture<ExecutionGraphWithVertexParallelism>
+                    executionGraphWithParallelismFuture,
+            Logger logger,
+            OperatorCoordinatorHandlerFactory operatorCoordinatorFactory,
+            @Nullable ExecutionGraph previousExecutionGraph,
+            @Nullable RegionalRestartableReferences regionalRestartableReferences) {
+        /**
+         * TODO：如果 regionalRestartableReferences 为 null则不处理，否则计算需要保持的 并行度和新的并行度 如果前置是created, 则直接创建，
+         * 如果前置是restarted, 则直接使用restarting 时的并行度创建作业图
+         */
         super(context, logger);
         this.context = context;
         this.operatorCoordinatorHandlerFactory = operatorCoordinatorFactory;
@@ -282,7 +304,8 @@ public class CreatingExecutionGraph extends StateWithoutExecutionGraph {
                 CompletableFuture<ExecutionGraphWithVertexParallelism>
                         executionGraphWithParallelismFuture,
                 Logger log,
-                @Nullable ExecutionGraph previousExecutionGraph) {
+                @Nullable ExecutionGraph previousExecutionGraph,
+                @Nullable RegionalRestartableReferences regionalRestartableReferences) {
             this.context = context;
             this.executionGraphWithParallelismFuture = executionGraphWithParallelismFuture;
             this.log = log;
@@ -301,7 +324,8 @@ public class CreatingExecutionGraph extends StateWithoutExecutionGraph {
                     executionGraphWithParallelismFuture,
                     log,
                     DefaultOperatorCoordinatorHandler::new,
-                    previousExecutionGraph);
+                    previousExecutionGraph,
+                    null);
         }
     }
 

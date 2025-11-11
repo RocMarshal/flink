@@ -1358,12 +1358,14 @@ public class AdaptiveScheduler
         final CompletableFuture<CreatingExecutionGraph.ExecutionGraphWithVertexParallelism>
                 executionGraphWithAvailableResourcesFuture =
                         createExecutionGraphWithAvailableResourcesAsync(previousExecutionGraph);
+        // TODO.....
         transitionToState(
                 new CreatingExecutionGraph.Factory(
                         this,
                         executionGraphWithAvailableResourcesFuture,
                         LOG,
-                        previousExecutionGraph));
+                        previousExecutionGraph,
+                        null));
     }
 
     private CompletableFuture<CreatingExecutionGraph.ExecutionGraphWithVertexParallelism>
