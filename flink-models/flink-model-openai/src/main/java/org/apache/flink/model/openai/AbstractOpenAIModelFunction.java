@@ -194,6 +194,26 @@ public abstract class AbstractOpenAIModelFunction extends AsyncPredictFunction {
         }
     }
 
+    /**
+     * Get the index of the physical output column (not metadata column).
+     *
+     * @return The index of the output column
+     * @throws IllegalArgumentException if there is not exactly one physical output column
+     */
+    protected int getOutputColumnIndex() {
+        for (int i = 0; i < this.outputColumnNames.size(); i++) {
+            String columnName = this.outputColumnNames.get(i);
+            if (ErrorMessageMetadata.get(columnName) == null) {
+                // Prior checks have guaranteed that there is one and only one physical output
+                // column.
+                return i;
+            }
+        }
+        throw new IllegalArgumentException(
+                "There should be one and only one physical output column. Actual columns: "
+                        + this.outputColumnNames);
+    }
+
     protected Collection<RowData> handleErrorsAndRespond(Throwable t) {
         ErrorHandlingStrategy finalErrorHandlingStrategy =
                 this.errorHandlingStrategy == ErrorHandlingStrategy.RETRY

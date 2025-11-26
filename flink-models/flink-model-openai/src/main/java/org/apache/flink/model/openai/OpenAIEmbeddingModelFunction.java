@@ -59,20 +59,6 @@ public class OpenAIEmbeddingModelFunction extends AbstractOpenAIModelFunction {
         this.outputColumnIndex = getOutputColumnIndex();
     }
 
-    private int getOutputColumnIndex() {
-        for (int i = 0; i < this.outputColumnNames.size(); i++) {
-            String columnName = this.outputColumnNames.get(i);
-            if (ErrorMessageMetadata.get(columnName) == null) {
-                // Prior checks have guaranteed that there is one and only one physical output
-                // column.
-                return i;
-            }
-        }
-        throw new IllegalArgumentException(
-                "There should be one and only one physical output column. Actual columns: "
-                        + this.outputColumnNames);
-    }
-
     @Override
     protected String getEndpointSuffix() {
         return ENDPOINT_SUFFIX;
