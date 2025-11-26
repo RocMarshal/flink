@@ -30,9 +30,9 @@ Learn more about Flink at [https://flink.apache.org/](https://flink.apache.org/)
 * Integration with YARN, HDFS, HBase, and other components of the Apache Hadoop ecosystem
 
 
-### Streaming Example
+### WordWithCount POJO
 ```java
-// pojo class WordWithCount
+// POJO class used in the examples below
 public class WordWithCount {
     public String word;
     public int count;
@@ -44,8 +44,10 @@ public class WordWithCount {
         this.count = count;
     }
 }
+```
 
-// main method
+### Streaming Example
+```java
 StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 DataStreamSource<String> text = env.socketTextStream(host, port);
 DataStream<WordWithCount> windowCounts = text
@@ -60,25 +62,10 @@ DataStream<WordWithCount> windowCounts = text
 
 windowCounts.print();
 env.execute();
-}
 ```
 
 ### Batch Example
 ```java
-// pojo class WordWithCount
-public class WordWithCount {
-    public String word;
-    public int count;
-
-    public WordWithCount() {}
-
-    public WordWithCount(String word, int count) {
-        this.word = word;
-        this.count = count;
-    }
-}
-
-// main method
 StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 env.setRuntimeMode(RuntimeExecutionMode.BATCH);
 FileSource<String> source = FileSource.forRecordStreamFormat(new TextLineInputFormat(), new Path("MyInput.txt")).build();

@@ -19,11 +19,8 @@
 package org.apache.flink.api.java.hadoop.mapreduce.utils;
 
 import org.apache.flink.annotation.Internal;
-import org.apache.flink.configuration.GlobalConfiguration;
 
 import org.apache.hadoop.conf.Configuration;
-
-import java.util.Map;
 
 /** Utility class to work with next generation of Apache Hadoop MapReduce classes. */
 @Internal
@@ -31,23 +28,10 @@ public final class HadoopUtils {
 
     /**
      * Merge HadoopConfiguration into Configuration. This is necessary for the HDFS configuration.
+     * Delegates to the mapred utils for shared logic.
      */
     public static void mergeHadoopConf(Configuration hadoopConfig) {
-
-        // we have to load the global configuration here, because the HadoopInputFormatBase does not
-        // have access to a Flink configuration object
-        org.apache.flink.configuration.Configuration flinkConfiguration =
-                GlobalConfiguration.loadConfiguration();
-
-        Configuration hadoopConf =
-                org.apache.flink.api.java.hadoop.mapred.utils.HadoopUtils.getHadoopConfiguration(
-                        flinkConfiguration);
-
-        for (Map.Entry<String, String> e : hadoopConf) {
-            if (hadoopConfig.get(e.getKey()) == null) {
-                hadoopConfig.set(e.getKey(), e.getValue());
-            }
-        }
+        org.apache.flink.api.java.hadoop.mapred.utils.HadoopUtils.mergeHadoopConf(hadoopConfig);
     }
 
     /** Private constructor to prevent instantiation. */

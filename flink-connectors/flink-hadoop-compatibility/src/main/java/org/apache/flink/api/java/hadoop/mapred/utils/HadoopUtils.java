@@ -37,8 +37,12 @@ public final class HadoopUtils {
 
     private static final Logger LOG = LoggerFactory.getLogger(HadoopUtils.class);
 
-    /** Merge HadoopConfiguration into JobConf. This is necessary for the HDFS configuration. */
-    public static void mergeHadoopConf(JobConf jobConf) {
+    /**
+     * Merge HadoopConfiguration into Configuration. This is necessary for the HDFS configuration.
+     *
+     * @param hadoopConfig The Hadoop configuration to merge settings into
+     */
+    public static void mergeHadoopConf(Configuration hadoopConfig) {
         // we have to load the global configuration here, because the HadoopInputFormatBase does not
         // have access to a Flink configuration object
         org.apache.flink.configuration.Configuration flinkConfiguration =
@@ -46,10 +50,20 @@ public final class HadoopUtils {
 
         Configuration hadoopConf = getHadoopConfiguration(flinkConfiguration);
         for (Map.Entry<String, String> e : hadoopConf) {
-            if (jobConf.get(e.getKey()) == null) {
-                jobConf.set(e.getKey(), e.getValue());
+            if (hadoopConfig.get(e.getKey()) == null) {
+                hadoopConfig.set(e.getKey(), e.getValue());
             }
         }
+    }
+
+    /**
+     * Merge HadoopConfiguration into JobConf. This is necessary for the HDFS configuration.
+     * Delegates to the more general Configuration version.
+     *
+     * @param jobConf The JobConf to merge settings into
+     */
+    public static void mergeHadoopConf(JobConf jobConf) {
+        mergeHadoopConf((Configuration) jobConf);
     }
 
     /**
