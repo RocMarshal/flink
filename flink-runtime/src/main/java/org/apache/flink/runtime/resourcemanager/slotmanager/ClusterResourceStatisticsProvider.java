@@ -21,8 +21,14 @@ package org.apache.flink.runtime.resourcemanager.slotmanager;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.instance.InstanceID;
 
+import javax.annotation.Nullable;
+
 /** Provides statistics of cluster resources. */
 public interface ClusterResourceStatisticsProvider {
+
+    /** Get total number of tasks in the current instance. slots. */
+    @Nullable
+    Integer getNumberOfTasksOf(InstanceID instanceId);
 
     /** Get total number of registered slots. */
     int getNumberRegisteredSlots();
