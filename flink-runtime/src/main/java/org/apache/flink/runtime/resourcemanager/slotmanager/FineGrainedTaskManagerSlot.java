@@ -26,6 +26,8 @@ import org.apache.flink.runtime.instance.InstanceID;
 import org.apache.flink.runtime.resourcemanager.registration.TaskExecutorConnection;
 import org.apache.flink.util.Preconditions;
 
+import javax.annotation.Nullable;
+
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -51,6 +53,8 @@ public class FineGrainedTaskManagerSlot implements TaskManagerSlotInformation {
     /** Current state of this slot. Should be either PENDING or ALLOCATED. */
     private SlotState state;
 
+    private @Nullable Integer numberOfTasks = null;
+
     public FineGrainedTaskManagerSlot(
             AllocationID allocationId,
             JobID jobId,
@@ -70,6 +74,17 @@ public class FineGrainedTaskManagerSlot implements TaskManagerSlotInformation {
     @Override
     public ResourceProfile getResourceProfile() {
         return resourceProfile;
+    }
+
+    @Override
+    public void setNumberOfTasks(int numberOfTasks) {
+        this.numberOfTasks = numberOfTasks;
+    }
+
+    @Nullable
+    @Override
+    public Integer getNumberOfTasks() {
+        return numberOfTasks;
     }
 
     @Override
