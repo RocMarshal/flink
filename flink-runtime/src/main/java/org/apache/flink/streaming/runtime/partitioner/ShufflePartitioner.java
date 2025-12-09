@@ -33,7 +33,15 @@ import java.util.Random;
 public class ShufflePartitioner<T> extends StreamPartitioner<T> {
     private static final long serialVersionUID = 1L;
 
-    private Random random = new Random();
+    private final Random random = new Random();
+
+    public ShufflePartitioner() {
+        super(true, null);
+    }
+
+    public ShufflePartitioner(boolean enableAdaptivePartitionTrait) {
+        super(true, enableAdaptivePartitionTrait);
+    }
 
     @Override
     public int selectChannel(SerializationDelegate<StreamRecord<T>> record) {

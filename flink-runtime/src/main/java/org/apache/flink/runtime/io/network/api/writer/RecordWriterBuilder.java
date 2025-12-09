@@ -18,7 +18,9 @@
 
 package org.apache.flink.runtime.io.network.api.writer;
 
+import org.apache.flink.configuration.NettyShuffleEnvironmentOptions;
 import org.apache.flink.core.io.IOReadableWritable;
+import org.apache.flink.util.Preconditions;
 
 /** Utility class to encapsulate the logic of building a {@link RecordWriter} instance. */
 public class RecordWriterBuilder<T extends IOReadableWritable> {
@@ -28,6 +30,11 @@ public class RecordWriterBuilder<T extends IOReadableWritable> {
     private long timeout = -1;
 
     private String taskName = "test";
+
+    private boolean loadRebalanceEnabled = false;
+
+    private int maxTraverseSize =
+            NettyShuffleEnvironmentOptions.ADAPTIVE_PARTITIONER_MAX_TRAVERSE_SIZE.defaultValue();
 
     public RecordWriterBuilder<T> setChannelSelector(ChannelSelector<T> selector) {
         this.selector = selector;
@@ -44,11 +51,25 @@ public class RecordWriterBuilder<T extends IOReadableWritable> {
         return this;
     }
 
+    public RecordWriterBuilder<T> setLoadRebalanceEnabled(boolean loadRebalanceEnabled) {
+        this.loadRebalanceEnabled = loadRebalanceEnabled;
+        return this;
+    }
+
+    public RecordWriterBuilder<T> setMaxTraverseSize(int maxTraverseSize) {
+        Preconditions.checkState(
+                maxTraverseSize > 1, "The maxTraverseSize must be greater than 1.");
+        this.maxTraverseSize = maxTraverseSize;
+        return this;
+    }
+
     public RecordWriter<T> build(ResultPartitionWriter writer) {
         if (selector.isBroadcast()) {
             return new BroadcastRecordWriter<>(writer, timeout, taskName);
-        } else {
-            return new ChannelSelectorRecordWriter<>(writer, selector, timeout, taskName);
         }
+        if (loadRebalanceEnabled) {
+            return new AdaptiveLoadBasedRecordWriter<>(writer, timeout, taskName, maxTraverseSize);
+        }
+        return new ChannelSelectorRecordWriter<>(writer, selector, timeout, taskName);
     }
 }

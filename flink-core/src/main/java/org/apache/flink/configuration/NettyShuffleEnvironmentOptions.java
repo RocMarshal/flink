@@ -325,6 +325,24 @@ public class NettyShuffleEnvironmentOptions {
                                             code(NETWORK_REQUEST_BACKOFF_MAX.key()))
                                     .build());
 
+    /** Whether to improve the rebalance to dynamic rebalance. */
+    @Documentation.Section(Documentation.Sections.ALL_TASK_MANAGER_NETWORK)
+    public static final ConfigOption<Boolean> ADAPTIVE_PARTITIONER_ENABLE =
+            key("taskmanager.network.adaptive-partitioner.enabled")
+                    .booleanType()
+                    .defaultValue(false)
+                    .withDescription(
+                            "Whether to improve the re-balance/scale partitioner to dynamic adaptive.");
+
+    /** How many channels to traverse at most when looking for an idle channel. */
+    @Documentation.Section(Documentation.Sections.ALL_TASK_MANAGER_NETWORK)
+    public static final ConfigOption<Integer> ADAPTIVE_PARTITIONER_MAX_TRAVERSE_SIZE =
+            key("taskmanager.network.adaptive-partitioner.max-traverse-size")
+                    .intType()
+                    .defaultValue(10)
+                    .withDescription(
+                            "How many channels to traverse at most when looking for an idle channel.");
+
     // ------------------------------------------------------------------------
 
     /** Not intended to be instantiated. */

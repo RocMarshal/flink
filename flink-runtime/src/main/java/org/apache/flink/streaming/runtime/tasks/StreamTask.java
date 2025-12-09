@@ -23,6 +23,7 @@ import org.apache.flink.api.common.operators.MailboxExecutor;
 import org.apache.flink.api.common.operators.ProcessingTimeService.ProcessingTimeCallback;
 import org.apache.flink.configuration.CheckpointingOptions;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.NettyShuffleEnvironmentOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.core.execution.RecoveryClaimMode;
 import org.apache.flink.core.fs.AutoCloseableRegistry;
@@ -1828,12 +1829,22 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                 ((ConfigurableStreamPartitioner) outputPartitioner).configure(numKeyGroups);
             }
         }
+        Configuration conf = environment.getJobConfiguration();
+        final boolean loadRebalanceEnabled =
+                outputPartitioner.isEnabledAdaptivePartitionTrait(
+                                conf.get(
+                                        NettyShuffleEnvironmentOptions.ADAPTIVE_PARTITIONER_ENABLE))
+                        && bufferWriter.getNumberOfSubpartitions() > 1;
+        final int maxTraverseSize =
+                conf.get(NettyShuffleEnvironmentOptions.ADAPTIVE_PARTITIONER_MAX_TRAVERSE_SIZE);
 
         RecordWriter<SerializationDelegate<StreamRecord<OUT>>> output =
                 new RecordWriterBuilder<SerializationDelegate<StreamRecord<OUT>>>()
                         .setChannelSelector(outputPartitioner)
                         .setTimeout(bufferTimeout)
                         .setTaskName(taskNameWithSubtask)
+                        .setLoadRebalanceEnabled(loadRebalanceEnabled)
+                        .setMaxTraverseSize(maxTraverseSize)
                         .build(bufferWriter);
         output.setMetricGroup(environment.getMetricGroup().getIOMetricGroup());
         return output;

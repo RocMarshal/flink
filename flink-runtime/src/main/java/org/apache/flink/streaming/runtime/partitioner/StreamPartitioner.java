@@ -22,6 +22,12 @@ import org.apache.flink.runtime.io.network.api.writer.ChannelSelector;
 import org.apache.flink.runtime.io.network.api.writer.SubtaskStateMapper;
 import org.apache.flink.runtime.plugable.SerializationDelegate;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.util.Preconditions;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -30,6 +36,9 @@ import java.util.Objects;
 @Internal
 public abstract class StreamPartitioner<T>
         implements ChannelSelector<SerializationDelegate<StreamRecord<T>>>, Serializable {
+
+    public static final Logger LOG = LoggerFactory.getLogger(StreamPartitioner.class);
+
     private static final long serialVersionUID = 1L;
 
     protected int numberOfChannels;
@@ -40,6 +49,24 @@ public abstract class StreamPartitioner<T>
      * specific cases.
      */
     private boolean supportsUnalignedCheckpoint = true;
+
+    protected final boolean hasLatentAdaptivePartitionTrait;
+    protected final @Nullable Boolean enableAdaptivePartitionTrait;
+
+    public StreamPartitioner() {
+        this(false, null);
+    }
+
+    public StreamPartitioner(
+            boolean hasLatentAdaptivePartitionTrait,
+            @Nullable Boolean enableAdaptivePartitionTrait) {
+        this.hasLatentAdaptivePartitionTrait = hasLatentAdaptivePartitionTrait;
+        this.enableAdaptivePartitionTrait = enableAdaptivePartitionTrait;
+        if (!hasLatentAdaptivePartitionTrait && enableAdaptivePartitionTrait != null) {
+            // TODO: add the hint message.
+            Preconditions.checkArgument(enableAdaptivePartitionTrait);
+        }
+    }
 
     @Override
     public void setup(int numberOfChannels) {
@@ -92,5 +119,16 @@ public abstract class StreamPartitioner<T>
 
     public void disableUnalignedCheckpoints() {
         this.supportsUnalignedCheckpoint = false;
+    }
+
+    public boolean isEnabledAdaptivePartitionTrait(boolean rollbackAdaptivePartitionable) {
+        if (!hasLatentAdaptivePartitionTrait) {
+            return false;
+        } else {
+            // Return the enableAdaptivePartitionTrait if specified manually,
+            // rollbackAdaptivePartitionable else.
+            return Objects.requireNonNullElse(
+                    enableAdaptivePartitionTrait, rollbackAdaptivePartitionable);
+        }
     }
 }
