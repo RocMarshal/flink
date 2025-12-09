@@ -316,6 +316,57 @@ public class DataStream<T> {
     }
 
     /**
+     * Partitions a DataStream on the key returned by the selector, using a custom partitioner. This
+     * method takes the key selector to get the key to partition on, and a partitioner that accepts
+     * the key type.
+     *
+     * <p>Note: This method works only on single field keys, i.e. the selector cannot return tuples
+     * of fields.
+     *
+     * @param partitioner The partitioner to assign partitions to keys.
+     * @param keySelector The KeySelector with which the DataStream is partitioned.
+     * @param adaptable If enabled the load based adaptive partition. Note, This parameter can only
+     *     be used when the partition logic is not bound to downstream subtasks; otherwise, it would
+     *     cause semantic errors in data partitioning.
+     * @return The partitioned DataStream.
+     * @see KeySelector
+     */
+    public <K> DataStream<T> partitionCustom(
+            Partitioner<K> partitioner, KeySelector<T, K> keySelector, boolean adaptable) {
+        return setConnectionType(
+                new CustomPartitionerWrapper<>(clean(partitioner), clean(keySelector), adaptable));
+    }
+
+    /**
+     * Partitions a DataStream on the key returned by the selector, using a custom partitioner. This
+     * method takes the key selector to get the key to partition on, and a partitioner that accepts
+     * the key type.
+     *
+     * <p>Note: This method works only on single field keys, i.e. the selector cannot return tuples
+     * of fields.
+     *
+     * @param partitioner The partitioner to assign partitions to keys.
+     * @param keySelector The KeySelector with which the DataStream is partitioned.
+     * @param enabledAdaptableAndMaxTraverseSize Enabled the load based adaptive partition and
+     *     specify how many channels to traverse at most when looking for the idlest channel. Note,
+     *     this parameter can only be used when the partition logic is not bound to downstream
+     *     subtasks, otherwise, it would cause semantic errors in data partitioning.
+     * @return The partitioned DataStream.
+     * @see KeySelector
+     */
+    public <K> DataStream<T> partitionCustom(
+            Partitioner<K> partitioner,
+            KeySelector<T, K> keySelector,
+            int enabledAdaptableAndMaxTraverseSize) {
+        return setConnectionType(
+                new CustomPartitionerWrapper<>(
+                        clean(partitioner),
+                        clean(keySelector),
+                        true,
+                        enabledAdaptableAndMaxTraverseSize));
+    }
+
+    /**
      * Sets the partitioning of the {@link DataStream} so that the output elements are broadcasted
      * to every parallel instance of the next operation.
      *
@@ -355,6 +406,32 @@ public class DataStream<T> {
     }
 
     /**
+     * Sets the partitioning of the {@link DataStream} so that the output elements are shuffled
+     * uniformly randomly to the next operation.
+     *
+     * @param adaptable If enabled the load based adaptive partition.
+     * @return The DataStream with shuffle partitioning set.
+     */
+    @PublicEvolving
+    public DataStream<T> shuffle(boolean adaptable) {
+        return setConnectionType(new ShufflePartitioner<T>(adaptable));
+    }
+
+    /**
+     * Sets the partitioning of the {@link DataStream} so that the output elements are shuffled
+     * uniformly randomly to the next operation.
+     *
+     * @param enabledAdaptableAndMaxTraverseSize Enabled the load based adaptive partition and
+     *     specify how many channels to traverse at most when looking for the idlest channel.
+     * @return The DataStream with shuffle partitioning set.
+     */
+    @PublicEvolving
+    public DataStream<T> shuffle(int enabledAdaptableAndMaxTraverseSize) {
+        return setConnectionType(
+                new ShufflePartitioner<T>(true, enabledAdaptableAndMaxTraverseSize));
+    }
+
+    /**
      * Sets the partitioning of the {@link DataStream} so that the output elements are forwarded to
      * the local subtask of the next operation.
      *
@@ -372,6 +449,30 @@ public class DataStream<T> {
      */
     public DataStream<T> rebalance() {
         return setConnectionType(new RebalancePartitioner<T>());
+    }
+
+    /**
+     * Sets the partitioning of the {@link DataStream} so that the output elements are distributed
+     * evenly to instances of the next operation in a round-robin fashion.
+     *
+     * @param adaptable If enabled the load based adaptive partition.
+     * @return The DataStream with rebalance partitioning set.
+     */
+    public DataStream<T> rebalance(boolean adaptable) {
+        return setConnectionType(new RebalancePartitioner<T>(adaptable));
+    }
+
+    /**
+     * Sets the partitioning of the {@link DataStream} so that the output elements are distributed
+     * evenly to instances of the next operation in a round-robin fashion.
+     *
+     * @param enabledAdaptableAndMaxTraverseSize Enabled the load based adaptive partition and
+     *     specify how many channels to traverse at most when looking for the idlest channel.
+     * @return The DataStream with rebalance partitioning set.
+     */
+    public DataStream<T> rebalance(int enabledAdaptableAndMaxTraverseSize) {
+        return setConnectionType(
+                new RebalancePartitioner<T>(true, enabledAdaptableAndMaxTraverseSize));
     }
 
     /**
@@ -395,6 +496,56 @@ public class DataStream<T> {
     @PublicEvolving
     public DataStream<T> rescale() {
         return setConnectionType(new RescalePartitioner<T>());
+    }
+
+    /**
+     * Sets the partitioning of the {@link DataStream} so that the output elements are distributed
+     * evenly to a subset of instances of the next operation in a round-robin fashion.
+     *
+     * <p>The subset of downstream operations to which the upstream operation sends elements depends
+     * on the degree of parallelism of both the upstream and downstream operation. For example, if
+     * the upstream operation has parallelism 2 and the downstream operation has parallelism 4, then
+     * one upstream operation would distribute elements to two downstream operations while the other
+     * upstream operation would distribute to the other two downstream operations. If, on the other
+     * hand, the downstream operation has parallelism 2 while the upstream operation has parallelism
+     * 4 then two upstream operations will distribute to one downstream operation while the other
+     * two upstream operations will distribute to the other downstream operations.
+     *
+     * <p>In cases where the different parallelisms are not multiples of each other one or several
+     * downstream operations will have a differing number of inputs from upstream operations.
+     *
+     * @param adaptable If enabled the load based adaptive partition.
+     * @return The DataStream with rescale partitioning set.
+     */
+    @PublicEvolving
+    public DataStream<T> rescale(boolean adaptable) {
+        return setConnectionType(new RescalePartitioner<T>(adaptable));
+    }
+
+    /**
+     * Sets the partitioning of the {@link DataStream} so that the output elements are distributed
+     * evenly to a subset of instances of the next operation in a round-robin fashion.
+     *
+     * <p>The subset of downstream operations to which the upstream operation sends elements depends
+     * on the degree of parallelism of both the upstream and downstream operation. For example, if
+     * the upstream operation has parallelism 2 and the downstream operation has parallelism 4, then
+     * one upstream operation would distribute elements to two downstream operations while the other
+     * upstream operation would distribute to the other two downstream operations. If, on the other
+     * hand, the downstream operation has parallelism 2 while the upstream operation has parallelism
+     * 4 then two upstream operations will distribute to one downstream operation while the other
+     * two upstream operations will distribute to the other downstream operations.
+     *
+     * <p>In cases where the different parallelisms are not multiples of each other one or several
+     * downstream operations will have a differing number of inputs from upstream operations.
+     *
+     * @param enabledAdaptableAndMaxTraverseSize Enabled the load based adaptive partition and
+     *     specify how many channels to traverse at most when looking for the idlest channel.
+     * @return The DataStream with rescale partitioning set.
+     */
+    @PublicEvolving
+    public DataStream<T> rescale(int enabledAdaptableAndMaxTraverseSize) {
+        return setConnectionType(
+                new RescalePartitioner<T>(true, enabledAdaptableAndMaxTraverseSize));
     }
 
     /**

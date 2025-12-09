@@ -35,6 +35,19 @@ public class RebalancePartitioner<T> extends StreamPartitioner<T> {
 
     private int nextChannelToSendTo;
 
+    public RebalancePartitioner() {
+        super(true, null, null);
+    }
+
+    public RebalancePartitioner(boolean enableAdaptivePartitionTrait) {
+        super(true, enableAdaptivePartitionTrait, null);
+    }
+
+    public RebalancePartitioner(
+            boolean enableAdaptivePartitionTrait, int adaptivePartitionerMaxTraverseSize) {
+        super(true, enableAdaptivePartitionTrait, adaptivePartitionerMaxTraverseSize);
+    }
+
     @Override
     public void setup(int numberOfChannels) {
         super.setup(numberOfChannels);
