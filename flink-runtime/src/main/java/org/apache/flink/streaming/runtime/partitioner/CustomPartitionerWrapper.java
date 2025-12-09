@@ -42,6 +42,26 @@ public class CustomPartitionerWrapper<K, T> extends StreamPartitioner<T> {
     KeySelector<T, K> keySelector;
 
     public CustomPartitionerWrapper(Partitioner<K> partitioner, KeySelector<T, K> keySelector) {
+        super(false, null, null);
+        this.partitioner = partitioner;
+        this.keySelector = keySelector;
+    }
+
+    public CustomPartitionerWrapper(
+            Partitioner<K> partitioner,
+            KeySelector<T, K> keySelector,
+            boolean enableAdaptivePartitionTrait) {
+        super(true, enableAdaptivePartitionTrait, null);
+        this.partitioner = partitioner;
+        this.keySelector = keySelector;
+    }
+
+    public CustomPartitionerWrapper(
+            Partitioner<K> partitioner,
+            KeySelector<T, K> keySelector,
+            boolean enableAdaptivePartitionTrait,
+            int adaptivePartitionerMaxTraverseSize) {
+        super(true, enableAdaptivePartitionTrait, adaptivePartitionerMaxTraverseSize);
         this.partitioner = partitioner;
         this.keySelector = keySelector;
     }
