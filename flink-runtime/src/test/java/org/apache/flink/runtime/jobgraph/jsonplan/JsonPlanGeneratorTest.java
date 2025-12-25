@@ -35,7 +35,7 @@ import org.apache.flink.util.jackson.JacksonMapperFactory;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,15 +45,13 @@ import java.util.stream.Collectors;
 
 import static org.apache.flink.runtime.util.JobVertexConnectionUtils.connectNewDataSetAsInput;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
-public class JsonPlanGeneratorTest {
+/** Test for {@link JsonPlanGenerator}. */
+class JsonPlanGeneratorTest {
 
     @Test
-    public void testGeneratorWithoutAnyAttachements() {
+    void testGeneratorWithoutAnyAttachments() {
         try {
             JobVertex source1 = new JobVertex("source 1");
 
@@ -116,25 +114,25 @@ public class JsonPlanGeneratorTest {
                             sink2);
 
             JobPlanInfo.Plan plan = JsonPlanGenerator.generatePlan(jg);
-            assertNotNull(plan);
+            assertThat(plan).isNotNull();
 
             // core fields
-            assertEquals(jg.getJobID().toString(), plan.getJobId());
-            assertEquals(jg.getName(), plan.getName());
-            assertEquals(jg.getJobType().name(), plan.getType());
+            assertThat(jg.getJobID()).hasToString(plan.getJobId());
+            assertThat(jg.getName()).hasToString(plan.getName());
+            assertThat(jg.getJobType()).hasToString(plan.getType());
 
-            assertThat(plan.getNodes()).isNotEmpty();
-            assertThat(plan.getNodes().size()).isEqualTo(9);
+            assertThat(plan.getNodes()).hasSize(9);
 
             for (JobPlanInfo.Plan.Node node : plan.getNodes()) {
                 checkVertexExists(node.getId(), jg);
 
                 String description = node.getDescription();
-                assertTrue(
-                        description.startsWith("source")
-                                || description.startsWith("sink")
-                                || description.startsWith("intermediate")
-                                || description.startsWith("join"));
+                assertThat(
+                                description.startsWith("source")
+                                        || description.startsWith("sink")
+                                        || description.startsWith("intermediate")
+                                        || description.startsWith("join"))
+                        .isTrue();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -154,7 +152,7 @@ public class JsonPlanGeneratorTest {
     }
 
     @Test
-    public void testGenerateStreamGraphJson() throws JsonProcessingException {
+    void testGenerateStreamGraphJson() throws JsonProcessingException {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.fromSequence(0L, 1L).disableChaining().print();
         StreamGraph streamGraph = env.getStreamGraph();
@@ -196,28 +194,30 @@ public class JsonPlanGeneratorTest {
                         node -> {
                             StreamNode streamNode =
                                     streamGraph.getStreamNode(Integer.parseInt(node.getId()));
-                            assertEquals(node.getOperator(), streamNode.getOperatorName());
-                            assertEquals(
-                                    node.getParallelism(), (Integer) streamNode.getParallelism());
-                            assertEquals(
-                                    node.getDescription(), streamNode.getOperatorDescription());
+                            assertThat(node.getOperator()).isEqualTo(streamNode.getOperatorName());
+                            assertThat(node.getParallelism())
+                                    .isEqualTo((Integer) streamNode.getParallelism());
+                            assertThat(node.getDescription())
+                                    .isEqualTo(streamNode.getOperatorDescription());
                             validateStreamEdge(node.getInputs(), streamNode.getInEdges());
                             realJobVertexIds.add(node.getJobVertexId());
                         });
-        assertEquals(expectedJobVertexIds, realJobVertexIds);
+        assertThat(realJobVertexIds).isEqualTo(expectedJobVertexIds);
     }
 
     private static void validateStreamEdge(
             List<StreamGraphJsonSchema.JsonStreamEdgeSchema> jsonStreamEdges,
             List<StreamEdge> streamEdges) {
-        assertEquals(jsonStreamEdges.size(), streamEdges.size());
+        assertThat(jsonStreamEdges).hasSameSizeAs(streamEdges);
         for (int i = 0; i < jsonStreamEdges.size(); i++) {
             StreamGraphJsonSchema.JsonStreamEdgeSchema edgeToValidate = jsonStreamEdges.get(i);
             StreamEdge expectedEdge = streamEdges.get(i);
-            assertEquals(String.valueOf(expectedEdge.getSourceId()), edgeToValidate.getId());
-            assertEquals(
-                    expectedEdge.getPartitioner().toString(), edgeToValidate.getShipStrategy());
-            assertEquals(expectedEdge.getExchangeMode().name(), edgeToValidate.getExchange());
+            assertThat(edgeToValidate.getId())
+                    .isEqualTo(String.valueOf(expectedEdge.getSourceId()));
+            assertThat(edgeToValidate.getShipStrategy())
+                    .isEqualTo(expectedEdge.getPartitioner().toString());
+            assertThat(edgeToValidate.getExchange())
+                    .isEqualTo(expectedEdge.getExchangeMode().name());
         }
     }
 }
