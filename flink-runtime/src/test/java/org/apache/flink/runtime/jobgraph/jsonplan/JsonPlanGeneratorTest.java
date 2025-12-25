@@ -50,7 +50,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class JsonGeneratorTest {
+public class JsonPlanGeneratorTest {
 
     @Test
     public void testGeneratorWithoutAnyAttachements() {
