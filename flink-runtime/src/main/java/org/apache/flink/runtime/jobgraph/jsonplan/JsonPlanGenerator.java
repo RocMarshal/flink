@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.jobgraph.jsonplan;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.jobgraph.JobEdge;
 import org.apache.flink.runtime.jobgraph.JobGraph;
@@ -30,6 +31,8 @@ import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
 import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.graph.StreamGraph;
 import org.apache.flink.streaming.api.graph.StreamNode;
+import org.apache.flink.streaming.runtime.partitioner.ForwardPartitioner;
+import org.apache.flink.streaming.runtime.partitioner.RebalancePartitioner;
 
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonFactory;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonGenerator;
@@ -119,7 +122,7 @@ public class JsonPlanGenerator {
                             continue;
                         }
                         String exchange = edge.getSource().getResultType().name().toLowerCase();
-                        String shipStrategy = edge.getShipStrategyName();
+                        String shipStrategy = getCorrectedShipStrategy(vertexParallelism, edge);
                         String preProcessingOperation = edge.getPreProcessingOperationName();
                         String operatorLevelCaching = edge.getOperatorLevelCachingDescription();
 
@@ -148,6 +151,26 @@ public class JsonPlanGenerator {
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate plan", e);
         }
+    }
+
+    /**
+     * Corrected the ship strategy for forward partitioner when the parallelisms between connected
+     * vertices pair is not consistent. This is an adapted logic for FLINK-30213.
+     */
+    @VisibleForTesting
+    static String getCorrectedShipStrategy(VertexParallelism vertexParallelism, JobEdge edge) {
+        int sourceParallelism =
+                vertexParallelism.getParallelism(edge.getSource().getProducer().getID());
+        int targetParallelism = vertexParallelism.getParallelism(edge.getTarget().getID());
+        String shipStrategy = edge.getShipStrategyName();
+        if (shipStrategy != null && shipStrategy.contains(new ForwardPartitioner<>().toString())) {
+            if (sourceParallelism != targetParallelism) {
+                shipStrategy =
+                        String.format(
+                                "%s[evolved from %s]", new RebalancePartitioner<>(), shipStrategy);
+            }
+        }
+        return shipStrategy;
     }
 
     public static String generateStreamGraphJson(

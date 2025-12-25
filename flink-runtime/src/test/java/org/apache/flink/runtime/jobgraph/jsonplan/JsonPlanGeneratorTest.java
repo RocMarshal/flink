@@ -20,12 +20,15 @@ package org.apache.flink.runtime.jobgraph.jsonplan;
 
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.DistributionPattern;
+import org.apache.flink.runtime.jobgraph.JobEdge;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.jobgraph.JobGraphTestUtils;
 import org.apache.flink.runtime.jobgraph.JobVertex;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.operators.testutils.DummyInvokable;
 import org.apache.flink.runtime.rest.messages.JobPlanInfo;
+import org.apache.flink.runtime.scheduler.adaptive.allocator.VertexParallelism;
+import org.apache.flink.runtime.util.JobVertexConnectionUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.graph.StreamGraph;
@@ -219,5 +222,67 @@ class JsonPlanGeneratorTest {
             assertThat(edgeToValidate.getExchange())
                     .isEqualTo(expectedEdge.getExchangeMode().name());
         }
+    }
+
+    @Test
+    void testGetCorrectedShipStrategy() {
+        JobVertex jobVertexSource = new JobVertex("ignored");
+        JobVertex jobVertexTarget = new JobVertex("ignored");
+        JobVertexConnectionUtils.connectNewDataSetAsInput(
+                jobVertexTarget,
+                jobVertexSource,
+                DistributionPattern.POINTWISE,
+                ResultPartitionType.PIPELINED,
+                false,
+                true);
+        JobEdge jobEdge = jobVertexTarget.getInputs().get(0);
+
+        // For original ship name is about FORWARD
+        jobEdge.setShipStrategyName("FORWARD");
+        VertexParallelism vertexParallelism =
+                new VertexParallelism(
+                        new HashMap<>() {
+                            {
+                                put(jobVertexTarget.getID(), 1);
+                                put(jobVertexSource.getID(), 2);
+                            }
+                        });
+        assertThat(JsonPlanGenerator.getCorrectedShipStrategy(vertexParallelism, jobEdge))
+                .isEqualTo("REBALANCE[evolved from FORWARD]");
+
+        vertexParallelism =
+                new VertexParallelism(
+                        new HashMap<>() {
+                            {
+                                put(jobVertexTarget.getID(), 1);
+                                put(jobVertexSource.getID(), 1);
+                            }
+                        });
+        assertThat(JsonPlanGenerator.getCorrectedShipStrategy(vertexParallelism, jobEdge))
+                .isEqualTo("FORWARD");
+
+        // For original ship name is not about FORWARD
+        jobEdge.setShipStrategyName("RESCALE");
+        vertexParallelism =
+                new VertexParallelism(
+                        new HashMap<>() {
+                            {
+                                put(jobVertexTarget.getID(), 1);
+                                put(jobVertexSource.getID(), 2);
+                            }
+                        });
+        assertThat(JsonPlanGenerator.getCorrectedShipStrategy(vertexParallelism, jobEdge))
+                .isEqualTo("RESCALE");
+
+        vertexParallelism =
+                new VertexParallelism(
+                        new HashMap<>() {
+                            {
+                                put(jobVertexTarget.getID(), 1);
+                                put(jobVertexSource.getID(), 1);
+                            }
+                        });
+        assertThat(JsonPlanGenerator.getCorrectedShipStrategy(vertexParallelism, jobEdge))
+                .isEqualTo("RESCALE");
     }
 }
