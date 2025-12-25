@@ -47,6 +47,7 @@ public class IntermediateDataSet implements java.io.Serializable {
     private final ResultPartitionType resultType;
 
     private DistributionPattern distributionPattern;
+    private DistributionPattern initialDistributionPattern;
 
     private boolean isBroadcast;
 
@@ -106,6 +107,7 @@ public class IntermediateDataSet implements java.io.Serializable {
 
         if (consumers.isEmpty() && distributionPattern == null) {
             distributionPattern = edge.getDistributionPattern();
+            initialDistributionPattern = edge.getDistributionPattern();
             isBroadcast = edge.isBroadcast();
             isForward = edge.isForward();
         } else {
@@ -123,6 +125,7 @@ public class IntermediateDataSet implements java.io.Serializable {
         checkState(consumers.isEmpty(), "The output job edges have already been added.");
         if (this.distributionPattern == null) {
             this.distributionPattern = distributionPattern;
+            this.initialDistributionPattern = distributionPattern;
             this.isBroadcast = isBroadcast;
             this.isForward = isForward;
         } else {

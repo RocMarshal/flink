@@ -78,6 +78,7 @@ public class EdgeManagerBuildUtil {
     public static int computeMaxEdgesToTargetExecutionVertex(
             int targetParallelism, int sourceParallelism, DistributionPattern distributionPattern) {
         switch (distributionPattern) {
+            // TODO
             case POINTWISE:
                 return (sourceParallelism + targetParallelism - 1) / targetParallelism;
             case ALL_TO_ALL:

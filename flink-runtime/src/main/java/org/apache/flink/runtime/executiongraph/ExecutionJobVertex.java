@@ -50,6 +50,8 @@ import org.apache.flink.runtime.scheduler.VertexParallelismInformation;
 import org.apache.flink.runtime.scheduler.adaptivebatch.ExecutionPlanSchedulingContext;
 import org.apache.flink.runtime.scheduler.adaptivebatch.NonAdaptiveExecutionPlanSchedulingContext;
 import org.apache.flink.runtime.source.coordinator.SourceCoordinator;
+import org.apache.flink.streaming.api.graph.NonChainedOutput;
+import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.types.Either;
 import org.apache.flink.util.IOUtils;
 import org.apache.flink.util.OptionalFailure;
@@ -71,6 +73,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -134,6 +137,14 @@ public class ExecutionJobVertex
             CoordinatorStore coordinatorStore,
             JobManagerJobMetricGroup jobManagerJobMetricGroup)
             throws JobException {
+
+        // 如果要改写分区则
+        StreamConfig sc = new  StreamConfig(jobVertex.getConfiguration());
+        List<NonChainedOutput> vertexNonChainedOutputs = sc.getVertexNonChainedOutputs(null);
+        // 替换分区并写入
+        sc.setVertexNonChainedOutputs(null);
+        sc.serializeAllConfigs();
+        //
 
         if (graph == null || jobVertex == null) {
             throw new NullPointerException();
@@ -471,6 +482,7 @@ public class ExecutionJobVertex
     }
 
     public TaskInformation getTaskInformation() {
+        // todo 重写
         return new TaskInformation(
                 jobVertex.getID(),
                 jobVertex.getName(),
@@ -542,6 +554,7 @@ public class ExecutionJobVertex
 
             this.inputs.add(ires);
 
+            // 设置 pointwise 或者 alltoall 在所有有 DistributionTYpe的类中
             EdgeManagerBuildUtil.connectVertexToResult(this, ires);
         }
     }
