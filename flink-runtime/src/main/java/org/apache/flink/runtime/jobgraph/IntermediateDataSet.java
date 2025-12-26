@@ -46,6 +46,7 @@ public class IntermediateDataSet implements java.io.Serializable {
     // The type of partition to use at runtime
     private final ResultPartitionType resultType;
 
+    // TODO: SG->JG阶段生成
     private DistributionPattern distributionPattern;
 
     private boolean isBroadcast;
