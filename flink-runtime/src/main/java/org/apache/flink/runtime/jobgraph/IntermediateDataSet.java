@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.jobgraph;
 
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
+import org.apache.flink.util.TernaryBoolean;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +52,7 @@ public class IntermediateDataSet implements java.io.Serializable {
     private boolean isBroadcast;
 
     private boolean isForward;
+    private TernaryBoolean initialForward = TernaryBoolean.UNDEFINED;
 
     /** The number of job edges that need to be created. */
     private int numJobEdgesToCreate;
@@ -108,6 +110,7 @@ public class IntermediateDataSet implements java.io.Serializable {
             distributionPattern = edge.getDistributionPattern();
             isBroadcast = edge.isBroadcast();
             isForward = edge.isForward();
+            setInitialForwardIfNotDefined(edge.isForward());
         } else {
             checkState(
                     distributionPattern == edge.getDistributionPattern(),
@@ -118,6 +121,16 @@ public class IntermediateDataSet implements java.io.Serializable {
         consumers.add(edge);
     }
 
+    public void setInitialForwardIfNotDefined(boolean initialForward) {
+        if (this.initialForward == TernaryBoolean.UNDEFINED) {
+            this.initialForward = TernaryBoolean.fromBoolean(initialForward);
+        }
+    }
+
+    public boolean isInitialForward() {
+        return initialForward.getOrDefault(false);
+    }
+
     public void configure(
             DistributionPattern distributionPattern, boolean isBroadcast, boolean isForward) {
         checkState(consumers.isEmpty(), "The output job edges have already been added.");
@@ -125,6 +138,7 @@ public class IntermediateDataSet implements java.io.Serializable {
             this.distributionPattern = distributionPattern;
             this.isBroadcast = isBroadcast;
             this.isForward = isForward;
+            setInitialForwardIfNotDefined(isForward);
         } else {
             checkState(
                     this.distributionPattern == distributionPattern,
@@ -144,6 +158,13 @@ public class IntermediateDataSet implements java.io.Serializable {
         this.distributionPattern = distributionPattern;
         this.isBroadcast = isBroadcast;
         this.isForward = isForward;
+        this.setInitialForwardIfNotDefined(isForward);
+    }
+
+    public void forceUpdate(boolean isForward, DistributionPattern distributionPattern) {
+        this.isForward = isForward;
+        this.setInitialForwardIfNotDefined(isForward);
+        this.distributionPattern = distributionPattern;
     }
 
     public void increaseNumJobEdgesToCreate() {

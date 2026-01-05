@@ -405,6 +405,11 @@ public class JobVertex implements java.io.Serializable {
         return new ArrayList<>(results.values());
     }
 
+    @Nullable
+    public IntermediateDataSet getIntermediateDataSet(IntermediateDataSetID intermediateDataSetID) {
+        return results.get(intermediateDataSetID);
+    }
+
     public List<JobEdge> getInputs() {
         return this.inputs;
     }
