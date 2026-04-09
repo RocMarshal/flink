@@ -180,7 +180,9 @@ public class Rescale implements Serializable {
                         enterTimestamp,
                         logicLeaveTimestamp,
                         logicLeaveTimestamp - enterTimestamp,
-                        ExceptionUtils.stringifyException(throwable)));
+                        Objects.isNull(throwable)
+                                ? null
+                                : ExceptionUtils.stringifyException(throwable)));
     }
 
     public List<SchedulerStateSpan> getSchedulerStates() {
