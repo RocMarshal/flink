@@ -73,14 +73,21 @@ public class SqlGateway {
             }
         } catch (Throwable t) {
             LOG.error("Failed to start the endpoints.", t);
+            stopStartedEndpoints();
+            sessionManager.stop();
             throw new SqlGatewayException("Failed to start the endpoints.", t);
         }
     }
 
-    public void stop() {
+    private void stopStartedEndpoints() {
         for (SqlGatewayEndpoint endpoint : endpoints) {
             stopEndpointSilently(endpoint);
         }
+        endpoints.clear();
+    }
+
+    public void stop() {
+        stopStartedEndpoints();
         if (sessionManager != null) {
             sessionManager.stop();
         }
