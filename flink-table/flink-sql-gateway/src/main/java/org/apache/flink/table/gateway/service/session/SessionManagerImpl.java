@@ -123,6 +123,9 @@ public class SessionManagerImpl implements SessionManager {
         if (operationExecutorService != null) {
             operationExecutorService.shutdown();
         }
+        for (Session session : sessions.values()) {
+            closeSession(session);
+        }
         LOG.info("SessionManager is stopped.");
     }
 
