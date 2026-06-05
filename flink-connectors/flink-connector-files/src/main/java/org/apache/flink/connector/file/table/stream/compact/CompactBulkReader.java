@@ -57,7 +57,14 @@ public class CompactBulkReader<T> implements CompactReader<T> {
 
     @Override
     public void close() throws IOException {
-        reader.close();
+        try {
+            if (iterator != null) {
+                iterator.releaseBatch();
+                iterator = null;
+            }
+        } finally {
+            reader.close();
+        }
     }
 
     public static <T> CompactReader.Factory<T> factory(BulkFormat<T, FileSourceSplit> format) {
