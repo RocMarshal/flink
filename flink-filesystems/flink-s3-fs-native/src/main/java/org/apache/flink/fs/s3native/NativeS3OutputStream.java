@@ -79,8 +79,11 @@ class NativeS3OutputStream extends FSDataOutputStream {
                 Preconditions.checkNotNull(encryptionConfig, "encryptionConfig must not be null");
 
         File tmpDir = new File(localTmpDir);
-        if (!tmpDir.exists()) {
-            tmpDir.mkdirs();
+        if (!tmpDir.exists() && !tmpDir.mkdirs()) {
+            throw new IOException("Could not create temporary directory " + tmpDir);
+        }
+        if (!tmpDir.isDirectory()) {
+            throw new IOException("Temporary path is not a directory: " + tmpDir);
         }
 
         this.tmpFile = new File(tmpDir, "s3-upload-" + UUID.randomUUID());

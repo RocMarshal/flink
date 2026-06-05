@@ -111,8 +111,11 @@ class NativeS3RecoverableFsDataOutputStream extends RecoverableFsDataOutputStrea
 
     private void createNewTempFile() throws IOException {
         File tmpDir = new File(localTmpDir);
-        if (!tmpDir.exists()) {
-            tmpDir.mkdirs();
+        if (!tmpDir.exists() && !tmpDir.mkdirs()) {
+            throw new IOException("Could not create temporary directory " + tmpDir);
+        }
+        if (!tmpDir.isDirectory()) {
+            throw new IOException("Temporary path is not a directory: " + tmpDir);
         }
 
         currentTempFile = new File(tmpDir, "s3-part-" + UUID.randomUUID());
