@@ -75,8 +75,8 @@ class DemultiplexingRecordDeserializerTest {
     }
 
     @AfterEach
-    void cleanup() {
-        ioManager = new IOManagerAsync();
+    void cleanup() throws Exception {
+        ioManager.close();
     }
 
     /**
