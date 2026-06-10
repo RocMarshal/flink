@@ -286,7 +286,6 @@ while IFS="=" read -r key value; do
 done <"$MAVEN_PROJECTBASEDIR/.mvn/wrapper/maven-wrapper.properties"
 if [ -n "$wrapperSha256Sum" ]; then
   wrapperSha256Result=false
-  wrapperSha256Command=""
   if command -v sha256sum >/dev/null; then
     wrapperSha256Command="sha256sum -c -"
   elif command -v shasum >/dev/null; then
@@ -299,7 +298,7 @@ if [ -n "$wrapperSha256Sum" ]; then
   if echo "$wrapperSha256Sum  $wrapperJarPath" | $wrapperSha256Command >/dev/null 2>&1; then
     wrapperSha256Result=true
   else
-    echo "Error: Failed to validate Maven wrapper SHA-256, retrying download." >&2
+    echo "Error: Failed to validate Maven wrapper SHA-256. Deleting and re-downloading." >&2
     rm -f "$wrapperJarPath"
     download_wrapper_jar
     if echo "$wrapperSha256Sum  $wrapperJarPath" | $wrapperSha256Command >/dev/null 2>&1; then
