@@ -206,11 +206,7 @@ log "$MAVEN_PROJECTBASEDIR"
 # This allows using the maven wrapper in projects that prohibit checking in binary data.
 ##########################################################################################
 wrapperJarPath="$MAVEN_PROJECTBASEDIR/.mvn/wrapper/maven-wrapper.jar"
-if [ -r "$wrapperJarPath" ]; then
-  log "Found $wrapperJarPath"
-else
-  log "Couldn't find $wrapperJarPath, downloading it ..."
-
+download_wrapper_jar() {
   if [ -n "$MVNW_REPOURL" ]; then
     wrapperUrl="$MVNW_REPOURL/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar"
   else
@@ -267,6 +263,13 @@ else
       fi
     fi
   fi
+}
+
+if [ -r "$wrapperJarPath" ]; then
+  log "Found $wrapperJarPath"
+else
+  log "Couldn't find $wrapperJarPath, downloading it ..."
+  download_wrapper_jar
 fi
 ##########################################################################################
 # End of extension
@@ -283,18 +286,25 @@ while IFS="=" read -r key value; do
 done <"$MAVEN_PROJECTBASEDIR/.mvn/wrapper/maven-wrapper.properties"
 if [ -n "$wrapperSha256Sum" ]; then
   wrapperSha256Result=false
+  wrapperSha256Command=""
   if command -v sha256sum >/dev/null; then
-    if echo "$wrapperSha256Sum  $wrapperJarPath" | sha256sum -c - >/dev/null 2>&1; then
-      wrapperSha256Result=true
-    fi
+    wrapperSha256Command="sha256sum -c -"
   elif command -v shasum >/dev/null; then
-    if echo "$wrapperSha256Sum  $wrapperJarPath" | shasum -a 256 -c - >/dev/null 2>&1; then
-      wrapperSha256Result=true
-    fi
+    wrapperSha256Command="shasum -a 256 -c -"
   else
     echo "Checksum validation was requested but neither 'sha256sum' or 'shasum' are available." >&2
     echo "Please install either command, or disable validation by removing 'wrapperSha256Sum' from your maven-wrapper.properties." >&2
     exit 1
+  fi
+  if echo "$wrapperSha256Sum  $wrapperJarPath" | $wrapperSha256Command >/dev/null 2>&1; then
+    wrapperSha256Result=true
+  else
+    echo "Error: Failed to validate Maven wrapper SHA-256, retrying download." >&2
+    rm -f "$wrapperJarPath"
+    download_wrapper_jar
+    if echo "$wrapperSha256Sum  $wrapperJarPath" | $wrapperSha256Command >/dev/null 2>&1; then
+      wrapperSha256Result=true
+    fi
   fi
   if [ $wrapperSha256Result = false ]; then
     echo "Error: Failed to validate Maven wrapper SHA-256, your Maven wrapper might be compromised." >&2
