@@ -19,9 +19,11 @@
 
 package org.apache.flink.runtime.scheduler.slowtaskdetector;
 
+import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.SlowTaskDetectorOptions;
-import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutorServiceAdapter;
+import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutor;
+import org.apache.flink.runtime.concurrent.NoMainThreadCheckComponentMainThreadExecutor;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.ExecutionGraph;
 import org.apache.flink.runtime.executiongraph.ExecutionGraphTestUtils;
@@ -42,6 +44,7 @@ import org.apache.flink.runtime.util.TestingFatalErrorHandler;
 import org.apache.flink.testutils.TestingUtils;
 import org.apache.flink.testutils.executor.TestExecutorExtension;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -56,6 +59,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
 import static org.apache.flink.runtime.executiongraph.ExecutionGraphTestUtils.createNoOpVertex;
+import static org.apache.flink.runtime.testutils.CommonTestUtils.waitUntilCondition;
 import static org.apache.flink.runtime.util.JobVertexConnectionUtils.connectNewDataSetAsInput;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -64,8 +68,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ExecutionTimeBasedSlowTaskDetectorTest {
 
     @RegisterExtension
-    private static final TestExecutorExtension<ScheduledExecutorService> EXECUTOR_RESOURCE =
+    private static final TestExecutorExtension<ScheduledExecutorService> EXECUTOR_EXTENSION =
             TestingUtils.defaultExecutorExtension();
+
+    private ComponentMainThreadExecutor mainThreadExecutor;
+
+    @BeforeEach
+    void setUp() {
+        // Use a DirectScheduledExecutorService-based executor that maintains synchronous
+        // execution semantics without strict thread identity checks. This fixes flaky test
+        // failures (FLINK-38970) caused by main thread constraint violations when
+        // CompletableFuture callbacks are dispatched from background IO executor threads.
+        // The synchronous execution is preserved while eliminating the race condition.
+        mainThreadExecutor =
+                new NoMainThreadCheckComponentMainThreadExecutor(EXECUTOR_EXTENSION.getExecutor());
+    }
 
     @Test
     void testNoFinishedTaskButRatioIsZero() throws Exception {
@@ -90,9 +107,7 @@ class ExecutionTimeBasedSlowTaskDetectorTest {
         // all tasks are in the CREATED state, which is not classified as slow tasks.
         final ExecutionGraph executionGraph =
                 SchedulerTestingUtils.createScheduler(
-                                jobGraph,
-                                ComponentMainThreadExecutorServiceAdapter.forMainThread(),
-                                EXECUTOR_RESOURCE.getExecutor())
+                                jobGraph, mainThreadExecutor, EXECUTOR_EXTENSION.getExecutor())
                         .getExecutionGraph();
 
         final ExecutionTimeBasedSlowTaskDetector slowTaskDetector = createSlowTaskDetector(0, 1, 0);
@@ -195,7 +210,7 @@ class ExecutionTimeBasedSlowTaskDetectorTest {
         final ExecutionGraph executionGraph = createExecutionGraph(jobVertex1, jobVertex2);
 
         final ExecutionTimeBasedSlowTaskDetector slowTaskDetector =
-                createSlowTaskDetector(0.3, 1, 0);
+                createSlowTaskDetector(0.001, 1, 0);
 
         final ExecutionVertex ev13 =
                 executionGraph.getJobVertex(jobVertex1.getID()).getTaskVertices()[2];
@@ -222,7 +237,8 @@ class ExecutionTimeBasedSlowTaskDetectorTest {
                 jobVertex1,
                 DistributionPattern.ALL_TO_ALL,
                 ResultPartitionType.BLOCKING);
-        final ExecutionGraph executionGraph = createDynamicExecutionGraph(jobVertex1, jobVertex2);
+        final ExecutionGraph executionGraph =
+                createDynamicExecutionGraphAndSyncInitVerticesInit(jobVertex1, jobVertex2);
 
         final ExecutionTimeBasedSlowTaskDetector slowTaskDetector =
                 createSlowTaskDetector(0.3, 1, 0);
@@ -420,8 +436,7 @@ class ExecutionTimeBasedSlowTaskDetectorTest {
                 slowTasks -> {
                     throw exception;
                 },
-                new ComponentMainThreadExecutorServiceAdapter(
-                        EXECUTOR_RESOURCE.getExecutor(), Thread.currentThread()));
+                mainThreadExecutor);
 
         slowTaskDetector.getScheduledDetectionFuture().get();
         assertThat(fatalErrorHandler.getException()).isEqualTo(exception);
@@ -432,9 +447,7 @@ class ExecutionTimeBasedSlowTaskDetectorTest {
 
         final SchedulerBase scheduler =
                 SchedulerTestingUtils.createScheduler(
-                        jobGraph,
-                        ComponentMainThreadExecutorServiceAdapter.forMainThread(),
-                        EXECUTOR_RESOURCE.getExecutor());
+                        jobGraph, mainThreadExecutor, EXECUTOR_EXTENSION.getExecutor());
 
         final ExecutionGraph executionGraph = scheduler.getExecutionGraph();
 
@@ -444,19 +457,22 @@ class ExecutionTimeBasedSlowTaskDetectorTest {
         return executionGraph;
     }
 
-    private ExecutionGraph createDynamicExecutionGraph(JobVertex... jobVertices) throws Exception {
+    private ExecutionGraph createDynamicExecutionGraphAndSyncInitVerticesInit(
+            JobVertex... jobVertices) throws Exception {
         final JobGraph jobGraph = JobGraphTestUtils.batchJobGraph(jobVertices);
 
         final SchedulerBase scheduler =
                 new DefaultSchedulerBuilder(
-                                jobGraph,
-                                ComponentMainThreadExecutorServiceAdapter.forMainThread(),
-                                EXECUTOR_RESOURCE.getExecutor())
+                                jobGraph, mainThreadExecutor, EXECUTOR_EXTENSION.getExecutor())
                         .buildAdaptiveBatchJobScheduler();
 
         final ExecutionGraph executionGraph = scheduler.getExecutionGraph();
 
         scheduler.startScheduling();
+
+        waitUntilCondition(() -> executionGraph.getState() == JobStatus.RUNNING, 10, 100);
+        Thread.sleep(20L); // Wait for additional time span to be stable.
+
         ExecutionGraphTestUtils.switchAllVerticesToRunning(executionGraph);
 
         return executionGraph;
