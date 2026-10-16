@@ -28,23 +28,26 @@ import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage;
 import org.apache.flink.state.rocksdb.EmbeddedRocksDBStateBackend;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.testutils.junit.utils.TempDirUtils;
 import org.apache.flink.util.Collector;
-import org.apache.flink.util.TestLogger;
+import org.apache.flink.util.TestLoggerExtension;
 
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.concurrent.ThreadLocalRandom;
 
 /** Test Rescaling benchmark. */
-public class RescalingBenchmarkTest extends TestLogger {
+@ExtendWith(TestLoggerExtension.class)
+class RescalingBenchmarkTest {
 
-    @ClassRule public static TemporaryFolder temporaryFolder = new TemporaryFolder();
+    @TempDir private static Path temporaryFolder;
 
     @Test
-    public void testScalingOut() throws Exception {
+    void testScalingOut() throws Exception {
 
         RescalingBenchmark<Integer> benchmark =
                 new RescalingBenchmarkBuilder<Integer>()
@@ -53,7 +56,8 @@ public class RescalingBenchmarkTest extends TestLogger {
                         .setParallelismAfter(2)
                         .setManagedMemorySize(512 * 1024 * 1024)
                         .setCheckpointStorageAccess(
-                                new FileSystemCheckpointStorage(temporaryFolder.newFolder().toURI())
+                                new FileSystemCheckpointStorage(
+                                                TempDirUtils.newFolder(temporaryFolder).toURI())
                                         .createCheckpointStorage(new JobID()))
                         .setStateBackend(new EmbeddedRocksDBStateBackend(true))
                         .setStreamRecordGenerator(new IntegerRecordGenerator())
@@ -67,7 +71,7 @@ public class RescalingBenchmarkTest extends TestLogger {
     }
 
     @Test
-    public void testScalingIn() throws Exception {
+    void testScalingIn() throws Exception {
         RescalingBenchmark<Integer> benchmark =
                 new RescalingBenchmarkBuilder<Integer>()
                         .setMaxParallelism(128)
@@ -75,7 +79,8 @@ public class RescalingBenchmarkTest extends TestLogger {
                         .setParallelismAfter(1)
                         .setManagedMemorySize(512 * 1024 * 1024)
                         .setCheckpointStorageAccess(
-                                new FileSystemCheckpointStorage(temporaryFolder.newFolder().toURI())
+                                new FileSystemCheckpointStorage(
+                                                TempDirUtils.newFolder(temporaryFolder).toURI())
                                         .createCheckpointStorage(new JobID()))
                         .setStateBackend(new EmbeddedRocksDBStateBackend(true))
                         .setStreamRecordGenerator(new IntegerRecordGenerator())

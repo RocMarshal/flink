@@ -24,14 +24,12 @@ import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.runtime.state.KeyedStateBackend;
 import org.apache.flink.state.rocksdb.RocksDBKeyedStateBackend;
+import org.apache.flink.testutils.junit.extensions.parameterized.Parameter;
+import org.apache.flink.testutils.junit.extensions.parameterized.ParameterizedTestExtension;
+import org.apache.flink.testutils.junit.extensions.parameterized.Parameters;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.TestTemplate;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -44,14 +42,12 @@ import static org.apache.flink.state.benchmark.StateBackendBenchmarkUtils.create
 import static org.apache.flink.state.benchmark.StateBackendBenchmarkUtils.getListState;
 import static org.apache.flink.state.benchmark.StateBackendBenchmarkUtils.getMapState;
 import static org.apache.flink.state.benchmark.StateBackendBenchmarkUtils.getValueState;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.not;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /** Test for {@link StateBackendBenchmarkUtils}. */
-@RunWith(Parameterized.class)
-public class StateBackendBenchmarkUtilsTest {
-    @Rule public TemporaryFolder temp = new TemporaryFolder();
-
+@ExtendWith(ParameterizedTestExtension.class)
+class StateBackendBenchmarkUtilsTest {
     private final ValueStateDescriptor<Long> valueStateDescriptor =
             new ValueStateDescriptor<>("valueState", Long.class);
     private final ListStateDescriptor<Long> listStateDescriptor =
@@ -59,45 +55,43 @@ public class StateBackendBenchmarkUtilsTest {
     private final MapStateDescriptor<Long, Double> mapStateDescriptor =
             new MapStateDescriptor<>("mapState", Long.class, Double.class);
 
-    @Parameterized.Parameters(name = "{0}")
-    public static Collection<Object> data() {
+    @Parameters(name = "{0}")
+    private static Collection<StateBackendBenchmarkUtils.StateBackendType> data() {
         return Arrays.asList(StateBackendBenchmarkUtils.StateBackendType.values());
     }
 
-    @Parameterized.Parameter public StateBackendBenchmarkUtils.StateBackendType backendType;
+    @Parameter private StateBackendBenchmarkUtils.StateBackendType backendType;
 
-    @Test
-    public void testCreateKeyedStateBackend() throws IOException {
+    @TestTemplate
+    void testCreateKeyedStateBackend() throws IOException {
         KeyedStateBackend<Long> backend = createKeyedStateBackend(backendType);
         cleanUp(backend);
     }
 
-    @Test
-    public void testGetValueState() throws Exception {
+    @TestTemplate
+    void testGetValueState() throws Exception {
         KeyedStateBackend<Long> backend = createKeyedStateBackend(backendType);
         getValueState(backend, valueStateDescriptor);
         cleanUp(backend);
     }
 
-    @Test
-    public void testGetListState() throws Exception {
+    @TestTemplate
+    void testGetListState() throws Exception {
         KeyedStateBackend<Long> backend = createKeyedStateBackend(backendType);
         getListState(backend, listStateDescriptor);
         cleanUp(backend);
     }
 
-    @Test
-    public void testGetMapState() throws Exception {
+    @TestTemplate
+    void testGetMapState() throws Exception {
         KeyedStateBackend<Long> backend = createKeyedStateBackend(backendType);
         getMapState(backend, mapStateDescriptor);
         cleanUp(backend);
     }
 
-    @Test
-    public void testApplyToAllKeys() throws Exception {
-        Assume.assumeThat(
-                backendType,
-                not(equalTo(StateBackendBenchmarkUtils.StateBackendType.BATCH_EXECUTION)));
+    @TestTemplate
+    void testApplyToAllKeys() throws Exception {
+        assumeTrue(backendType != StateBackendBenchmarkUtils.StateBackendType.BATCH_EXECUTION);
         KeyedStateBackend<Long> backend = createKeyedStateBackend(backendType);
         ListState<Long> listState = getListState(backend, listStateDescriptor);
         for (long i = 0; i < 10; i++) {
@@ -113,13 +107,13 @@ public class StateBackendBenchmarkUtilsTest {
                 });
         for (long i = 0; i < 10; i++) {
             backend.setCurrentKey(i);
-            Assert.assertNull(listState.get());
+            assertThat(listState.get()).isNull();
         }
         cleanUp(backend);
     }
 
-    @Test
-    public void testCompactState() throws Exception {
+    @TestTemplate
+    void testCompactState() throws Exception {
         KeyedStateBackend<Long> backend = createKeyedStateBackend(backendType);
         ListState<Long> listState = getListState(backend, listStateDescriptor);
         for (long i = 0; i < 10; i++) {
